@@ -281,7 +281,7 @@
   }
 
 
-  let referenceCategory="spells", referenceResults=[], referenceEdition="both";
+  let referenceCategory="spells", referenceResults=[], referenceEdition="both", referencePage=1, referenceHasNext=false;
   const referenceTypes={spells:"spells",species:"species",classes:"classes",backgrounds:"backgrounds",feats:"feats",items:"items",creatures:"creatures",languages:"languages",conditions:"conditions"};
   function sourceEdition(entry){
     const key=String(entry.document?.key||"").toLowerCase();
@@ -291,13 +291,13 @@
     const list=$("reference-results");if(!list)return;
     const q=$("reference-search").value.trim();list.innerHTML=empty("Searching the open rules library...");
     try{
-      const params=new URLSearchParams({limit:"30",ordering:"name",document__key__in:"srd-2014,srd-2024"});
+      const params=new URLSearchParams({limit:"30",ordering:"name",page:String(referencePage),document__key__in:"srd-2014,srd-2024"});
       if(q)params.set("name__icontains",q);
       if(referenceEdition==="2014")params.set("document__key__iexact","srd-2014");
       if(referenceEdition==="2024")params.set("document__key__iexact","srd-2024");
       const response=await fetch("https://api.open5e.com/v2/"+referenceTypes[referenceCategory]+"/?"+params.toString());
       if(!response.ok)throw new Error("The open reference source is temporarily unavailable.");
-      const payload=await response.json();referenceResults=Array.isArray(payload.results)?payload.results:[];
+      const payload=await response.json();referenceResults=Array.isArray(payload.results)?payload.results:[];referenceHasNext=!!payload.next;
       renderReferenceLibrary();
     }catch(err){list.innerHTML=empty(err.message+" You can still create campaign homebrew.");}
   }
@@ -320,6 +320,7 @@
       return '<article class="reference-card"><div class="reference-card-top"><span class="tag">'+escapeHTML(edition)+'</span><span class="list-meta">'+escapeHTML(meta)+'</span></div><h3>'+escapeHTML(entry.name||"Untitled")+'</h3><p>'+escapeHTML(detail||"Open the entry to view details.")+'</p><div class="list-meta">'+escapeHTML(source)+'</div><div class="card-actions">'+controls+own+'</div></article>';
     }).join("");
     $("reference-count").textContent=entries.length+" entries shown · Open SRD material and campaign homebrew";
+    const pager=$("reference-pagination");if(pager)pager.innerHTML=(referencePage>1?'<button class="small-button" onclick="Hub.changeReferencePage(-1)">← PREVIOUS</button>':"")+(referenceHasNext?'<button class="small-button" onclick="Hub.changeReferencePage(1)">NEXT PAGE →</button>':"");
   }
   function openReferenceEntry(index){
     const entry=referenceEntries()[index];if(!entry)return;
@@ -384,8 +385,9 @@
     const e=state.homebrew?.find(x=>x.id===id);if(!e||(!isDM()&&e.ownerId!==member.id)||!confirm("Delete this homebrew entry?"))return;
     mutate(()=>state.homebrew=state.homebrew.filter(x=>x.id!==id));renderReferenceLibrary();
   }
+  function changeReferencePage(amount){referencePage=Math.max(1,referencePage+amount);loadReference();}
   function selectReferenceCategory(category){
-    if(!referenceTypes[category])return;referenceCategory=category;
+    if(!referenceTypes[category])return;referenceCategory=category;referencePage=1;
     root.querySelectorAll("[data-reference-category]").forEach(b=>b.classList.toggle("active",b.dataset.referenceCategory===category));
     loadReference();
   }
@@ -1159,8 +1161,8 @@
 
   $("campaign-search-input").addEventListener("input",searchCampaign);
   $("campaign-import-file").addEventListener("change",e=>{const file=e.target.files?.[0];if(file)importCampaign(file);e.target.value="";});
-  $("reference-search").addEventListener("keydown",e=>{if(e.key==="Enter")loadReference();});
-  $("reference-edition").addEventListener("change",e=>{referenceEdition=e.target.value;loadReference();});
+  $("reference-search").addEventListener("keydown",e=>{if(e.key==="Enter"){referencePage=1;loadReference();}});
+  $("reference-edition").addEventListener("change",e=>{referenceEdition=e.target.value;referencePage=1;loadReference();});
   root.querySelectorAll("[data-reference-category]").forEach(b=>b.addEventListener("click",()=>selectReferenceCategory(b.dataset.referenceCategory)));
   root.querySelectorAll(".hub-nav button").forEach(b=>{
     b.addEventListener("click",()=>go(b.dataset.tab));
@@ -1255,6 +1257,7 @@
     editHomebrew,
     removeHomebrew,
     selectReferenceCategory,
+    changeReferencePage,
     loadReference,
     takeRest,
     editResources,
