@@ -330,3 +330,6 @@
 #dnd-hub .quest-card.quest-completed .list-meta {color:#a8e0b8;}
 #dnd-hub .quest-card.quest-completed {color:#b7e4c4;}
 #dnd-hub .quest-card.quest-failed .list-meta {color:#e5aeb4;text-decoration:line-through;}
+
+#dnd-hub .quest-card.quest-completed .quest-status-actions button {color:#a8e0b8;border-color:#4e9369;background:#243d31;}
+#dnd-hub .quest-card.quest-failed .quest-status-actions button {color:#e9aab1;border-color:#8b4650;background:#3b252b;}
