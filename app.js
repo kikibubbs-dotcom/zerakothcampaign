@@ -571,11 +571,14 @@ function configureSlots(id) {
     if (file.size>10*1024*1024) return alert("Please use an image smaller than 10MB.");
     status("Uploading map...");
     try {
-      const path="maps/"+makeId()+"-"+file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
-      const {error}=await client.storage.from("campaign-maps").upload(path,file,{upsert:true});
-      if (error) throw error;
-      const {data}=client.storage.from("campaign-maps").getPublicUrl(path);
-      mutate(()=>state.mapUrl=data.publicUrl);
+      const {data:upload,error:signError}=await client.functions.invoke("campaign-data", {
+        body:{action:"create-map-upload",filename:file.name,content_type:file.type}
+      });
+      if (signError) throw signError;
+      const {error:uploadError}=await client.storage.from("campaign-maps")
+        .uploadToSignedUrl(upload.path,upload.token,file,{contentType:file.type,upsert:false});
+      if (uploadError) throw uploadError;
+      mutate(()=>state.mapUrl=upload.publicUrl);
       status("Map uploaded");
     } catch(err) {
       status("Upload failed");
