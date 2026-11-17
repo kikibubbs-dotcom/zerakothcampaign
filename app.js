@@ -215,6 +215,7 @@
         if(String(c.className||"").toLowerCase().includes("warlock")&&Array.isArray(c.spellSlots))c.spellSlots.forEach(slot=>{if(slot.total>0)slot.used=0;});
       }else{
         c.hp=Math.max(0,safeNumber(c.maxHp));
+        if(c.rulesEdition==="2024")c.exhaustion=Math.max(0,safeNumber(c.exhaustion)-1);
         if(Array.isArray(c.spellSlots))c.spellSlots.forEach(slot=>slot.used=0);
         c.resources.forEach(r=>{if(r.recovery!=="manual")r.used=0;});
         const spent=Math.max(0,safeNumber(c.hitDiceUsed)),level=Math.max(1,safeNumber(c.level,1));
@@ -586,6 +587,8 @@
               </div>
             `).join("")}
           </div>
+          ${(c.resources||[]).length?`<div class="card-subtitle" style="margin-top:14px">CLASS & CHARACTER RESOURCES</div>${c.resources.map(r=>`<div class="hp-line"><span>${escapeHTML(r.name)}</span><span>${safeNumber(r.used)}/${safeNumber(r.max)} used · ${escapeHTML(r.recovery||"long")} rest</span></div>`).join("")}`:""}
+          ${c.rulesEdition==="2024"?`<div class="hp-line"><strong>EXHAUSTION</strong><span>${safeNumber(c.exhaustion)}/6</span></div>`:""}
         `:`
           <div class="tag">HP ${hp}/${max}</div>
           <div class="tag">AC ${safeNumber(c.ac)}</div>
@@ -892,6 +895,7 @@
       {name:"race",label:"Race / species",value:data.race||"",group:"player companion npc"},
       {name:"className",label:"Class",value:data.className||"",group:"player companion"},
       {name:"background",label:"Background",value:data.background||"",group:"player companion"},
+      {name:"rulesEdition",label:"Rules version for this character",type:"select",value:data.rulesEdition||"2014",options:[{value:"2014",label:"2014 rules"},{value:"2024",label:"2024 rules"}],group:"player companion"},
       {name:"alignment",label:"Alignment",value:data.alignment||"",group:"player companion npc"},
       {name:"portrait",label:"Portrait image URL",type:"url",value:data.portrait?.startsWith("data:")?"":(data.portrait||""),placeholder:"https://…",group:"player companion npc"},
       {name:"portraitFile",label:"Or upload a portrait image",type:"file",preview:data.portrait||"",group:"player companion npc"},
@@ -901,10 +905,12 @@
       {type:"section",label:"COMBAT STATISTICS",group:"player companion npc"},
       {name:"hp",label:"Current hit points",type:"number",value:data.hp??10,min:0,group:"player companion npc"},
       {name:"maxHp",label:"Maximum hit points",type:"number",value:data.maxHp??10,min:1,group:"player companion npc"},
+      {name:"exhaustion",label:"Exhaustion level",type:"number",value:data.exhaustion??0,min:0,max:6,group:"player companion npc"},
       {name:"ac",label:"Armour class",type:"number",value:data.ac??10,min:0,group:"player companion npc"},
       {name:"initiative",label:"Initiative",type:"number",value:data.initiative??0,group:"player companion npc"},
       {name:"speed",label:"Speed (ft)",type:"number",value:data.speed??30,min:0,group:"player companion npc"},
       {name:"hitDice",label:"Hit dice",value:data.hitDice||"",group:"player companion npc"},
+      {name:"hitDiceUsed",label:"Hit dice spent",type:"number",value:data.hitDiceUsed??0,min:0,group:"player companion npc"},
       {name:"proficiency",label:"Proficiency bonus",type:"number",value:data.proficiency??2,min:0,group:"player companion npc"},
       {type:"section",label:"ABILITY SCORES",group:"player companion npc"},
       {name:"strength",label:"Strength (STR)",type:"number",value:data.strength??10,group:"player companion npc"},
@@ -947,7 +953,7 @@
     openForm(editing?"Edit archive entry":"Add to character & NPC archive",archiveFields(data||{},initialType),v=>{
       if(!v.name.trim())return alert("Please enter a name.");
       const type=v.recordType,portrait=v.portraitFile||v.portrait||data?.portrait||"";
-      const common={id:data?.id||makeId(),name:v.name.trim(),race:v.race,className:v.className,alignment:v.alignment,portrait,personality:v.personality,ideals:v.ideals,bonds:v.bonds,flaws:v.flaws,backstory:v.backstory,loveInterest:v.loveInterest,notes:v.notes};
+      const common={id:data?.id||makeId(),name:v.name.trim(),race:v.race,className:v.className,alignment:v.alignment,portrait,personality:v.personality,ideals:v.ideals,bonds:v.bonds,flaws:v.flaws,backstory:v.backstory,loveInterest:v.loveInterest,notes:v.notes,rulesEdition:v.rulesEdition||"2014",exhaustion:Math.max(0,Math.min(6,safeNumber(v.exhaustion))),hitDiceUsed:Math.max(0,safeNumber(v.hitDiceUsed)),resources:Array.isArray(data?.resources)?data.resources:[]};
       if(type==="npc"){
         const npc={...common,player:v.player,role:v.role,location:v.location,relationship:v.relationship,description:v.description,goals:v.goals,secrets:v.secrets,challengeRating:v.challengeRating,senses:v.senses,languages:v.languages,npcActions:v.npcActions,hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),hitDice:v.hitDice,proficiency:safeNumber(v.proficiency),strength:safeNumber(v.strength,10),dexterity:safeNumber(v.dexterity,10),constitution:safeNumber(v.constitution,10),intelligence:safeNumber(v.intelligence,10),wisdom:safeNumber(v.wisdom,10),charisma:safeNumber(v.charisma,10),savingThrows:v.savingThrows,skills:v.skills,features:v.features,spells:v.spells};
         if(!isDM())return;
