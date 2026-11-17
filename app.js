@@ -238,7 +238,7 @@
 
 
   let referenceCategory="spells", referenceResults=[], referenceEdition="both";
-  const referenceTypes={spells:"spells",species:"species",classes:"classes",items:"items",creatures:"creatures"};
+  const referenceTypes={spells:"spells",species:"species",classes:"classes",backgrounds:"backgrounds",feats:"feats",items:"items",creatures:"creatures",languages:"languages",conditions:"conditions"};
   function sourceEdition(entry){
     const key=String(entry.document?.key||"").toLowerCase();
     return key.includes("2024")?"2024":key.includes("2014")?"2014":"Open5e";
@@ -299,6 +299,7 @@
       mutate(()=>{
         if(referenceCategory==="classes")c.className=entry.name;
         else if(referenceCategory==="species")c.race=entry.name;
+        else if(referenceCategory==="backgrounds")c.background=entry.name;
         else if(referenceCategory==="spells")c.spells=[c.spells||"",line].filter(Boolean).join("\n");
         else if(referenceCategory==="items"){
           if(!Array.isArray(c.inventoryItems))c.inventoryItems=[];
