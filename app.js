@@ -17,12 +17,15 @@
     title:"THE CAMPAIGN",
     mapUrl:"",
     markers:[],
+    mapDrawings:[],
+    markerLegend:{},
     characters:[],
     quests:[],
     npcs:[],
     journal:[],
     events:[],
     calendarConfig:null,
+    elapsedDays:[],
     notices:[]
   });
 
@@ -37,6 +40,8 @@
   let dragging = null;
   let lastRemote = 0;
   let calendarView = null;
+  let mapDrawing = false;
+  let journalCanvasDirty = false;
 
   const empty = text => `<div class="empty-state">${escapeHTML(text)}</div>`;
   const isDM = () => member?.role === "dm";
@@ -265,6 +270,7 @@
           <div class="list-meta">${escapeHTML(j.date)} · ${escapeHTML(j.author||"Campaign")}</div>
           <h3>${escapeHTML(j.title)}</h3>
           <p>${escapeHTML(j.body)}</p>
+          ${j.imageData?`<img class="journal-attachment" src="${j.imageData}" alt="Journal drawing or attached image" style="max-width:100%;max-height:420px;border-radius:6px;margin-top:12px">`:""}
           ${(isDM() || j.ownerId===member?.id)?`${(isDM() || member?.role==="player")?`<div class="card-actions"><button onclick="Hub.editJournal('${j.id}')">EDIT ENTRY</button><button onclick="Hub.removeItem('journal','${j.id}')">DELETE ENTRY</button></div>`:""}`:""}
         </article>`).join("")
       : empty("Your campaign story starts here.");
@@ -371,19 +377,11 @@
     refresh();persist();
   }
 
-  function renderNotices() {
-    $("notice-list").innerHTML = state.notices.length
-      ? state.notices.map(n=>`
-        <article class="list-card">
-          <div class="list-meta">${escapeHTML(n.date)}</div>
-          <h3>${escapeHTML(n.title)}</h3>
-          <p>${escapeHTML(n.body)}</p>
-          ${isDM()?`<div class="card-actions"><button onclick="Hub.removeItem('notices','${n.id}')">DELETE NOTICE</button></div>`:""}
-        </article>`).join("")
-      : empty("The notice board is empty.");
-  }
-
-  function mutate(fn) {
+  function renderNotices(){
+    const unread=state.notices.filter(n=>n.createdAt&&!(n.readBy||[]).includes(member?.id)).length,bar=$("notice-alert");
+    bar.hidden=!unread;bar.textContent=unread?`✉ ${unread} new notice${unread===1?"":"s"} — click to read`:"";
+    $("notice-list").innerHTML=state.notices.length?state.notices.map(n=>{const fresh=!!n.createdAt&&!(n.readBy||[]).includes(member?.id);return `<article class="list-card notice-card" onclick="Hub.markNoticeRead('${n.id}')"><div class="list-meta">${escapeHTML(n.date)} ${fresh?'<span class="tag">NEW!</span>':""}</div><h3>${escapeHTML(n.title)}</h3><p>${escapeHTML(n.body)}</p>${isDM()? `<div class="card-actions"><button onclick="event.stopPropagation();Hub.removeItem('notices','${n.id}')">DELETE NOTICE</button></div>`:""}</article>`;}).join(""):empty("The notice board is empty.");
+  }  function mutate(fn) {
     fn();
     refresh();
     persist();
@@ -394,48 +392,73 @@
     return value === null ? null : value.trim();
   }
 
-  function addCharacter(isNPC=false) {
-    if (!isDM() && isNPC) return;
-    const c = defaultsCharacter();
-    c.isNPC = isDM() ? (isNPC || confirm("Is this character an NPC companion?")) : false;
-    c.name = ask("Character name:");
-    if (!c.name) return;
-    c.player = isDM() ? (ask("Player name (optional):") || "") : member.display_name;
-    c.race = ask("Race / species:") || "";
-    c.className = ask("Class:") || "";
-    c.level = Math.max(1,safeNumber(ask("Level:","1"),1));
-    c.maxHp = Math.max(1,safeNumber(ask("Maximum HP:","10"),10));
-    c.hp = Math.max(0,c.maxHp);
-    c.ac = safeNumber(ask("Armour Class:","10"),10);
-    c.isNPC = isDM() ? c.isNPC : false;
-    if (!isDM()) c.ownerId = member.id;
-    mutate(()=>state.characters.push(c));
+
+  let modalSaveHandler = null;
+  function closeModal(){const modal=$("hub-modal");modal.hidden=true;modal.innerHTML="";modalSaveHandler=null;}
+  function openForm(title,fields,onSave){
+    const modal=$("hub-modal");modalSaveHandler=onSave;
+    const controls=fields.map((field,i)=>{
+      const id="modal-field-"+i, value=field.value??"", full=field.full?" full":"";
+      let control="";
+      if(field.type==="textarea")control=`<textarea id="${id}" name="${escapeHTML(field.name)}" rows="${field.rows||4}" ${field.required?"required":""} placeholder="${escapeHTML(field.placeholder||"")}">${escapeHTML(value)}</textarea>`;
+      else if(field.type==="select")control=`<select id="${id}" name="${escapeHTML(field.name)}" ${field.required?"required":""}>${(field.options||[]).map(o=>`<option value="${escapeHTML(o.value)}" ${String(o.value)===String(value)?"selected":""}>${escapeHTML(o.label)}</option>`).join("")}</select>`;
+      else if(field.type==="drawing")control=`<canvas id="journal-drawing-canvas" class="journal-editor-canvas" width="900" height="260"></canvas><div class="card-actions"><label class="small-button" style="cursor:pointer">UPLOAD IMAGE<input id="journal-image-upload" type="file" accept="image/*" hidden></label><button type="button" class="small-button" id="journal-clear-drawing">CLEAR DRAWING</button></div><p>Draw with your mouse or finger, or upload an image to attach it to this entry.</p>`;
+      else control=`<input id="${id}" name="${escapeHTML(field.name)}" type="${field.type||"text"}" value="${escapeHTML(value)}" ${field.required?"required":""} placeholder="${escapeHTML(field.placeholder||"")}" ${field.min!==undefined?`min="${field.min}"`:""} ${field.max!==undefined?`max="${field.max}"`:""}>`;
+      return `<label class="modal-field${full}" for="${id}">${escapeHTML(field.label)}${control}</label>`;
+    }).join("");
+    modal.innerHTML=`<div class="modal-card"><div class="modal-top"><h3>${escapeHTML(title)}</h3><button type="button" class="modal-close" id="modal-close">✕</button></div><form id="hub-modal-form"><div class="modal-fields">${controls}</div><div class="modal-actions"><button type="button" class="small-button" id="modal-cancel">CANCEL</button><button type="submit" class="hub-button">SAVE</button></div></form></div>`;
+    modal.hidden=false;$("modal-close").onclick=closeModal;$("modal-cancel").onclick=closeModal;modal.onclick=e=>{if(e.target===modal)closeModal();};
+    $("hub-modal-form").addEventListener("submit",e=>{e.preventDefault();const values={};fields.forEach(field=>{if(field.type==="drawing")return;const el=e.currentTarget.elements.namedItem(field.name);values[field.name]=el?el.value:"";});if(modalSaveHandler)modalSaveHandler(values);closeModal();});
+    if(fields.some(x=>x.type==="drawing"))setupJournalCanvas(fields.find(x=>x.type==="drawing").value||"");
+  }
+  function setupJournalCanvas(existingImage){
+    const canvas=$("journal-drawing-canvas"),ctx=canvas.getContext("2d");journalCanvasDirty=false;ctx.fillStyle="#f4f0e6";ctx.fillRect(0,0,canvas.width,canvas.height);
+    if(existingImage){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,canvas.width,canvas.height);img.src=existingImage;}
+    let drawing=false;const point=e=>{const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*canvas.width,y:(e.clientY-r.top)/r.height*canvas.height};};
+    canvas.onpointerdown=e=>{drawing=true;journalCanvasDirty=true;const p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);canvas.setPointerCapture(e.pointerId);};
+    canvas.onpointermove=e=>{if(!drawing)return;const p=point(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle="#282633";ctx.lineWidth=4;ctx.lineCap="round";ctx.lineJoin="round";ctx.stroke();};
+    canvas.onpointerup=()=>drawing=false;canvas.onpointercancel=()=>drawing=false;
+    $("journal-clear-drawing").onclick=()=>{ctx.fillStyle="#f4f0e6";ctx.fillRect(0,0,canvas.width,canvas.height);journalCanvasDirty=true;};
+    $("journal-image-upload").onchange=e=>{const file=e.target.files[0];if(!file)return;if(file.size>2*1024*1024){alert("Please choose an image smaller than 2MB.");e.target.value="";return;}const reader=new FileReader();reader.onload=()=>{const img=new Image();img.onload=()=>{ctx.fillStyle="#f4f0e6";ctx.fillRect(0,0,canvas.width,canvas.height);const scale=Math.min(canvas.width/img.width,canvas.height/img.height),w=img.width*scale,h=img.height*scale;ctx.drawImage(img,(canvas.width-w)/2,(canvas.height-h)/2,w,h);journalCanvasDirty=true;};img.src=reader.result;};reader.readAsDataURL(file);};
+  }
+  function openJournalEditor(entry){
+    const editing=!!entry,data=entry||{};
+    openForm(editing?"Edit journal entry":"New journal entry",[
+      {name:"title",label:"Entry title",value:data.title||"",required:true,full:true},
+      {name:"date",label:"In-world date or session",value:data.date||""},
+      {name:"author",label:"Author / character",value:data.author||""},
+      {name:"body",label:"Your journal entry",type:"textarea",rows:8,value:data.body||"",full:true},
+      {name:"drawing",label:"Drawing or image",type:"drawing",value:data.imageData||"",full:true}
+    ],v=>{const imageData=journalCanvasDirty?$("journal-drawing-canvas")?.toDataURL("image/jpeg",0.78):(data.imageData||"");const updated={title:v.title.trim(),date:v.date,author:v.author,body:v.body,imageData};if(!updated.title)return alert("Please enter a title.");if(editing)mutate(()=>Object.assign(entry,updated));else mutate(()=>state.journal.unshift({id:makeId(),...updated,...(!isDM()?{ownerId:member.id}:{})}));});
   }
 
-  function editCharacter(id) {
-    const c = state.characters.find(x=>x.id===id);
-    if (!c || !canEditCharacter(c)) return;
-    const fields = [
-      ["name","Character name"],["player","Player name"],["race","Race"],
-      ["className","Class"],["level","Level"],["hp","Current HP"],
-      ["maxHp","Maximum HP"],["ac","Armour Class"],["initiative","Initiative"],
-      ["speed","Movement speed"],["gear","Equipment and inventory"],
-      ["loveInterest","Relationships / love interest"],
-      ["backstory","Backstory"],["notes","Personal notes"]
+  function addCharacter(isNPC=false){
+    if(!isDM()&&isNPC)return;const c=defaultsCharacter();
+    const fields=[
+      {name:"name",label:"Character name",required:true},{name:"player",label:"Player name",value:isDM()?"":member.display_name},
+      {name:"race",label:"Race / species"},{name:"className",label:"Class"},
+      {name:"level",label:"Level",type:"number",value:1,min:1},{name:"hp",label:"Current HP",type:"number",value:10,min:0},
+      {name:"maxHp",label:"Maximum HP",type:"number",value:10,min:1},{name:"ac",label:"Armour Class",type:"number",value:10},
+      {name:"initiative",label:"Initiative",type:"number",value:0},{name:"speed",label:"Movement speed (ft)",type:"number",value:30},
+      ...(isDM()?[{name:"isNPC",label:"Is this an NPC companion?",type:"select",value:"no",options:[{value:"no",label:"No — player character"},{value:"yes",label:"Yes — NPC companion"}]}]:[]),
+      {name:"gear",label:"Equipment & inventory",type:"textarea",full:true},{name:"loveInterest",label:"Relationships / love interest",type:"textarea",full:true},
+      {name:"backstory",label:"Backstory",type:"textarea",full:true},{name:"notes",label:"Personal notes",type:"textarea",full:true}
     ];
-    const copy = {...c};
-    for (const [key,label] of fields) {
-      const value = ask(label + ":",copy[key] ?? "");
-      if (value === null) return;
-      copy[key] = ["level","hp","maxHp","ac","initiative","speed"].includes(key)
-        ? safeNumber(value) : value;
-    }
-    copy.maxHp = Math.max(1,copy.maxHp);
-    copy.hp = Math.max(0,Math.min(copy.hp,copy.maxHp));
-    mutate(()=>Object.assign(c,copy));
-  }
-
-  function changeHP(id,amount) {
+    openForm("Add character",fields,v=>{if(!v.name.trim())return alert("Please enter a character name.");Object.assign(c,{name:v.name.trim(),player:isDM()?v.player:member.display_name,race:v.race,className:v.className,level:Math.max(1,safeNumber(v.level,1)),hp:Math.max(0,safeNumber(v.hp,10)),maxHp:Math.max(1,safeNumber(v.maxHp,10)),ac:safeNumber(v.ac,10),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed,30),gear:v.gear,loveInterest:v.loveInterest,backstory:v.backstory,notes:v.notes,isNPC:isDM()&&v.isNPC==="yes"});c.hp=Math.min(c.hp,c.maxHp);if(!isDM())c.ownerId=member.id;mutate(()=>state.characters.push(c));});
+  }  function editCharacter(id){
+    const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;
+    const fields=[
+      {name:"name",label:"Character name",value:c.name,required:true},{name:"player",label:"Player name",value:c.player||""},
+      {name:"race",label:"Race / species",value:c.race||""},{name:"className",label:"Class",value:c.className||""},
+      {name:"level",label:"Level",type:"number",value:c.level||1,min:1},{name:"hp",label:"Current HP",type:"number",value:c.hp||0,min:0},
+      {name:"maxHp",label:"Maximum HP",type:"number",value:c.maxHp||1,min:1},{name:"ac",label:"Armour Class",type:"number",value:c.ac||0},
+      {name:"initiative",label:"Initiative",type:"number",value:c.initiative||0},{name:"speed",label:"Movement speed (ft)",type:"number",value:c.speed||0},
+      ...(isDM()?[{name:"isNPC",label:"Is this an NPC companion?",type:"select",value:c.isNPC?"yes":"no",options:[{value:"no",label:"No — player character"},{value:"yes",label:"Yes — NPC companion"}]}]:[]),
+      {name:"gear",label:"Equipment & inventory",type:"textarea",value:c.gear||"",full:true},{name:"loveInterest",label:"Relationships / love interest",type:"textarea",value:c.loveInterest||"",full:true},
+      {name:"backstory",label:"Backstory",type:"textarea",value:c.backstory||"",full:true},{name:"notes",label:"Personal notes",type:"textarea",value:c.notes||"",full:true}
+    ];
+    openForm("Edit character",fields,v=>{const u={name:v.name.trim(),player:v.player,race:v.race,className:v.className,level:Math.max(1,safeNumber(v.level,1)),hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),gear:v.gear,loveInterest:v.loveInterest,backstory:v.backstory,notes:v.notes};u.hp=Math.min(u.hp,u.maxHp);if(isDM())u.isNPC=v.isNPC==="yes";mutate(()=>Object.assign(c,u));});
+  }  function changeHP(id,amount) {
     const c = state.characters.find(x=>x.id===id);
     if (!c || !canEditCharacter(c)) return;
     mutate(()=>c.hp=Math.max(0,Math.min(safeNumber(c.maxHp),safeNumber(c.hp)+amount)));
@@ -472,16 +495,7 @@ function configureSlots(id) {
   if (updated.some(x=>x===null)) return;
   mutate(()=>c.spellSlots=updated);
 }
-  function addQuest() {
-    if (!isDM()) return;
-    const title=ask("Quest title:");
-    if (!title) return;
-    const description=ask("Quest description:")||"";
-    const reward=ask("Reward (optional):")||"";
-    mutate(()=>state.quests.unshift({id:makeId(),title,description,reward,status:"Active"}));
-  }
-
-  function cycleQuest(id) {
+  function addQuest(){if(!isDM())return;openForm("Add quest",[{name:"title",label:"Quest title",required:true,full:true},{name:"description",label:"Quest description",type:"textarea",rows:5,full:true},{name:"reward",label:"Reward",type:"textarea",rows:2,full:true}],v=>{if(!v.title.trim())return alert("Please enter a quest title.");mutate(()=>state.quests.unshift({id:makeId(),title:v.title.trim(),description:v.description,reward:v.reward,status:"Active"}));});}  function cycleQuest(id) {
     if (!isDM()) return;
     const q=state.quests.find(x=>x.id===id);
     if (!q) return;
@@ -489,108 +503,19 @@ function configureSlots(id) {
     mutate(()=>q.status=states[(states.indexOf(q.status)+1)%states.length]);
   }
 
-  function addNPC() {
-    if (!isDM()) return;
-    const name=ask("NPC name:");
-    if (!name) return;
-    const role=ask("Role / occupation:")||"";
-    const description=ask("Description:")||"";
-    const location=ask("Location:")||"";
-    const relationship=ask("Relationship to the party:")||"";
-    mutate(()=>state.npcs.unshift({id:makeId(),name,role,description,location,relationship}));
-  }
-
-  function editNPC(id) {
-    if (!isDM()) return;
-    const n=state.npcs.find(x=>x.id===id);
-    if (!n) return;
-    for (const key of ["name","role","description","location","relationship"]) {
-      const v=ask(key.charAt(0).toUpperCase()+key.slice(1)+":",n[key]||"");
-      if (v===null) return;
-      n[key]=v;
-    }
-    refresh();persist();
-  }
-
-  function addJournal() {
-    const title=ask("Journal entry title:");
-    if (!title) return;
-    const date=ask("In-world date or session number:")||"";
-    const author=ask("Author / character:")||"";
-    const body=ask("What happened?")||"";
-    mutate(()=>state.journal.unshift({id:makeId(),title,date,author,body,...(!isDM()?{ownerId:member.id}:{})}));
-  }
-
-  function editJournal(id) {
-    const entry=state.journal.find(x=>x.id===id);
-    if (!entry) return;
-    const title=ask("Journal entry title:",entry.title||"");
-    if (title===null || !title) return;
-    const date=ask("In-world date or session number:",entry.date||"");
-    if (date===null) return;
-    const author=ask("Author / character:",entry.author||"");
-    if (author===null) return;
-    const body=ask("What happened?",entry.body||"");
-    if (body===null) return;
-    mutate(()=>Object.assign(entry,{title,date,author,body}));
-  }
-
-  function addEvent() {
-    const title=ask("Event title:");
-    if (!title) return;
-    const config=state.calendarConfig;
-    let fantasyDate=null;
-    if (config) {
-      const month=ask("Month number (1-"+config.months.length+"):");
-      if (month===null) return;
-      const monthIndex=safeNumber(month,0)-1;
-      if (monthIndex<0||monthIndex>=config.months.length) return alert("That month number isn't valid.");
-      const day=ask("Day of "+config.months[monthIndex].name+" (1-"+config.months[monthIndex].days+"):");
-      if (day===null) return;
-      const dayNumber=safeNumber(day,0);
-      if (dayNumber<1||dayNumber>config.months[monthIndex].days) return alert("That day isn't valid for this month.");
-      const year=ask("Year:",String(config.currentDate.year));
-      if (year===null) return;
-      fantasyDate={year:Math.max(0,safeNumber(year,config.currentDate.year)),month:monthIndex,day:dayNumber};
-    }
-    const description=ask("Event description:")||"";
-    mutate(()=>state.events.push({id:makeId(),title,date:fantasyDate?null:"",fantasyDate,description,...(!isDM()?{ownerId:member.id}:{})}));
-  }
-
-  function editEvent(id) {
-    const event=state.events.find(x=>x.id===id);
-    if (!event) return;
-    const title=ask("Event title:",event.title||"");
-    if (title===null || !title) return;
-    let fantasyDate=event.fantasyDate||null;
-    if (state.calendarConfig) {
-      const c=state.calendarConfig, current=fantasyDate||c.currentDate;
-      const month=ask("Month number (1-"+c.months.length+"):",String(current.month+1));
-      if (month===null) return;
-      const monthIndex=safeNumber(month,0)-1;
-      if (monthIndex<0||monthIndex>=c.months.length) return alert("That month number isn't valid.");
-      const day=ask("Day of "+c.months[monthIndex].name+" (1-"+c.months[monthIndex].days+"):",String(current.day));
-      if (day===null) return;
-      const dayNumber=safeNumber(day,0);
-      if (dayNumber<1||dayNumber>c.months[monthIndex].days) return alert("That day isn't valid for this month.");
-      const year=ask("Year:",String(current.year));
-      if (year===null) return;
-      fantasyDate={year:Math.max(0,safeNumber(year,current.year)),month:monthIndex,day:dayNumber};
-    }
-    const description=ask("Event description:",event.description||"");
-    if (description===null) return;
-    mutate(()=>Object.assign(event,{title,fantasyDate,description}));
-  }
-
-  function addNotice() {
-    if (!isDM()) return;
-    const title=ask("Announcement title:");
-    if (!title) return;
-    const body=ask("Announcement message:")||"";
-    mutate(()=>state.notices.unshift({id:makeId(),title,body,date:new Date().toLocaleDateString()}));
-  }
-
-  function removeItem(collection,id) {
+  function addNPC(){if(!isDM())return;openForm("Add NPC",[{name:"name",label:"NPC name",required:true},{name:"role",label:"Role / occupation"},{name:"location",label:"Location"},{name:"relationship",label:"Relationship to the party"},{name:"description",label:"Description",type:"textarea",rows:6,full:true}],v=>{if(!v.name.trim())return alert("Please enter an NPC name.");mutate(()=>state.npcs.unshift({id:makeId(),name:v.name.trim(),role:v.role,description:v.description,location:v.location,relationship:v.relationship}));});}  function editNPC(id){if(!isDM())return;const n=state.npcs.find(x=>x.id===id);if(!n)return;openForm("Edit NPC",[{name:"name",label:"NPC name",value:n.name,required:true},{name:"role",label:"Role / occupation",value:n.role||""},{name:"location",label:"Location",value:n.location||""},{name:"relationship",label:"Relationship to the party",value:n.relationship||""},{name:"description",label:"Description",type:"textarea",rows:6,value:n.description||"",full:true}],v=>{if(!v.name.trim())return alert("Please enter an NPC name.");mutate(()=>Object.assign(n,{name:v.name.trim(),role:v.role,location:v.location,relationship:v.relationship,description:v.description}));});}  function addJournal(){openJournalEditor(null);}  function editJournal(id){const entry=state.journal.find(x=>x.id===id);if(!entry||(!isDM()&&entry.ownerId!==member?.id))return;openJournalEditor(entry);}  function addEvent(){
+    const c=state.calendarConfig,fields=[{name:"title",label:"Event title",required:true,full:true}];
+    if(c)fields.push({name:"month",label:"Month",type:"select",value:String(c.currentDate.month),options:c.months.map((m,i)=>({value:String(i),label:m.name}))},{name:"day",label:"Day",type:"number",value:c.currentDate.day,min:1,max:c.months[c.currentDate.month].days},{name:"year",label:"Year",type:"number",value:c.currentDate.year,min:0});
+    else fields.push({name:"date",label:"Date or session"});
+    fields.push({name:"description",label:"Event description",type:"textarea",rows:5,full:true});
+    openForm("Add calendar event",fields,v=>{let fantasyDate=null;if(c){const month=safeNumber(v.month),day=safeNumber(v.day),year=safeNumber(v.year);if(!c.months[month]||day<1||day>c.months[month].days||year<0)return alert("Please enter a valid date.");fantasyDate={year,month,day};}mutate(()=>state.events.push({id:makeId(),title:v.title.trim(),date:c?null:v.date,fantasyDate,description:v.description,...(!isDM()?{ownerId:member.id}:{})}));});
+  }  function editEvent(id){
+    const e=state.events.find(x=>x.id===id);if(!e||(!isDM()&&e.ownerId!==member?.id))return;const c=state.calendarConfig,d=e.fantasyDate||(c?c.currentDate:null),fields=[{name:"title",label:"Event title",value:e.title||"",required:true,full:true}];
+    if(c)fields.push({name:"month",label:"Month",type:"select",value:String(d.month),options:c.months.map((m,i)=>({value:String(i),label:m.name}))},{name:"day",label:"Day",type:"number",value:d.day,min:1,max:c.months[d.month].days},{name:"year",label:"Year",type:"number",value:d.year,min:0});else fields.push({name:"date",label:"Date or session",value:e.date||""});
+    fields.push({name:"description",label:"Event description",type:"textarea",rows:5,value:e.description||"",full:true});
+    openForm("Edit calendar event",fields,v=>{let fantasyDate=null;if(c){const month=safeNumber(v.month),day=safeNumber(v.day),year=safeNumber(v.year);if(!c.months[month]||day<1||day>c.months[month].days||year<0)return alert("Please enter a valid date.");fantasyDate={year,month,day};}mutate(()=>Object.assign(e,{title:v.title.trim(),date:c?null:v.date,fantasyDate,description:v.description}));});
+  }  function addNotice(){if(!isDM())return;openForm("Publish notice",[{name:"title",label:"Notice title",required:true,full:true},{name:"body",label:"Announcement",type:"textarea",rows:7,full:true}],v=>{if(!v.title.trim())return alert("Please enter a notice title.");mutate(()=>state.notices.unshift({id:makeId(),title:v.title.trim(),body:v.body,date:new Date().toLocaleDateString(),createdAt:new Date().toISOString(),readBy:[member.id]}));});}
+  function markNoticeRead(id){const n=state.notices.find(x=>x.id===id);if(!n||!member)return;if(!Array.isArray(n.readBy))n.readBy=[];if(n.readBy.includes(member.id))return;n.readBy.push(member.id);refresh();persist();}  function removeItem(collection,id) {
     const item = state[collection]?.find(x=>x.id===id);
     if (!item) return;
     if (!isDM() && !(["journal","events"].includes(collection) && member?.role==="player")) return;
