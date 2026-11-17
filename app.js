@@ -265,6 +265,7 @@
           <h3>${escapeHTML(n.name)}</h3>
           <p>${escapeHTML(n.description||"")}</p>
           <p><strong>Location:</strong> ${escapeHTML(n.location||"Unknown")}</p>
+          <p><strong>HP / AC:</strong> ${safeNumber(n.hp)}/${safeNumber(n.maxHp)} · ${safeNumber(n.ac)} AC ${n.challengeRating?`· CR ${escapeHTML(n.challengeRating)}`:""}</p>
           <p><strong>Relationship:</strong> ${escapeHTML(n.relationship||"Unknown")}</p>
           ${isDM()? `<div class="card-actions"><button onclick="Hub.editNPC('${n.id}')">EDIT</button><button onclick="Hub.removeItem('npcs','${n.id}')">DELETE</button></div>`:""}
         </article>`).join("")
@@ -537,25 +538,25 @@
       {type:"section",label:"ADVENTURER DETAILS",group:"player companion"},
       {name:"level",label:"Level",type:"number",value:data.level??1,min:1,group:"player companion"},
       {name:"experience",label:"Experience points",type:"number",value:data.experience??0,min:0,group:"player companion"},
-      {name:"hp",label:"Current hit points",type:"number",value:data.hp??10,min:0,group:"player companion"},
-      {name:"maxHp",label:"Maximum hit points",type:"number",value:data.maxHp??10,min:1,group:"player companion"},
-      {name:"ac",label:"Armour class",type:"number",value:data.ac??10,min:0,group:"player companion"},
-      {name:"initiative",label:"Initiative",type:"number",value:data.initiative??0,group:"player companion"},
-      {name:"speed",label:"Speed (ft)",type:"number",value:data.speed??30,min:0,group:"player companion"},
-      {name:"hitDice",label:"Hit dice",value:data.hitDice||"",group:"player companion"},
-      {name:"proficiency",label:"Proficiency bonus",type:"number",value:data.proficiency??2,min:0,group:"player companion"},
-      {type:"section",label:"ABILITY SCORES",group:"player companion"},
-      {name:"strength",label:"Strength (STR)",type:"number",value:data.strength??10,group:"player companion"},
-      {name:"dexterity",label:"Dexterity (DEX)",type:"number",value:data.dexterity??10,group:"player companion"},
-      {name:"constitution",label:"Constitution (CON)",type:"number",value:data.constitution??10,group:"player companion"},
-      {name:"intelligence",label:"Intelligence (INT)",type:"number",value:data.intelligence??10,group:"player companion"},
-      {name:"wisdom",label:"Wisdom (WIS)",type:"number",value:data.wisdom??10,group:"player companion"},
-      {name:"charisma",label:"Charisma (CHA)",type:"number",value:data.charisma??10,group:"player companion"},
+      {name:"hp",label:"Current hit points",type:"number",value:data.hp??10,min:0,group:"player companion npc"},
+      {name:"maxHp",label:"Maximum hit points",type:"number",value:data.maxHp??10,min:1,group:"player companion npc"},
+      {name:"ac",label:"Armour class",type:"number",value:data.ac??10,min:0,group:"player companion npc"},
+      {name:"initiative",label:"Initiative",type:"number",value:data.initiative??0,group:"player companion npc"},
+      {name:"speed",label:"Speed (ft)",type:"number",value:data.speed??30,min:0,group:"player companion npc"},
+      {name:"hitDice",label:"Hit dice",value:data.hitDice||"",group:"player companion npc"},
+      {name:"proficiency",label:"Proficiency bonus",type:"number",value:data.proficiency??2,min:0,group:"player companion npc"},
+      {type:"section",label:"ABILITY SCORES",group:"player companion npc"},
+      {name:"strength",label:"Strength (STR)",type:"number",value:data.strength??10,group:"player companion npc"},
+      {name:"dexterity",label:"Dexterity (DEX)",type:"number",value:data.dexterity??10,group:"player companion npc"},
+      {name:"constitution",label:"Constitution (CON)",type:"number",value:data.constitution??10,group:"player companion npc"},
+      {name:"intelligence",label:"Intelligence (INT)",type:"number",value:data.intelligence??10,group:"player companion npc"},
+      {name:"wisdom",label:"Wisdom (WIS)",type:"number",value:data.wisdom??10,group:"player companion npc"},
+      {name:"charisma",label:"Charisma (CHA)",type:"number",value:data.charisma??10,group:"player companion npc"},
       {type:"section",label:"PROFICIENCIES & FEATURES",group:"player companion"},
-      {name:"savingThrows",label:"Saving throw proficiencies",type:"textarea",rows:2,value:data.savingThrows||"",group:"player companion",full:true},
-      {name:"skills",label:"Skills & proficiencies",type:"textarea",rows:3,value:data.skills||"",group:"player companion",full:true},
-      {name:"features",label:"Class features, racial traits & feats",type:"textarea",rows:4,value:data.features||"",group:"player companion",full:true},
-      {name:"spells",label:"Spells & magical abilities",type:"textarea",rows:4,value:data.spells||"",group:"player companion",full:true},
+      {name:"savingThrows",label:"Saving throw proficiencies",type:"textarea",rows:2,value:data.savingThrows||"",group:"player companion npc",full:true},
+      {name:"skills",label:"Skills & proficiencies",type:"textarea",rows:3,value:data.skills||"",group:"player companion npc",full:true},
+      {name:"features",label:"Class features, racial traits & feats",type:"textarea",rows:4,value:data.features||"",group:"player companion npc",full:true},
+      {name:"spells",label:"Spells & magical abilities",type:"textarea",rows:4,value:data.spells||"",group:"player companion npc",full:true},
       {type:"section",label:"INVENTORY & STORY",group:"player companion"},
       {name:"gear",label:"Equipment, inventory & currency",type:"textarea",rows:4,value:data.gear||"",group:"player companion",full:true},
       {name:"personality",label:"Personality traits",type:"textarea",rows:2,value:data.personality||"",group:"player companion npc",full:true},
@@ -569,6 +570,10 @@
       {name:"relationship",label:"Relationship to the party",value:data.relationship||"",group:"npc"},
       {name:"description",label:"Description & known details",type:"textarea",rows:5,value:data.description||"",group:"npc",full:true},
       {name:"goals",label:"Goals & motivations",type:"textarea",rows:3,value:data.goals||"",group:"npc",full:true},
+      {name:"challengeRating",label:"Challenge rating",value:data.challengeRating||"",group:"npc"},
+      {name:"senses",label:"Senses",value:data.senses||"",group:"npc"},
+      {name:"languages",label:"Languages",value:data.languages||"",group:"npc"},
+      {name:"npcActions",label:"Actions & attacks",type:"textarea",rows:4,value:data.npcActions||"",group:"npc",full:true},
       {name:"secrets",label:"Secrets / information",type:"textarea",rows:3,value:data.secrets||"",group:"npc",full:true},
       {name:"notes",label:"Additional notes",type:"textarea",rows:4,value:data.notes||"",group:"player companion npc",full:true}
     ];
@@ -583,7 +588,7 @@
       const type=v.recordType,portrait=v.portraitFile||v.portrait||data?.portrait||"";
       const common={id:data?.id||makeId(),name:v.name.trim(),race:v.race,className:v.className,alignment:v.alignment,portrait,personality:v.personality,ideals:v.ideals,bonds:v.bonds,flaws:v.flaws,backstory:v.backstory,loveInterest:v.loveInterest,notes:v.notes};
       if(type==="npc"){
-        const npc={...common,role:v.role,location:v.location,relationship:v.relationship,description:v.description,goals:v.goals,secrets:v.secrets};
+        const npc={...common,player:v.player,role:v.role,location:v.location,relationship:v.relationship,description:v.description,goals:v.goals,secrets:v.secrets,challengeRating:v.challengeRating,senses:v.senses,languages:v.languages,npcActions:v.npcActions,hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),hitDice:v.hitDice,proficiency:safeNumber(v.proficiency),strength:safeNumber(v.strength,10),dexterity:safeNumber(v.dexterity,10),constitution:safeNumber(v.constitution,10),intelligence:safeNumber(v.intelligence,10),wisdom:safeNumber(v.wisdom,10),charisma:safeNumber(v.charisma,10),savingThrows:v.savingThrows,skills:v.skills,features:v.features,spells:v.spells};
         if(!isDM())return;
         mutate(()=>{
           if(collection==="characters")state.characters=state.characters.filter(x=>x.id!==data?.id);
