@@ -270,3 +270,10 @@
 #dnd-hub .calendar-day.is-past{background:#26332e;border-color:#587864}
 #dnd-hub .calendar-day.is-past .calendar-day-number:after{content:" ✓";color:#79bd91}
 @media(max-width:650px){#dnd-hub .modal-fields{grid-template-columns:1fr}#dnd-hub .modal-field.full{grid-column:auto}#dnd-hub .hub-modal{padding:8px}#dnd-hub .modal-card{padding:15px;max-height:94vh}}
+
+#dnd-hub .modal-field textarea{min-height:145px;resize:vertical}
+#dnd-hub .modal-field textarea[name="body"]{min-height:250px}
+#dnd-hub .journal-editor-canvas{min-height:190px}
+#dnd-hub .notice-card{cursor:pointer}
+#dnd-hub .calendar-day-check{float:right;border:1px solid var(--line);background:#303747;color:var(--gold);border-radius:4px;width:22px;height:22px;padding:0;font:12px Arial,sans-serif}
+#dnd-hub .calendar-day-check:hover{border-color:var(--gold);background:#414356}
