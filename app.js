@@ -170,7 +170,7 @@
     const colours = {};
     state.markers.forEach(m=>colours[m.colour]=true);
     const defaults={"#E66D69":"Red marker","#6D9DD5":"Blue marker","#76B68A":"Green marker","#D6AD5D":"Gold marker","#B28BD6":"Purple marker","#E69AC0":"Pink marker","#E9E5DA":"White marker"};
-    $("map-legend").innerHTML = Object.keys(colours).map(c=>
+    $("map-legend").innerHTML = [...new Set([...Object.keys(defaults),...Object.keys(colours)])].map(c=>
       `<span class="legend-item"><i class="legend-dot" style="background:${escapeHTML(c)}"></i>${escapeHTML(state.markerLegend?.[c]||defaults[c]||c)}</span>`
     ).join("") || "No markers placed yet.";
     redrawMapCanvas();
@@ -244,6 +244,7 @@
           <h3>${escapeHTML(q.title)}</h3>
           <p>${escapeHTML(q.description)}</p>
           ${isDM()?`<div class="card-actions">
+            <button onclick="Hub.editQuest('${q.id}')">EDIT QUEST</button>
             <button onclick="Hub.cycleQuest('${q.id}')">CHANGE STATUS</button>
             <button onclick="Hub.removeItem('quests','${q.id}')">DELETE</button>
           </div>`:""}
@@ -341,23 +342,19 @@
     mutate(()=>{state.calendarConfig={yearLabel:$("calendar-year-label").value.trim()||"Year",months:names.map((name,i)=>({name,days:lengths[i]})),weekdays,currentDate:{year,month:0,day:1}};calendarView={year,month:0};});
   }
 
-  function editCalendarSetup() {
-    if (!isDM()||!state.calendarConfig) return;
-    const c=state.calendarConfig;
-    const names=prompt("Month names, separated by commas:",c.months.map(m=>m.name).join(", "));
-    if (names===null) return;
-    const lengths=prompt("Days in each month, in the same order:",c.months.map(m=>m.days).join(", "));
-    if (lengths===null) return;
-    const weekdays=prompt("Weekday names, separated by commas:",c.weekdays.join(", "));
-    if (weekdays===null) return;
-    const yearLabel=prompt("Year label:",c.yearLabel||"Year");
-    if (yearLabel===null) return;
-    const ns=names.split(",").map(x=>x.trim()).filter(Boolean), ds=lengths.split(",").map(x=>Number(x.trim())), ws=weekdays.split(",").map(x=>x.trim()).filter(Boolean);
-    if (!ns.length||ns.length!==ds.length||ds.some(n=>!Number.isInteger(n)||n<1)||!ws.length) return alert("Those calendar settings aren't valid. No changes were made.");
-    mutate(()=>{c.months=ns.map((name,i)=>({name,days:ds[i]}));c.weekdays=ws;c.yearLabel=yearLabel.trim()||"Year";c.currentDate.month=Math.min(c.currentDate.month,ns.length-1);c.currentDate.day=Math.min(c.currentDate.day,ds[c.currentDate.month]);calendarView={year:c.currentDate.year,month:c.currentDate.month};});
-  }
-
-  function calendarMonth(amount) {
+  function editCalendarSetup(){
+    if(!isDM()||!state.calendarConfig)return;const c=state.calendarConfig;
+    openForm("Edit fantasy calendar",[
+      {name:"yearLabel",label:"Year label",value:c.yearLabel||"Year"},
+      {name:"monthNames",label:"Month names (comma-separated)",value:c.months.map(m=>m.name).join(", "),full:true},
+      {name:"monthLengths",label:"Days per month (comma-separated)",value:c.months.map(m=>m.days).join(", "),full:true},
+      {name:"weekdays",label:"Weekday names (comma-separated)",value:c.weekdays.join(", "),full:true}
+    ],v=>{
+      const names=v.monthNames.split(",").map(x=>x.trim()).filter(Boolean),days=v.monthLengths.split(",").map(x=>Number(x.trim())),weekdays=v.weekdays.split(",").map(x=>x.trim()).filter(Boolean);
+      if(!names.length||names.length!==days.length||days.some(n=>!Number.isInteger(n)||n<1||n>1000)||!weekdays.length)return alert("Please check your month names, month lengths and weekday names. No changes were made.");
+      mutate(()=>{c.months=names.map((name,i)=>({name,days:days[i]}));c.weekdays=weekdays;c.yearLabel=v.yearLabel.trim()||"Year";c.currentDate.month=Math.min(c.currentDate.month,names.length-1);c.currentDate.day=Math.min(c.currentDate.day,days[c.currentDate.month]);calendarView={year:c.currentDate.year,month:c.currentDate.month};});
+    });
+  }  function calendarMonth(amount) {
     if (!state.calendarConfig) return;
     calendarView=calendarView||{...state.calendarConfig.currentDate};
     calendarView.month+=amount;
@@ -470,38 +467,21 @@
     if (amount>0 && s.used>=s.total) return;
     mutate(()=>s.used=Math.max(0,s.used+amount));
   }
-function configureSlots(id) {
-  const c = state.characters.find(x=>x.id===id);
-  if (!c || !canEditCharacter(c)) return;
-
-  if (!c.spellSlots) {
-    c.spellSlots = Array.from({length:9},()=>({used:0,total:0}));
+  function configureSlots(id){
+    const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;
+    const slots=c.spellSlots||Array.from({length:9},()=>({used:0,total:0}));
+    openForm("Configure spell slots",slots.map((slot,i)=>({name:"level"+i,label:"Spell slot level "+(i+1),type:"number",min:0,value:slot.total})),v=>{
+      const updated=slots.map((slot,i)=>{const total=Math.max(0,safeNumber(v["level"+i]));return{total,used:Math.min(safeNumber(slot.used),total)};});
+      mutate(()=>c.spellSlots=updated);
+    });
+  }  function addQuest(){if(!isDM())return;openForm("Add quest",[{name:"title",label:"Quest title",required:true,full:true},{name:"description",label:"Quest description",type:"textarea",rows:5,full:true},{name:"reward",label:"Reward",type:"textarea",rows:2,full:true}],v=>{if(!v.title.trim())return alert("Please enter a quest title.");mutate(()=>state.quests.unshift({id:makeId(),title:v.title.trim(),description:v.description,reward:v.reward,status:"Active"}));});}  function cycleQuest(id){
+    if(!isDM())return;const q=state.quests.find(x=>x.id===id);if(!q)return;
+    const states=["Active","Completed","Failed"];mutate(()=>q.status=states[(states.indexOf(q.status)+1)%states.length]);
   }
-
-  const updated = c.spellSlots.map((slot,i)=>{
-    const total = ask(
-      "Total spell slots for level " + (i+1) + ":",
-      String(slot.total)
-    );
-    if (total === null) return null;
-    return {
-      total:Math.max(0,safeNumber(total)),
-      used:Math.min(slot.used,Math.max(0,safeNumber(total)))
-    };
-  });
-
-  if (updated.some(x=>x===null)) return;
-  mutate(()=>c.spellSlots=updated);
-}
-  function addQuest(){if(!isDM())return;openForm("Add quest",[{name:"title",label:"Quest title",required:true,full:true},{name:"description",label:"Quest description",type:"textarea",rows:5,full:true},{name:"reward",label:"Reward",type:"textarea",rows:2,full:true}],v=>{if(!v.title.trim())return alert("Please enter a quest title.");mutate(()=>state.quests.unshift({id:makeId(),title:v.title.trim(),description:v.description,reward:v.reward,status:"Active"}));});}  function cycleQuest(id) {
-    if (!isDM()) return;
-    const q=state.quests.find(x=>x.id===id);
-    if (!q) return;
-    const states=["Active","Completed","Failed"];
-    mutate(()=>q.status=states[(states.indexOf(q.status)+1)%states.length]);
-  }
-
-  function addNPC(){if(!isDM())return;openForm("Add NPC",[{name:"name",label:"NPC name",required:true},{name:"role",label:"Role / occupation"},{name:"location",label:"Location"},{name:"relationship",label:"Relationship to the party"},{name:"description",label:"Description",type:"textarea",rows:6,full:true}],v=>{if(!v.name.trim())return alert("Please enter an NPC name.");mutate(()=>state.npcs.unshift({id:makeId(),name:v.name.trim(),role:v.role,description:v.description,location:v.location,relationship:v.relationship}));});}  function editNPC(id){if(!isDM())return;const n=state.npcs.find(x=>x.id===id);if(!n)return;openForm("Edit NPC",[{name:"name",label:"NPC name",value:n.name,required:true},{name:"role",label:"Role / occupation",value:n.role||""},{name:"location",label:"Location",value:n.location||""},{name:"relationship",label:"Relationship to the party",value:n.relationship||""},{name:"description",label:"Description",type:"textarea",rows:6,value:n.description||"",full:true}],v=>{if(!v.name.trim())return alert("Please enter an NPC name.");mutate(()=>Object.assign(n,{name:v.name.trim(),role:v.role,location:v.location,relationship:v.relationship,description:v.description}));});}  function addJournal(){openJournalEditor(null);}  function editJournal(id){const entry=state.journal.find(x=>x.id===id);if(!entry||(!isDM()&&entry.ownerId!==member?.id))return;openJournalEditor(entry);}  function addEvent(){
+  function editQuest(id){
+    if(!isDM())return;const q=state.quests.find(x=>x.id===id);if(!q)return;
+    openForm("Edit quest",[{name:"title",label:"Quest title",value:q.title,required:true,full:true},{name:"description",label:"Quest description",type:"textarea",rows:5,value:q.description||"",full:true},{name:"reward",label:"Reward",type:"textarea",rows:2,value:q.reward||"",full:true},{name:"status",label:"Status",type:"select",value:q.status||"Active",options:["Active","Completed","Failed"].map(x=>({value:x,label:x}))}],v=>{if(!v.title.trim())return alert("Please enter a quest title.");mutate(()=>Object.assign(q,{title:v.title.trim(),description:v.description,reward:v.reward,status:v.status}));});
+  }  function addNPC(){if(!isDM())return;openForm("Add NPC",[{name:"name",label:"NPC name",required:true},{name:"role",label:"Role / occupation"},{name:"location",label:"Location"},{name:"relationship",label:"Relationship to the party"},{name:"description",label:"Description",type:"textarea",rows:6,full:true}],v=>{if(!v.name.trim())return alert("Please enter an NPC name.");mutate(()=>state.npcs.unshift({id:makeId(),name:v.name.trim(),role:v.role,description:v.description,location:v.location,relationship:v.relationship}));});}  function editNPC(id){if(!isDM())return;const n=state.npcs.find(x=>x.id===id);if(!n)return;openForm("Edit NPC",[{name:"name",label:"NPC name",value:n.name,required:true},{name:"role",label:"Role / occupation",value:n.role||""},{name:"location",label:"Location",value:n.location||""},{name:"relationship",label:"Relationship to the party",value:n.relationship||""},{name:"description",label:"Description",type:"textarea",rows:6,value:n.description||"",full:true}],v=>{if(!v.name.trim())return alert("Please enter an NPC name.");mutate(()=>Object.assign(n,{name:v.name.trim(),role:v.role,location:v.location,relationship:v.relationship,description:v.description}));});}  function addJournal(){openJournalEditor(null);}  function editJournal(id){const entry=state.journal.find(x=>x.id===id);if(!entry||(!isDM()&&entry.ownerId!==member?.id))return;openJournalEditor(entry);}  function addEvent(){
     const c=state.calendarConfig,fields=[{name:"title",label:"Event title",required:true,full:true}];
     if(c)fields.push({name:"month",label:"Month",type:"select",value:String(c.currentDate.month),options:c.months.map((m,i)=>({value:String(i),label:m.name}))},{name:"day",label:"Day",type:"number",value:c.currentDate.day,min:1,max:c.months[c.currentDate.month].days},{name:"year",label:"Year",type:"number",value:c.currentDate.year,min:0});
     else fields.push({name:"date",label:"Date or session"});
@@ -516,7 +496,7 @@ function configureSlots(id) {
   function markNoticeRead(id){const n=state.notices.find(x=>x.id===id);if(!n||!member)return;if(!Array.isArray(n.readBy))n.readBy=[];if(n.readBy.includes(member.id))return;n.readBy.push(member.id);refresh();persist();}  function removeItem(collection,id) {
     const item = state[collection]?.find(x=>x.id===id);
     if (!item) return;
-    if (!isDM() && !(["journal","events"].includes(collection) && member?.role==="player")) return;
+    if (!isDM() && !(["journal","events"].includes(collection) && item.ownerId===member?.id)) return;
     if (!confirm("Are you sure you want to delete this?")) return;
     mutate(()=>state[collection]=state[collection].filter(x=>x.id!==id));
   }
@@ -547,6 +527,7 @@ function configureSlots(id) {
   });
 
   const frame=$("map-frame");
+  window.addEventListener("resize",()=>redrawMapCanvas());
   const mapCanvas=$("map-drawing-canvas");
   function redrawMapCanvas(){if(!mapCanvas)return;const rect=frame.getBoundingClientRect();mapCanvas.width=Math.max(1,Math.round(rect.width));mapCanvas.height=Math.max(1,Math.round(rect.height));const ctx=mapCanvas.getContext("2d");ctx.clearRect(0,0,mapCanvas.width,mapCanvas.height);(state.mapDrawings||[]).forEach(path=>{if(!path.points||path.points.length<2)return;ctx.beginPath();ctx.strokeStyle=path.colour||"#f3d58b";ctx.lineWidth=path.width||3;ctx.lineCap="round";ctx.lineJoin="round";path.points.forEach((p,i)=>{const x=p.x*mapCanvas.width,y=p.y*mapCanvas.height;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();});}
   function toggleMapDrawing(){if(!isDM())return;mapDrawing=!mapDrawing;mapCanvas.classList.toggle("is-drawing",mapDrawing);frame.classList.toggle("is-drawing",mapDrawing);$("map-draw-toggle").textContent=mapDrawing?"FINISH DRAWING":"DRAW ON MAP";}
@@ -560,10 +541,8 @@ function configureSlots(id) {
     const rect=frame.getBoundingClientRect();
     const x=Math.max(0,Math.min(100,(e.clientX-rect.left)/rect.width*100));
     const y=Math.max(0,Math.min(100,(e.clientY-rect.top)/rect.height*100));
-    const label=ask("Name this location:");
-    if (!label) return;
     const colour=$("marker-colour").value;
-    mutate(()=>state.markers.push({id:makeId(),x,y,label,colour}));
+    openForm("Add map location",[{name:"label",label:"Location name",required:true}],v=>{if(!v.label.trim())return alert("Please enter a location name.");mutate(()=>state.markers.push({id:makeId(),x,y,label:v.label.trim(),colour}));});
   });
 
   frame.addEventListener("pointerdown",e=>{
@@ -603,14 +582,7 @@ function configureSlots(id) {
     e.stopPropagation();
     const m=state.markers.find(x=>x.id===marker.dataset.marker);
     if (!m || !isDM()) return;
-    const action=prompt("Location: "+m.label+"\nType EDIT to rename, DELETE to remove, or CANCEL.", "CANCEL");
-    if (!action) return;
-    if (action.toUpperCase()==="DELETE") {
-      mutate(()=>state.markers=state.markers.filter(x=>x.id!==m.id));
-    } else if (action.toUpperCase()==="EDIT") {
-      const label=ask("New location name:",m.label);
-      if (label) mutate(()=>m.label=label);
-    }
+    openForm("Edit map location",[{name:"label",label:"Location name",value:m.label,required:true}],v=>{if(!v.label.trim())return alert("Please enter a location name.");mutate(()=>m.label=v.label.trim());});
   });
 
   $("map-upload").addEventListener("change",async e=>{
@@ -641,6 +613,7 @@ function configureSlots(id) {
     addCharacter:()=>addCharacter(false),
     addNPC:()=>addNPC(),
     addQuest,
+    editQuest,
     addJournal,
     editJournal,
     addEvent,
@@ -663,7 +636,8 @@ function configureSlots(id) {
     cycleQuest,
     removeItem,
     removeCharacter,
-    clearMarkers
+    clearMarkers,
+    removeMapMarker:(id)=>{if(!isDM())return;mutate(()=>state.markers=state.markers.filter(m=>m.id!==id));}
   };
   window.Hub=Hub;
 
