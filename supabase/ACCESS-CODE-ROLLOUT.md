@@ -1,24 +1,37 @@
 # Secure campaign access rollout
 
-This folder contains the first, non-disruptive stage of the access-code system.
+This folder contains the access-code identity system and the authenticated campaign data layer. All work is on the development branch until it has been tested.
 
 ## Intended experience
-- DM provisions a separate DM access code and creates named player codes.
-- A player redeems their code to receive a normal Supabase Auth session.
-- Once signed in, a player can change their own code in Account Settings. The old code is invalidated immediately.
-- The DM can create, reset, and revoke player codes.
-- Codes are only shown at creation/reset time; only a peppered hash is stored.
-- A player's identity is the stable member UUID/Auth user, not their current code, so changing a code does not detach their character, journal entries, events, or read receipts.
+- The DM has a separate access code and can create named player accounts.
+- Players enter their personal code to receive a Supabase Auth session.
+- Players can change their own access code. The old code is invalidated immediately for future sign-ins.
+- The DM can list, create, reset, and revoke player access codes.
+- Codes are only shown when created or reset; only a peppered SHA-256 hash is stored.
+- A stable member UUID links each player to their character and their journal/calendar contributions, even after their code changes.
+
+## Current implementation
+- `campaign-access` handles code redemption, session creation, code changes, DM player management, and per-IP redemption throttling.
+- `campaign-data` authenticates each request and enforces the role/ownership rules before loading or saving campaign data.
+- `private.save_campaign_data` performs a compare-and-swap update so simultaneous saves cannot silently overwrite one another.
+- The frontend access screen, account panel, DM player controls, and initial role-based interface are on the development branch.
+- Player-owned character, journal, and event records use an `ownerId` matching the stable campaign member ID.
 
 ## Important current-state warning
-The live app currently reads and writes one shared campaign_hub JSONB row directly from the browser. The existing anonymous write access must not be removed until the replacement authenticated write path and its permission checks are deployed and tested. Doing so early would break the live campaign. This first migration therefore creates only the private identity table and does not change live access policies.
+The live/main branch still uses direct browser writes to the shared `campaign_hub` row and the existing Storage bucket. The old anonymous write permissions have deliberately NOT been removed yet. The replacement frontend and server functions must be deployed and tested first; only then should the lockdown migration remove direct anonymous writes and restrict Storage uploads. Do not invite players or treat the system as production-secure until that final lockdown is applied.
 
 ## Deployment order
-1. Apply migrations/20261117_campaign_members.sql.
-2. Deploy the campaign-access Edge Function and set its secrets (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, ACCESS_CODE_PEPPER, and a long random CAMPAIGN_SETUP_SECRET).
-3. Bootstrap the DM identity using the setup secret; store the returned DM code somewhere safe.
-4. Add the sign-in, account settings, and DM code-management screens to the frontend.
-5. Route every campaign write through a server-validated function/RPC and verify the permission matrix.
-6. Only then apply the separate lockdown migration that removes anonymous writes and restricts reads/writes appropriately.
+1. The identity migration has already been applied: `migrations/20261117_campaign_members.sql`.
+2. Apply `migrations/20261117_secure_campaign_saves.sql`.
+3. Apply `migrations/20261117_campaign_access_rate_limit.sql`.
+4. Deploy/redeploy the updated `campaign-access` Edge Function.
+5. Deploy the new `campaign-data` Edge Function.
+6. Ensure the Supabase `private` schema remains in Exposed schemas for the service-side RPC calls, while its tables and functions remain inaccessible to `anon` and `authenticated`.
+7. Deploy the development frontend and test DM sign-in, player sign-in, player code changes, DM player creation/reset/revocation, own-character edits, own journal/event edits, and denied edits to DM-only content.
+8. Only after those tests pass, apply a separate lockdown migration for `campaign_hub` and `campaign-maps` Storage. Preserve read/realtime access as needed, but remove browser write access and route all changes through the authenticated server layer.
 
-Do not put the service-role key, setup secret, code hashes, or plaintext access codes in app.js, HTML, CSS, or GitHub Pages.
+## Secrets and deployment safety
+- Supabase supplies `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` to Edge Functions. Do not create manually named secrets with the `SUPABASE_` prefix.
+- Keep `ACCESS_CODE_PEPPER` and `CAMPAIGN_SETUP_SECRET` in Edge Function secrets only.
+- Never put the service-role key, setup secret, code hashes, or plaintext access codes in frontend files or GitHub Pages.
+- The frontend publishable key is public by design; it is not a service-role key.
