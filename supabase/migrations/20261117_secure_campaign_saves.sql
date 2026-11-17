@@ -2,6 +2,8 @@
 -- This does not change existing client permissions; lockdown is a later migration.
 create schema if not exists private;
 
+grant select on table public.campaign_hub to service_role;
+
 create or replace function private.save_campaign_data(p_expected jsonb, p_next jsonb)
 returns boolean
 language plpgsql
