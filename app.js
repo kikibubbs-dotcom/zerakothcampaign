@@ -26,7 +26,9 @@
     events:[],
     calendarConfig:null,
     elapsedDays:[],
-    notices:[]
+    notices:[],
+    sharedInventory:[],
+    partyGold:0
   });
 
   let state = blank();
@@ -112,6 +114,7 @@
     renderMap();
     renderParty();
     renderCombat();
+    renderInventory();
     renderCharacters();
     renderQuests();
     renderNPCs();
@@ -120,6 +123,34 @@
     renderNotices();
   }
 
+  function renderInventory(){
+    const shared=Array.isArray(state.sharedInventory)?state.sharedInventory:[];
+    $("party-gold").textContent=Math.max(0,safeNumber(state.partyGold))+" GP";
+    $("shared-inventory-list").innerHTML=shared.length?shared.map(item=>
+      '<article class="inventory-item"><div class="inventory-item-main"><strong>'+escapeHTML(item.name)+'</strong><span class="tag">'+escapeHTML(item.category||"Item")+'</span><span class="tag">'+escapeHTML(item.rarity||"Common")+'</span><p>'+escapeHTML(item.notes||"")+'</p><small>Qty: '+safeNumber(item.quantity,1)+' · '+escapeHTML(item.value||"No value")+(item.weight?" · "+escapeHTML(item.weight)+" wt":"")+'</small></div>'+(isDM()?'<div class="card-actions"><button onclick="Hub.editSharedItem(\''+item.id+'\')">EDIT</button><button onclick="Hub.removeSharedItem(\''+item.id+'\')">REMOVE</button></div>':"")+'</article>'
+    ).join(""):empty("The party stash is empty.");
+    $("character-inventory-list").innerHTML=state.characters.length?state.characters.map(c=>{
+      const items=Array.isArray(c.inventoryItems)?c.inventoryItems:[],editable=canEditCharacter(c);
+      return '<article class="inventory-character-card"><div class="inventory-character-heading"><div><span class="card-subtitle">'+(c.isNPC?"NPC COMPANION":"ADVENTURER")+'</span><h3>'+escapeHTML(c.name)+'</h3></div><div class="inventory-gold"><strong>'+Math.max(0,safeNumber(c.gold))+' GP</strong>'+(editable?'<button class="small-button" onclick="Hub.editCharacterGold(\''+c.id+'\')">EDIT GOLD</button>':"")+'</div></div><div class="inventory-item-list">'+(items.length?items.map(item=>'<div class="inventory-item compact"><div class="inventory-item-main"><strong>'+escapeHTML(item.name)+'</strong><span class="tag">'+escapeHTML(item.category||"Item")+'</span><span class="tag">'+escapeHTML(item.rarity||"Common")+'</span><small>Qty: '+safeNumber(item.quantity,1)+' · '+escapeHTML(item.value||"No value")+(item.weight?" · "+escapeHTML(item.weight)+" wt":"")+'</small>'+(item.notes?'<p>'+escapeHTML(item.notes)+'</p>':"")+'</div>'+(editable?'<div class="card-actions"><button onclick="Hub.editCharacterItem(\''+c.id+'\',\''+item.id+'\')">EDIT</button><button onclick="Hub.removeCharacterItem(\''+c.id+'\',\''+item.id+'\')">REMOVE</button></div>':"")+'</div>').join(""):empty("No items recorded yet."))+'</div>'+(editable?'<button class="small-button inventory-add-button" onclick="Hub.addCharacterItem(\''+c.id+'\')">+ ADD ITEM</button>':'<span class="list-meta">VIEW ONLY</span>')+'</article>';
+    }).join(""):empty("Add characters to start tracking their inventories.");
+  }
+  function inventoryItemFields(item={}){return [
+    {name:"name",label:"Item name",value:item.name||"",required:true,full:true},
+    {name:"category",label:"Category",type:"select",value:item.category||"Equipment",options:["Equipment","Weapon","Armour","Potion","Magic item","Tool","Consumable","Treasure","Other"].map(x=>({value:x,label:x}))},
+    {name:"rarity",label:"Rarity",type:"select",value:item.rarity||"Common",options:["Common","Uncommon","Rare","Very Rare","Legendary","Artifact","N/A"].map(x=>({value:x,label:x}))},
+    {name:"quantity",label:"Quantity",type:"number",value:item.quantity??1,min:1},
+    {name:"weight",label:"Weight",value:item.weight||"",placeholder:"e.g. 2 lb"},
+    {name:"value",label:"Value",value:item.value||"",placeholder:"e.g. 50 GP"},
+    {name:"notes",label:"Description / notes",type:"textarea",rows:3,value:item.notes||"",full:true}
+  ];}
+  function addCharacterItem(id){const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;openForm("Add item to "+c.name,inventoryItemFields(),v=>{if(!v.name.trim())return alert("Please enter an item name.");mutate(()=>{if(!Array.isArray(c.inventoryItems))c.inventoryItems=[];c.inventoryItems.push({id:makeId(),name:v.name.trim(),category:v.category,rarity:v.rarity,quantity:Math.max(1,safeNumber(v.quantity,1)),weight:v.weight,value:v.value,notes:v.notes});});});}
+  function editCharacterItem(cid,iid){const c=state.characters.find(x=>x.id===cid),item=c?.inventoryItems?.find(x=>x.id===iid);if(!c||!item||!canEditCharacter(c))return;openForm("Edit "+item.name,inventoryItemFields(item),v=>{if(!v.name.trim())return alert("Please enter an item name.");mutate(()=>Object.assign(item,{name:v.name.trim(),category:v.category,rarity:v.rarity,quantity:Math.max(1,safeNumber(v.quantity,1)),weight:v.weight,value:v.value,notes:v.notes}));});}
+  function removeCharacterItem(cid,iid){const c=state.characters.find(x=>x.id===cid);if(!c||!canEditCharacter(c)||!confirm("Remove this item from the character inventory?"))return;mutate(()=>c.inventoryItems=(c.inventoryItems||[]).filter(x=>x.id!==iid));}
+  function editCharacterGold(id){const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;openForm("Update "+c.name+" gold",[{name:"gold",label:"Gold pieces (GP)",type:"number",min:0,value:safeNumber(c.gold)}],v=>mutate(()=>c.gold=Math.max(0,safeNumber(v.gold))));}
+  function addSharedItem(){if(!isDM())return;openForm("Add party loot",inventoryItemFields(),v=>{if(!v.name.trim())return alert("Please enter an item name.");mutate(()=>{if(!Array.isArray(state.sharedInventory))state.sharedInventory=[];state.sharedInventory.push({id:makeId(),name:v.name.trim(),category:v.category,rarity:v.rarity,quantity:Math.max(1,safeNumber(v.quantity,1)),weight:v.weight,value:v.value,notes:v.notes});});});}
+  function editSharedItem(id){if(!isDM())return;const item=state.sharedInventory?.find(x=>x.id===id);if(!item)return;openForm("Edit party loot",inventoryItemFields(item),v=>{if(!v.name.trim())return alert("Please enter an item name.");mutate(()=>Object.assign(item,{name:v.name.trim(),category:v.category,rarity:v.rarity,quantity:Math.max(1,safeNumber(v.quantity,1)),weight:v.weight,value:v.value,notes:v.notes}));});}
+  function removeSharedItem(id){if(!isDM()||!confirm("Remove this item from the shared party stash?"))return;mutate(()=>state.sharedInventory=(state.sharedInventory||[]).filter(x=>x.id!==id));}
+  function editPartyGold(){if(!isDM())return;openForm("Update shared party funds",[{name:"gold",label:"Party gold pieces (GP)",type:"number",min:0,value:safeNumber(state.partyGold)}],v=>mutate(()=>state.partyGold=Math.max(0,safeNumber(v.gold))));}
   function renderDashboard() {
     $("stat-party").textContent = state.characters.filter(c=>!c.isNPC).length;
     $("stat-quests").textContent = state.quests.filter(q=>q.status==="Active").length;
@@ -969,6 +1000,14 @@
     advanceCalendarDay,
     addCombatant,
     addCombatEnemy,
+    addCharacterItem,
+    editCharacterItem,
+    removeCharacterItem,
+    editCharacterGold,
+    addSharedItem,
+    editSharedItem,
+    removeSharedItem,
+    editPartyGold,
     startCombat,
     nextCombatTurn,
     previousCombatTurn,
@@ -1019,11 +1058,11 @@
       if (error) throw error;
 
       state={...blank(),...(data.data||{})};
-      ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays"].forEach(k=>{
+      ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory"].forEach(k=>{
         if (!Array.isArray(state[k])) state[k]=[];
       });
 
-      ready=true;
+      state.partyGold=safeNumber(state.partyGold);\n      ready=true;
       $("hub-loading").style.display="none";
       applyPermissions();
       refresh();
