@@ -361,3 +361,23 @@
 #dnd-hub .combat-view-note{font-size:10px;margin-top:15px;}
 @media(max-width:850px){#dnd-hub .combat-list{grid-template-columns:1fr;}}
 @media(max-width:650px){#dnd-hub .combat-tracker-panel{padding:16px;}#dnd-hub .combat-heading{flex-direction:column;}#dnd-hub .combat-round-label{align-self:flex-start;}}
+
+/* Party inventory and loot */
+#dnd-hub .inventory-funds{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:13px 15px;margin:16px 0;background:#191d29;border:1px solid var(--line);border-radius:7px}
+#dnd-hub .inventory-funds span{font:10px Arial,sans-serif;color:var(--muted);letter-spacing:1px}
+#dnd-hub .inventory-funds strong,#dnd-hub .inventory-gold strong{color:var(--gold);font-size:18px}
+#dnd-hub .inventory-item-list{display:grid;gap:10px}
+#dnd-hub .inventory-item{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px;background:#191d29;border:1px solid var(--line);border-radius:7px;min-width:0}
+#dnd-hub .inventory-item-main{min-width:0;flex:1}
+#dnd-hub .inventory-item-main>strong{color:#fff;font-size:14px;margin-right:7px}
+#dnd-hub .inventory-item small{display:block;color:var(--muted);font:10px Arial,sans-serif;margin-top:8px}
+#dnd-hub .inventory-item p{margin-top:8px;white-space:pre-wrap}
+#dnd-hub .inventory-character-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#dnd-hub .inventory-character-card{background:#202431;border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
+#dnd-hub .inventory-character-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}
+#dnd-hub .inventory-character-heading h3{font-size:17px;color:#fff;margin:4px 0}
+#dnd-hub .inventory-gold{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+#dnd-hub .inventory-item.compact{padding:10px;background:#191d29}
+#dnd-hub .inventory-add-button{margin-top:12px}
+@media(max-width:850px){#dnd-hub .inventory-character-grid{grid-template-columns:1fr}}
+@media(max-width:650px){#dnd-hub .inventory-item{flex-direction:column}#dnd-hub .inventory-character-heading{align-items:flex-start;flex-direction:column}#dnd-hub .inventory-gold{justify-content:flex-start}}

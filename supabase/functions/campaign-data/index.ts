@@ -36,11 +36,18 @@ const asArray = (value: unknown) => Array.isArray(value) ? value : null;
 
 function validatePlayerChange(before: any, after: any, memberId: string) {
   if (!after || typeof after !== "object" || Array.isArray(after)) return "Campaign data is invalid.";
-  const allowed = new Set(["characters", "journal", "events"]);
+  const allowed = new Set(["characters", "journal", "events", "sharedInventory", "partyGold"]);
   const keys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
   for (const key of keys) {
     if (!allowed.has(key) && !same(before?.[key], after?.[key])) {
       return "Your account cannot change the " + key + " section.";
+    }
+  }
+
+  for (const key of ["sharedInventory", "partyGold"]) {
+    if (!same(before?.[key], after?.[key])) {
+      const initialDefault = before?.[key] === undefined && (key === "sharedInventory" ? Array.isArray(after?.[key]) && after[key].length === 0 : Number(after?.[key]) === 0);
+      if (!initialDefault) return "Only the DM can change the shared party stash or party funds.";
     }
   }
 
@@ -134,7 +141,9 @@ Deno.serve(async (req) => {
         events: [],
         calendarConfig: null,
         elapsedDays: [],
-        notices: []
+        notices: [],
+        sharedInventory: [],
+        partyGold: 0
       };
       const { data: saved, error: saveError } = await admin.schema("private").rpc("save_campaign_data", {
         p_expected: before,
