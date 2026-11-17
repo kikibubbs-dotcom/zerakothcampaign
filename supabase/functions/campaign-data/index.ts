@@ -65,7 +65,7 @@ function validatePlayerChange(before: any, after: any, memberId: string) {
         if (newItem && newItem.isNPC) {
           return "Player-owned characters cannot be changed into NPC companions.";
         }
-      } else if (newItem && (oldItem as any)?.ownerId && newItem.ownerId !== (oldItem as any).ownerId) {
+      } else if (newItem && newItem.ownerId !== (oldItem as any)?.ownerId) {
         return "An entry's original author cannot be changed.";
       }
     }
