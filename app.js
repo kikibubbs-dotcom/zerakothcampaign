@@ -230,12 +230,12 @@
     if(!options.length)return alert("Everyone in the character and NPC archive is already in this encounter. Use ADD ENEMY for another combatant.");
     openForm("Add combatant from archive",[
       {name:"source",label:"Choose a character or NPC",type:"select",options,required:true,full:true},
-      {name:"initiative",label:"Initiative roll",type:"number",value:0},
+      {name:"initiative",label:"Initiative roll",type:"number",value:"",placeholder:"Enter the initiative roll"},
       {name:"conditions",label:"Conditions (comma-separated)",placeholder:"e.g. Poisoned, Prone",full:true}
     ],v=>{
       const [type,id]=v.source.split(":"),source=type==="npc"?state.npcs.find(x=>x.id===id):state.characters.find(x=>x.id===id);
       if(!source||ensureCombat().combatants.some(x=>x.sourceId===id))return;
-      const combatant={id:makeId(),sourceId:id,sourceType:type,name:source.name,kind:type==="npc"?"NPC":source.isNPC?"ALLY":"PLAYER",initiative:safeNumber(v.initiative,source.initiative),hp:safeNumber(source.hp),maxHp:Math.max(1,safeNumber(source.maxHp,1)),ac:safeNumber(source.ac),conditions:v.conditions||"",order:Date.now()};
+      const combatant={id:makeId(),sourceId:id,sourceType:type,name:source.name,kind:type==="npc"?"NPC":source.isNPC?"ALLY":"PLAYER",initiative:v.initiative.trim()===""?safeNumber(source.initiative):safeNumber(v.initiative),hp:safeNumber(source.hp),maxHp:Math.max(1,safeNumber(source.maxHp,1)),ac:safeNumber(source.ac),conditions:v.conditions||"",order:Date.now()};
       mutate(()=>ensureCombat().combatants.push(combatant));
     });
   }
