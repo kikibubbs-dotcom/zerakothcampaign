@@ -118,6 +118,7 @@
     renderCombat();
     renderInventory();
     renderSessions();
+    renderReferenceLibrary();
     renderCharacters();
     renderQuests();
     renderNPCs();
