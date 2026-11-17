@@ -46,7 +46,7 @@ function validatePlayerChange(before: any, after: any, memberId: string) {
 
   for (const key of ["sharedInventory", "partyGold", "sessions"]) {
     if (!same(before?.[key], after?.[key])) {
-      const initialDefault = before?.[key] === undefined && (key === "sharedInventory" ? Array.isArray(after?.[key]) && after[key].length === 0 : Number(after?.[key]) === 0);
+      const initialDefault = before?.[key] === undefined && ((key === "sharedInventory" || key === "sessions") ? Array.isArray(after?.[key]) && after[key].length === 0 : Number(after?.[key]) === 0);
       if (!initialDefault) return "Only the DM can change shared party loot, party funds or session history.";
     }
   }
