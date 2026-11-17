@@ -396,3 +396,26 @@
 #dnd-hub .search-result strong{align-self:center}
 #dnd-hub .search-result>span:last-child{grid-column:1/-1;color:var(--muted);font-size:12px;line-height:1.5}
 #dnd-hub .search-result:hover{border-color:var(--gold);background:#222838}
+
+/* Campaign companion expansion */
+#dnd-hub .overview-search{margin-bottom:22px}
+#dnd-hub .overview-backup-actions{display:flex;justify-content:flex-end;gap:8px;margin:0 0 14px}
+#dnd-hub .import-campaign-label{display:inline-flex;align-items:center;cursor:pointer}
+#dnd-hub .overview-sessions{margin-top:28px;padding:18px}
+#dnd-hub .reference-library-panel{padding:18px}
+#dnd-hub .reference-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 170px auto;gap:9px;margin-bottom:14px}
+#dnd-hub .reference-toolbar input,#dnd-hub .reference-toolbar select{min-width:0;background:#141823;color:#f4f0e8;border:1px solid var(--line);border-radius:6px;padding:12px}
+#dnd-hub .reference-categories{display:flex;gap:6px;overflow-x:auto;padding:4px 0 14px}
+#dnd-hub .reference-categories button{white-space:nowrap;background:#191d29;color:#c7c3bb;border:1px solid var(--line);border-radius:5px;padding:9px 13px}
+#dnd-hub .reference-categories button.active,#dnd-hub .reference-categories button:hover{border-color:var(--gold);color:var(--gold);background:#303043}
+#dnd-hub .reference-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+#dnd-hub .reference-card{background:#191d29;border:1px solid var(--line);border-radius:7px;padding:14px;min-width:0}
+#dnd-hub .reference-card h3{font-size:16px;color:#f4dfb5;margin:10px 0}
+#dnd-hub .reference-card p{line-height:1.55;overflow-wrap:anywhere}
+#dnd-hub .reference-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#dnd-hub .reference-attribution{margin-top:20px;padding:18px}
+#dnd-hub .reference-attribution p{overflow-wrap:anywhere;font-size:11px}
+#dnd-hub .reference-attribution a{color:var(--gold)}
+@media(max-width:650px){#dnd-hub .reference-toolbar{grid-template-columns:1fr 1fr}#dnd-hub .reference-toolbar input{grid-column:1/-1}#dnd-hub .reference-results{grid-template-columns:1fr}}
+
+#dnd-hub .reference-pagination{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}

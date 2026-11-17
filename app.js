@@ -29,7 +29,8 @@
     notices:[],
     sharedInventory:[],
     partyGold:0,
-    sessions:[]
+    sessions:[],
+    homebrew:[]
   });
 
   let state = blank();
@@ -117,6 +118,7 @@
     renderCombat();
     renderInventory();
     renderSessions();
+    renderReferenceLibrary();
     renderCharacters();
     renderQuests();
     renderNPCs();
@@ -176,6 +178,220 @@
   function addSession(){if(!isDM())return;openForm("Log a session",sessionFields(),v=>{if(!v.title.trim())return alert("Please enter a session title.");mutate(()=>{if(!Array.isArray(state.sessions))state.sessions=[];state.sessions.push({id:makeId(),number:Math.max(1,safeNumber(v.number,1)),date:v.date,title:v.title.trim(),summary:v.summary,decisions:v.decisions,discoveries:v.discoveries,npcEncounters:v.npcEncounters,openHooks:v.openHooks});});});}
   function editSession(id){if(!isDM())return;const s=state.sessions?.find(x=>x.id===id);if(!s)return;openForm("Edit session "+s.number,sessionFields(s),v=>{if(!v.title.trim())return alert("Please enter a session title.");mutate(()=>Object.assign(s,{number:Math.max(1,safeNumber(v.number,1)),date:v.date,title:v.title.trim(),summary:v.summary,decisions:v.decisions,discoveries:v.discoveries,npcEncounters:v.npcEncounters,openHooks:v.openHooks}));});}
   function removeSession(id){if(!isDM()||!confirm("Delete this session record?"))return;mutate(()=>state.sessions=(state.sessions||[]).filter(s=>s.id!==id));}
+
+  async function blobToDataURL(blob){
+    return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||""));reader.onerror=()=>reject(new Error("The map image could not be read for export."));reader.readAsDataURL(blob);});
+  }
+  async function exportCampaign(){
+    if(!isDM())return alert("Only the DM can export a campaign.");
+    try{
+      let mapImage="";
+      if(state.mapUrl){
+        const response=await fetch(state.mapUrl);if(!response.ok)throw new Error("The campaign map could not be fetched. Check the map URL and try again.");
+        mapImage=await blobToDataURL(await response.blob());
+      }
+      const payload={format:"adventurers-chronicle-campaign",version:1,exportedAt:new Date().toISOString(),data:state,mapImage};
+      const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+      const url=URL.createObjectURL(blob),a=document.createElement("a");
+      a.href=url;a.download=(state.title||"campaign").toLowerCase().replace(/[^a-z0-9]+/g,"-")+"-backup.json";a.click();URL.revokeObjectURL(url);
+    }catch(err){alert(err.message||"Campaign export failed.");}
+  }
+  async function importCampaign(file){
+    if(!isDM()||!file)return;
+    if(file.size>16*1024*1024)return alert("Please choose a campaign backup smaller than 16MB.");
+    const reader=new FileReader();
+    reader.onload=async()=>{
+      try{
+        const parsed=JSON.parse(String(reader.result||""));
+        const incoming=parsed.format==="adventurers-chronicle-campaign"?parsed.data:parsed;
+        if(!incoming||typeof incoming!=="object"||Array.isArray(incoming)||!Array.isArray(incoming.characters)||!Array.isArray(incoming.quests)||!Array.isArray(incoming.npcs))throw new Error("This doesn't look like a valid campaign backup.");
+        if(!confirm("Import this campaign and replace the current campaign content? This cannot be undone. Player accounts and access codes will stay unchanged."))return;
+        let mapUrl=incoming.mapUrl||"";
+        if(parsed.mapImage){
+          const parts=String(parsed.mapImage).match(/^data:([^;]+);base64,(.+)$/);
+          if(!parts)throw new Error("The backup's map image is invalid.");
+          const bytes=Uint8Array.from(atob(parts[2]),ch=>ch.charCodeAt(0));
+          const fileType=parts[1]||"image/png",mapFile=new File([bytes],"campaign-map."+((fileType.split("/")[1]||"png").replace("jpeg","jpg")),{type:fileType});
+          const {data:upload,error:signError}=await client.functions.invoke("campaign-data",{body:{action:"create-map-upload",filename:mapFile.name,content_type:fileType}});
+          if(signError)throw signError;
+          const {error:uploadError}=await client.storage.from("campaign-maps").uploadToSignedUrl(upload.path,upload.token,mapFile,{contentType:fileType,upsert:false});
+          if(uploadError)throw uploadError;
+          mapUrl=upload.publicUrl;
+        }
+        const fresh={...blank(),...incoming,mapUrl};
+        ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions","homebrew"].forEach(k=>{if(!Array.isArray(fresh[k]))fresh[k]=[];});
+        mutate(()=>state=fresh);
+        alert("Campaign imported. The map image and campaign content were restored; player accounts and access codes were not changed.");
+      }catch(err){alert(err.message||"The campaign backup could not be imported.");}
+    };
+    reader.onerror=()=>alert("The selected backup file could not be read.");
+    reader.readAsText(file);
+  }
+  function takeRest(id,type){
+    const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;
+    const level=Math.max(1,safeNumber(c.level,1)),spent=Math.max(0,safeNumber(c.hitDiceUsed)),available=Math.max(0,level-spent);
+    if(type==="long"&&safeNumber(c.hp)<1)return alert("A character must have at least 1 HP to benefit from a long rest.");
+    if(type==="short"&&c.rulesEdition==="2024"&&safeNumber(c.hp)<1)return alert("A character must have at least 1 HP to benefit from a short rest under the 2024 rules.");
+    const finish=hitDiceToSpend=>{
+      mutate(()=>{
+        if(!Array.isArray(c.resources))c.resources=[];
+        if(type==="short"){
+          c.resources.forEach(r=>{if(r.recovery==="short"||r.recovery==="short or long")r.used=0;});
+          if(String(c.className||"").toLowerCase().includes("warlock")&&Array.isArray(c.spellSlots))c.spellSlots.forEach(slot=>{if(slot.total>0)slot.used=0;});
+          const dieMatch=String(c.hitDice||"").match(/d(\d+)/i),dieSize=dieMatch?Math.max(2,Number(dieMatch[1])):8;
+          const con=Math.floor((safeNumber(c.constitution,10)-10)/2);
+          let healing=0;
+          for(let i=0;i<hitDiceToSpend;i++){const rolled=Math.floor(Math.random()*dieSize)+1+con;healing+=c.rulesEdition==="2024"?Math.max(1,rolled):Math.max(0,rolled);}
+          c.hitDiceUsed=Math.min(level,spent+hitDiceToSpend);
+          c.hp=Math.min(safeNumber(c.maxHp),safeNumber(c.hp)+healing);
+        }else{
+          c.hp=Math.max(0,safeNumber(c.maxHp));
+          if(Array.isArray(c.spellSlots))c.spellSlots.forEach(slot=>slot.used=0);
+          c.resources.forEach(r=>{if(r.recovery!=="manual")r.used=0;});
+          c.hitDiceUsed=c.rulesEdition==="2024"?0:Math.max(0,spent-Math.max(1,Math.floor(level/2)));
+          if(c.rulesEdition==="2024"||c._foodAndDrinkForRest)c.exhaustion=Math.max(0,safeNumber(c.exhaustion)-1);
+        }
+        c.lastRest={type,at:new Date().toISOString()};
+      });
+      status((type==="long"?"Long Rest":"Short Rest")+" completed for "+c.name+".");
+    };
+    if(type==="short"){
+      openForm("Short rest — "+c.name,[
+        {name:"dice",label:"Hit Dice to spend (maximum "+available+")",type:"number",min:0,max:available,value:0}
+      ],v=>finish(Math.max(0,Math.min(available,safeNumber(v.dice)))));
+    }else{
+      if(c.rulesEdition!=="2024"&&safeNumber(c.exhaustion)>0){
+        const fed=confirm("Has "+c.name+" had food and drink during this long rest? If yes, 2014 rules reduce Exhaustion by 1.");
+        c._foodAndDrinkForRest=fed;
+      }
+      if(!confirm("Finish a long rest for "+c.name+"? This restores HP, spell slots and long-rest resources.")){delete c._foodAndDrinkForRest;return;}
+      finish(0);delete c._foodAndDrinkForRest;
+    }
+  }
+
+  function editResources(id){
+    const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;
+    const resources=Array.isArray(c.resources)?c.resources:[];
+    openForm("Class & character resources",[
+      {name:"resources",label:"One resource per line: Name | maximum | used | recovery (short/long/manual)",type:"textarea",rows:8,value:resources.map(r=>[r.name,r.max,r.used,r.recovery].join(" | ")).join("\n"),full:true}
+    ],v=>{
+      const parsed=v.resources.split("\n").map(line=>line.split("|").map(x=>x.trim())).filter(x=>x[0]).map(x=>({id:makeId(),name:x[0],max:Math.max(0,safeNumber(x[1])),used:Math.max(0,Math.min(safeNumber(x[1]),safeNumber(x[2]))),recovery:["short","long","short or long","manual"].includes((x[3]||"long").toLowerCase())?(x[3]||"long").toLowerCase():"long"}));
+      mutate(()=>c.resources=parsed);
+    });
+  }
+
+
+  let referenceCategory="spells", referenceResults=[], referenceEdition="both", referencePage=1, referenceHasNext=false, referenceLastQuery="";
+  const referenceTypes={spells:"spells",species:"species",classes:"classes",backgrounds:"backgrounds",feats:"feats",items:"items",creatures:"creatures",languages:"languages",conditions:"conditions"};
+  function sourceEdition(entry){
+    const key=String(entry.document?.key||"").toLowerCase();
+    return key.includes("2024")?"2024":key.includes("2014")?"2014":"Open5e";
+  }
+  async function loadReference(){
+    const list=$("reference-results");if(!list)return;
+    const q=$("reference-search").value.trim();if(q!==referenceLastQuery){referencePage=1;referenceLastQuery=q;}list.innerHTML=empty("Searching the open rules library...");
+    try{
+      const params=new URLSearchParams({limit:"30",ordering:"name",page:String(referencePage),document__key__in:"srd-2014,srd-2024"});
+      if(q)params.set("name__icontains",q);
+      if(referenceEdition==="2014")params.set("document__key__iexact","srd-2014");
+      if(referenceEdition==="2024")params.set("document__key__iexact","srd-2024");
+      const response=await fetch("https://api.open5e.com/v2/"+referenceTypes[referenceCategory]+"/?"+params.toString());
+      if(!response.ok)throw new Error("The open reference source is temporarily unavailable.");
+      const payload=await response.json();referenceResults=Array.isArray(payload.results)?payload.results:[];referenceHasNext=!!payload.next;
+      renderReferenceLibrary();
+    }catch(err){list.innerHTML=empty(err.message+" You can still create campaign homebrew.");}
+  }
+  function referenceEntries(){
+    const home=(state.homebrew||[]).filter(x=>x.category===referenceCategory||x.category==="all").map(x=>({...x,_homebrew:true}));
+    return [...home,...referenceResults];
+  }
+  function renderReferenceLibrary(){
+    const list=$("reference-results");if(!list)return;
+    const entries=referenceEntries();
+    if(!entries.length){list.innerHTML=empty("No entries found. Try a different search or create a homebrew entry.");const pager=$("reference-pagination");if(pager)pager.innerHTML="";return;}
+    list.innerHTML=entries.map((entry,i)=>{
+      const source=entry._homebrew?"CAMPAIGN HOMEBREW":(entry.document?.display_name||entry.document?.name||"OPEN SRD");
+      const edition=entry._homebrew?(entry.edition||"Homebrew"):sourceEdition(entry);
+      const detail=String(entry.desc||entry.description||"").replace(/<[^>]*>/g," ").slice(0,300);
+      const meta=referenceCategory==="spells"?"Level "+safeNumber(entry.level)+" · "+(entry.school||"Spell"):source;
+      const addLabel=referenceCategory==="creatures"?"ADD TO NPC ARCHIVE":"ADD TO CHARACTER";
+      const controls='<button onclick="Hub.openReferenceEntry('+i+')">VIEW DETAILS</button><button onclick="Hub.applyReferenceEntry('+i+')">'+addLabel+'</button>';
+      const own=entry._homebrew&&(isDM()||entry.ownerId===member?.id)?"<button onclick=\"Hub.editHomebrew(\'"+entry.id+"\')\">EDIT</button><button onclick=\"Hub.removeHomebrew(\'"+entry.id+"\')\">DELETE</button>":"";
+      return '<article class="reference-card"><div class="reference-card-top"><span class="tag">'+escapeHTML(edition)+'</span><span class="list-meta">'+escapeHTML(meta)+'</span></div><h3>'+escapeHTML(entry.name||"Untitled")+'</h3><p>'+escapeHTML(detail||"Open the entry to view details.")+'</p><div class="list-meta">'+escapeHTML(source)+'</div><div class="card-actions">'+controls+own+'</div></article>';
+    }).join("");
+    $("reference-count").textContent=entries.length+" entries shown · Open SRD material and campaign homebrew";
+    const pager=$("reference-pagination");if(pager)pager.innerHTML=(referencePage>1?'<button class="small-button" onclick="Hub.changeReferencePage(-1)">← PREVIOUS</button>':"")+(referenceHasNext?'<button class="small-button" onclick="Hub.changeReferencePage(1)">NEXT PAGE →</button>':"");
+  }
+  function openReferenceEntry(index){
+    const entry=referenceEntries()[index];if(!entry)return;
+    openForm(entry.name||"Reference entry",[
+      {name:"details",label:"Description",type:"textarea",rows:8,value:entry.desc||entry.description||"No description available."},
+      {name:"mechanics",label:"Mechanics",type:"textarea",rows:5,value:entry.mechanics||""},
+      {name:"source",label:"Source",value:entry.document?.display_name||entry.source||"Open5e / campaign homebrew"},
+      {name:"edition",label:"Rules version",value:entry._homebrew?entry.edition:sourceEdition(entry)}
+    ],()=>{});
+    const saveButton=$("hub-modal-form")?.querySelector("button[type=submit]");if(saveButton)saveButton.textContent="CLOSE";
+  }
+  function applyReferenceEntry(index){
+    const entry=referenceEntries()[index];if(!entry)return;
+    if(referenceCategory==="creatures"){
+      if(!isDM())return alert("Only the DM can add creatures to the NPC archive.");
+      mutate(()=>state.npcs.unshift({id:makeId(),name:entry.name||"Unnamed creature",role:"Creature",description:entry.desc||"",challengeRating:entry.cr||entry.challenge_rating||"",hp:safeNumber(entry.hp),maxHp:Math.max(1,safeNumber(entry.hp,1)),ac:safeNumber(entry.ac),npcActions:Array.isArray(entry.actions)?entry.actions.map(x=>x.name+": "+x.desc).join("\n"):"",source:entry.document?.display_name||"Open5e"}));
+      alert(entry.name+" added to the NPC archive.");return;
+    }
+    const owned=state.characters.filter(c=>canEditCharacter(c));
+    if(!owned.length)return alert("Create a character first, or ask the DM to add one to the archive.");
+    openForm("Add "+entry.name+" to a character",[
+      {name:"characterId",label:"Character",type:"select",required:true,options:owned.map(c=>({value:c.id,label:c.name}))}
+    ],v=>{
+      const c=state.characters.find(x=>x.id===v.characterId);if(!c||!canEditCharacter(c))return;
+      const detail=String(entry.desc||entry.description||"").replace(/<[^>]*>/g," ").trim();
+      const line="• "+entry.name+(entry.level!==undefined?" (Level "+entry.level+")":"")+" — "+detail;
+      mutate(()=>{
+        if(referenceCategory==="classes")c.className=entry.name;
+        else if(referenceCategory==="species")c.race=entry.name;
+        else if(referenceCategory==="backgrounds")c.background=entry.name;
+        else if(referenceCategory==="spells")c.spells=[c.spells||"",line].filter(Boolean).join("\n");
+        else if(referenceCategory==="items"){
+          if(!Array.isArray(c.inventoryItems))c.inventoryItems=[];
+          c.inventoryItems.push({id:makeId(),name:entry.name,category:"Equipment",rarity:"Common",quantity:1,notes:detail});
+        }else c.features=[c.features||"",line].filter(Boolean).join("\n");
+      });
+      alert(entry.name+" added to "+c.name+".");
+    });
+  }
+  function homebrewFields(entry={}){
+    return [
+      {name:"name",label:"Entry name",value:entry.name||"",required:true,full:true},
+      {name:"category",label:"Category",type:"select",value:entry.category||referenceCategory,options:Object.keys(referenceTypes).map(k=>({value:k,label:k[0].toUpperCase()+k.slice(1)})).concat([{value:"all",label:"Other / general"}])},
+      {name:"edition",label:"Rules version",type:"select",value:entry.edition||"Both",options:["2014","2024","Both","Homebrew / setting-specific"].map(x=>({value:x,label:x}))},
+      {name:"description",label:"Description & rules",type:"textarea",rows:8,value:entry.description||"",full:true},
+      {name:"mechanics",label:"Mechanics, prerequisites & effects",type:"textarea",rows:5,value:entry.mechanics||"",full:true},
+      {name:"source",label:"Source / attribution (optional)",value:entry.source||"",full:true}
+    ];
+  }
+  function addHomebrew(){
+    openForm("Create homebrew reference",homebrewFields(),v=>{
+      if(!v.name.trim())return alert("Enter an entry name.");
+      mutate(()=>{if(!Array.isArray(state.homebrew))state.homebrew=[];state.homebrew.unshift({id:makeId(),ownerId:member.id,name:v.name.trim(),category:v.category,edition:v.edition,description:v.description,mechanics:v.mechanics,source:v.source,createdAt:new Date().toISOString()});});
+      renderReferenceLibrary();
+    });
+  }
+  function editHomebrew(id){
+    const e=state.homebrew?.find(x=>x.id===id);if(!e||(!isDM()&&e.ownerId!==member.id))return;
+    openForm("Edit homebrew entry",homebrewFields(e),v=>mutate(()=>Object.assign(e,{name:v.name.trim(),category:v.category,edition:v.edition,description:v.description,mechanics:v.mechanics,source:v.source})));
+  }
+  function removeHomebrew(id){
+    const e=state.homebrew?.find(x=>x.id===id);if(!e||(!isDM()&&e.ownerId!==member.id)||!confirm("Delete this homebrew entry?"))return;
+    mutate(()=>state.homebrew=state.homebrew.filter(x=>x.id!==id));renderReferenceLibrary();
+  }
+  function changeReferencePage(amount){referencePage=Math.max(1,referencePage+amount);loadReference();}
+  function selectReferenceCategory(category){
+    if(!referenceTypes[category])return;referenceCategory=category;referencePage=1;
+    root.querySelectorAll("[data-reference-category]").forEach(b=>b.classList.toggle("active",b.dataset.referenceCategory===category));
+    loadReference();
+  }
+
   function searchCampaign(){
     const q=$("campaign-search-input").value.trim().toLowerCase(),results=$("campaign-search-results"),count=$("campaign-search-count");
     if(!q){count.textContent="Enter a search term to explore your campaign.";results.innerHTML="";return;}
@@ -189,10 +405,11 @@
     (state.sharedInventory||[]).forEach(x=>add("Party loot",x.id,x.name,[x.category,x.rarity,x.notes,x.value].join(" "),"inventory"));
     (state.characters||[]).forEach(c=>(c.inventoryItems||[]).forEach(x=>add("Character item",x.id,x.name,[c.name,x.category,x.rarity,x.notes,x.value].join(" "),"inventory")));
     (state.sessions||[]).forEach(x=>add("Session "+safeNumber(x.number),x.id,x.title,[x.date,x.summary,x.decisions,x.discoveries,x.npcEncounters,x.openHooks].join(" "),"sessions"));
+    (state.homebrew||[]).forEach(x=>add("Homebrew",x.id,x.name,[x.description,x.mechanics,x.category,x.edition].join(" "),"reference"));
     count.textContent=entries.length+" result"+(entries.length===1?"":"s")+" found";
     results.innerHTML=entries.length?entries.map(x=>'<button class="search-result" onclick="Hub.openSearchResult(\''+x.page+'\')"><span class="tag">'+escapeHTML(x.type)+'</span><strong>'+escapeHTML(x.title||"Untitled")+'</strong><span>'+escapeHTML((x.body||"").slice(0,180))+'</span></button>').join(""):empty("No matching campaign records found.");
   }
-  function openSearchResult(page){go(page);}
+  function openSearchResult(page){go(page==="sessions"?"dashboard":page);}
 
   function renderDashboard() {
     $("stat-party").textContent = state.characters.filter(c=>!c.isNPC).length;
@@ -407,7 +624,7 @@
             <button onclick="Hub.changeHP('${c.id}',1)">+1 HP</button>
             <button onclick="Hub.changeHP('${c.id}',5)">+5 HP</button>
             <button onclick="Hub.editCharacter('${c.id}')">EDIT</button>
-            <button onclick="Hub.configureSlots('${c.id}')">SET SPELL SLOTS</button>
+            <button onclick="Hub.configureSlots('${c.id}')">SET SPELL SLOTS</button><button onclick="Hub.takeRest('${c.id}','short')">SHORT REST</button><button onclick="Hub.takeRest('${c.id}','long')">LONG REST</button><button onclick="Hub.editResources('${c.id}')">RESOURCES</button>
           </div>`:`<p class="list-meta">VIEW ONLY</p>`}
           <div class="hp-line"><strong>ARMOUR CLASS</strong><span>${safeNumber(c.ac)}</span></div>
           <div class="hp-line"><strong>INITIATIVE / SPEED</strong><span>${safeNumber(c.initiative)} / ${safeNumber(c.speed)} ft</span></div>
@@ -424,6 +641,8 @@
               </div>
             `).join("")}
           </div>
+          ${(c.resources||[]).length?`<div class="card-subtitle" style="margin-top:14px">CLASS & CHARACTER RESOURCES</div>${c.resources.map(r=>`<div class="hp-line"><span>${escapeHTML(r.name)}</span><span>${safeNumber(r.used)}/${safeNumber(r.max)} used · ${escapeHTML(r.recovery||"long")} rest</span></div>`).join("")}`:""}
+          ${safeNumber(c.exhaustion)>0?`<div class="hp-line"><strong>EXHAUSTION · ${escapeHTML(c.rulesEdition||"2014")}</strong><span>${safeNumber(c.exhaustion)}/6</span></div>`:""}
         `:`
           <div class="tag">HP ${hp}/${max}</div>
           <div class="tag">AC ${safeNumber(c.ac)}</div>
@@ -730,6 +949,7 @@
       {name:"race",label:"Race / species",value:data.race||"",group:"player companion npc"},
       {name:"className",label:"Class",value:data.className||"",group:"player companion"},
       {name:"background",label:"Background",value:data.background||"",group:"player companion"},
+      {name:"rulesEdition",label:"Rules version for this character",type:"select",value:data.rulesEdition||"2014",options:[{value:"2014",label:"2014 rules"},{value:"2024",label:"2024 rules"}],group:"player companion"},
       {name:"alignment",label:"Alignment",value:data.alignment||"",group:"player companion npc"},
       {name:"portrait",label:"Portrait image URL",type:"url",value:data.portrait?.startsWith("data:")?"":(data.portrait||""),placeholder:"https://…",group:"player companion npc"},
       {name:"portraitFile",label:"Or upload a portrait image",type:"file",preview:data.portrait||"",group:"player companion npc"},
@@ -739,10 +959,12 @@
       {type:"section",label:"COMBAT STATISTICS",group:"player companion npc"},
       {name:"hp",label:"Current hit points",type:"number",value:data.hp??10,min:0,group:"player companion npc"},
       {name:"maxHp",label:"Maximum hit points",type:"number",value:data.maxHp??10,min:1,group:"player companion npc"},
+      {name:"exhaustion",label:"Exhaustion level",type:"number",value:data.exhaustion??0,min:0,max:6,group:"player companion npc"},
       {name:"ac",label:"Armour class",type:"number",value:data.ac??10,min:0,group:"player companion npc"},
       {name:"initiative",label:"Initiative",type:"number",value:data.initiative??0,group:"player companion npc"},
       {name:"speed",label:"Speed (ft)",type:"number",value:data.speed??30,min:0,group:"player companion npc"},
       {name:"hitDice",label:"Hit dice",value:data.hitDice||"",group:"player companion npc"},
+      {name:"hitDiceUsed",label:"Hit dice spent",type:"number",value:data.hitDiceUsed??0,min:0,group:"player companion npc"},
       {name:"proficiency",label:"Proficiency bonus",type:"number",value:data.proficiency??2,min:0,group:"player companion npc"},
       {type:"section",label:"ABILITY SCORES",group:"player companion npc"},
       {name:"strength",label:"Strength (STR)",type:"number",value:data.strength??10,group:"player companion npc"},
@@ -785,7 +1007,7 @@
     openForm(editing?"Edit archive entry":"Add to character & NPC archive",archiveFields(data||{},initialType),v=>{
       if(!v.name.trim())return alert("Please enter a name.");
       const type=v.recordType,portrait=v.portraitFile||v.portrait||data?.portrait||"";
-      const common={id:data?.id||makeId(),name:v.name.trim(),race:v.race,className:v.className,alignment:v.alignment,portrait,personality:v.personality,ideals:v.ideals,bonds:v.bonds,flaws:v.flaws,backstory:v.backstory,loveInterest:v.loveInterest,notes:v.notes};
+      const common={id:data?.id||makeId(),name:v.name.trim(),race:v.race,className:v.className,alignment:v.alignment,portrait,personality:v.personality,ideals:v.ideals,bonds:v.bonds,flaws:v.flaws,backstory:v.backstory,loveInterest:v.loveInterest,notes:v.notes,rulesEdition:v.rulesEdition||"2014",exhaustion:Math.max(0,Math.min(6,safeNumber(v.exhaustion))),hitDiceUsed:Math.max(0,safeNumber(v.hitDiceUsed)),resources:Array.isArray(data?.resources)?data.resources:[]};
       if(type==="npc"){
         const npc={...common,player:v.player,role:v.role,location:v.location,relationship:v.relationship,description:v.description,goals:v.goals,secrets:v.secrets,challengeRating:v.challengeRating,senses:v.senses,languages:v.languages,npcActions:v.npcActions,hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),hitDice:v.hitDice,proficiency:safeNumber(v.proficiency),strength:safeNumber(v.strength,10),dexterity:safeNumber(v.dexterity,10),constitution:safeNumber(v.constitution,10),intelligence:safeNumber(v.intelligence,10),wisdom:safeNumber(v.wisdom,10),charisma:safeNumber(v.charisma,10),savingThrows:v.savingThrows,skills:v.skills,features:v.features,spells:v.spells};
         if(!isDM())return;
@@ -795,7 +1017,7 @@
           else state.npcs.unshift(npc);
         });
       }else{
-        const c={...common,player:type==="player"?(isDM()?v.player:member.display_name):"",background:v.background,level:Math.max(1,safeNumber(v.level,1)),experience:Math.max(0,safeNumber(v.experience)),hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),hitDice:v.hitDice,proficiency:safeNumber(v.proficiency),strength:safeNumber(v.strength,10),dexterity:safeNumber(v.dexterity,10),constitution:safeNumber(v.constitution,10),intelligence:safeNumber(v.intelligence,10),wisdom:safeNumber(v.wisdom,10),charisma:safeNumber(v.charisma,10),savingThrows:v.savingThrows,skills:v.skills,features:v.features,spells:v.spells,gear:v.gear,isNPC:type==="companion"};
+        const c={...common,player:type==="player"?(isDM()?v.player:member.display_name):"",background:v.background,level:Math.max(1,safeNumber(v.level,1)),experience:Math.max(0,safeNumber(v.experience)),hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),hitDice:v.hitDice,proficiency:safeNumber(v.proficiency),strength:safeNumber(v.strength,10),dexterity:safeNumber(v.dexterity,10),constitution:safeNumber(v.constitution,10),intelligence:safeNumber(v.intelligence,10),wisdom:safeNumber(v.wisdom,10),charisma:safeNumber(v.charisma,10),savingThrows:v.savingThrows,skills:v.skills,features:v.features,spells:v.spells,gear:v.gear,isNPC:type==="companion",resources:Array.isArray(data?.resources)?data.resources:[],hitDiceUsed:Math.max(0,safeNumber(data?.hitDiceUsed))};
         c.hp=Math.min(c.hp,c.maxHp);
         if(!isDM())c.ownerId=member.id;else if(data?.ownerId)c.ownerId=data.ownerId;
         mutate(()=>{
@@ -939,6 +1161,10 @@
   }
 
   $("campaign-search-input").addEventListener("input",searchCampaign);
+  $("campaign-import-file").addEventListener("change",e=>{const file=e.target.files?.[0];if(file)importCampaign(file);e.target.value="";});
+  $("reference-search").addEventListener("keydown",e=>{if(e.key==="Enter"){referencePage=1;loadReference();}});
+  $("reference-edition").addEventListener("change",e=>{referenceEdition=e.target.value;referencePage=1;loadReference();});
+  root.querySelectorAll("[data-reference-category]").forEach(b=>b.addEventListener("click",()=>selectReferenceCategory(b.dataset.referenceCategory)));
   root.querySelectorAll(".hub-nav button").forEach(b=>{
     b.addEventListener("click",()=>go(b.dataset.tab));
   });
@@ -1026,6 +1252,18 @@
   });
 
   const Hub = {configureSlots,
+    openReferenceEntry,
+    applyReferenceEntry,
+    addHomebrew,
+    editHomebrew,
+    removeHomebrew,
+    selectReferenceCategory,
+    changeReferencePage,
+    loadReference,
+    takeRest,
+    editResources,
+    exportCampaign,
+    importCampaign,
     resetCampaign,
     go,
     addCharacter:()=>addCharacter(),
@@ -1106,17 +1344,21 @@
       if (error) throw error;
 
       state={...blank(),...(data.data||{})};
-      ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions"].forEach(k=>{
+      ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions","homebrew"].forEach(k=>{
         if (!Array.isArray(state[k])) state[k]=[];
       });
 
       state.partyGold=safeNumber(state.partyGold);
+      let playerNameSynced=false;
+      if(member?.role==="player")state.characters.forEach(c=>{if(c.ownerId===member.id&&!c.isNPC&&c.player!==member.display_name){c.player=member.display_name;playerNameSynced=true;}});
       ready=true;
       $("hub-loading").style.display="none";
       applyPermissions();
       refresh();
       redrawMapCanvas();
+      loadReference();
       status("✓ Connected to campaign");
+      if(playerNameSynced)persist();
 
       channel=client.channel("campaign-live")
         .on("postgres_changes",{

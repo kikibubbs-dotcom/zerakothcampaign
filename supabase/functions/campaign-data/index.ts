@@ -36,7 +36,7 @@ const asArray = (value: unknown) => Array.isArray(value) ? value : null;
 
 function validatePlayerChange(before: any, after: any, memberId: string) {
   if (!after || typeof after !== "object" || Array.isArray(after)) return "Campaign data is invalid.";
-  const allowed = new Set(["characters", "journal", "events", "sharedInventory", "partyGold", "sessions"]);
+  const allowed = new Set(["characters", "journal", "events", "sharedInventory", "partyGold", "sessions", "homebrew"]);
   const keys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
   for (const key of keys) {
     if (!allowed.has(key) && !same(before?.[key], after?.[key])) {
@@ -50,6 +50,19 @@ function validatePlayerChange(before: any, after: any, memberId: string) {
       if (!initialDefault) return "Only the DM can change shared party loot, party funds or session history.";
     }
   }
+
+  if (after?.homebrew !== undefined && !Array.isArray(after.homebrew)) return "Homebrew collection is invalid.";
+  const oldHomebrew = asArray(before?.homebrew) || [];
+  const newHomebrew = asArray(after?.homebrew) || [];
+  const oldHomebrewById = new Map<string, any>(oldHomebrew.map((item: any) => [String(item?.id), item] as [string, any]));
+  const newHomebrewById = new Map<string, any>(newHomebrew.map((item: any) => [String(item?.id), item] as [string, any]));
+  if (newHomebrewById.size !== newHomebrew.length) return "Duplicate homebrew entries are not allowed.";
+  for (const [id, oldEntry] of oldHomebrewById) {
+    const nextEntry = newHomebrewById.get(id);
+    if (oldEntry.ownerId !== memberId && (!nextEntry || !same(oldEntry, nextEntry))) return "You can only edit or remove your own homebrew entries.";
+    if (nextEntry && nextEntry.ownerId !== oldEntry.ownerId) return "A homebrew entry cannot be transferred to another account.";
+  }
+  for (const [id, entry] of newHomebrewById) if (!oldHomebrewById.has(id) && entry.ownerId !== memberId) return "New homebrew entries must be attributed to your account.";
 
   for (const collection of ["characters", "journal", "events"]) {
     const oldItems = asArray(before?.[collection]);
@@ -144,7 +157,8 @@ Deno.serve(async (req) => {
         notices: [],
         sharedInventory: [],
         partyGold: 0,
-        sessions: []
+        sessions: [],
+        homebrew: []
       };
       const { data: saved, error: saveError } = await admin.schema("private").rpc("save_campaign_data", {
         p_expected: before,

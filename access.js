@@ -132,6 +132,11 @@
       <div class="access-kicker">CAMPAIGN ACCOUNT</div>
       <h2>${escapeText(window.campaignMember.display_name)}</h2>
       <p class="muted">${isDM ? "Dungeon Master access" : "Player access"}</p>
+      <h3>Change display name</h3>
+      <form id="change-campaign-name">
+        <input id="new-campaign-name" maxlength="80" value="${escapeText(window.campaignMember.display_name)}" placeholder="Your display name" required>
+        <button type="submit">SAVE DISPLAY NAME</button>
+      </form>
       <h3>Change access code</h3>
       <form id="change-campaign-code">
         <input id="old-campaign-code" type="password" placeholder="Current access code" required>
@@ -150,6 +155,16 @@
       ` : ""}
       <hr><button id="campaign-sign-out" class="close-account">SIGN OUT</button>
     `;
+    content.querySelector("#change-campaign-name").addEventListener("submit", async e => {
+      e.preventDefault();
+      const message = content.querySelector("#account-message");
+      try {
+        const updated = await accessAction("change-display-name", { display_name: content.querySelector("#new-campaign-name").value });
+        window.campaignMember = updated.member;
+        message.textContent = "Display name updated. Refreshing your campaign...";
+        location.reload();
+      } catch (err) { message.textContent = err.message; }
+    });
     content.querySelector("#change-campaign-code").addEventListener("submit", async e => {
       e.preventDefault();
       const message = content.querySelector("#account-message");
