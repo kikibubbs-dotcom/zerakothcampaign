@@ -1344,6 +1344,8 @@
       });
 
       state.partyGold=safeNumber(state.partyGold);
+      let playerNameSynced=false;
+      if(member?.role==="player")state.characters.forEach(c=>{if(c.ownerId===member.id&&!c.isNPC&&c.player!==member.display_name){c.player=member.display_name;playerNameSynced=true;}});
       ready=true;
       $("hub-loading").style.display="none";
       applyPermissions();
@@ -1351,6 +1353,7 @@
       redrawMapCanvas();
       loadReference();
       status("✓ Connected to campaign");
+      if(playerNameSynced)persist();
 
       channel=client.channel("campaign-live")
         .on("postgres_changes",{
