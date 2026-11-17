@@ -191,6 +191,7 @@
     return `
       <article class="character-card">
         <div class="card-subtitle">${c.isNPC?"NPC COMPANION":"PLAYER CHARACTER"}</div>
+        ${c.portrait?`<img src="${escapeHTML(c.portrait)}" alt="" style="width:76px;height:76px;object-fit:cover;border-radius:8px;margin:8px 0">`:""}
         <h3>${escapeHTML(c.name)}</h3>
         <p>${escapeHTML(c.race)} ${escapeHTML(c.className)} · Level ${safeNumber(c.level,1)}</p>
         ${tracker?`
@@ -306,10 +307,12 @@
     if (calendarView.month<0) {calendarView.month=config.months.length-1;calendarView.year--;}
     if (calendarView.month>=config.months.length) {calendarView.month=0;calendarView.year++;}
     const month=config.months[calendarView.month];
-    $("calendar-current-date").textContent=`${month.name} ${date.day}, ${config.yearLabel||"Year"} ${date.year}`;
+    const currentMonth=config.months[date.month];
+    $("calendar-current-date").textContent=`${currentMonth.name} ${date.day}, ${config.yearLabel||"Year"} ${date.year}`;
     $("calendar-month-heading").textContent=`${month.name} · ${config.yearLabel||"Year"} ${calendarView.year}`;
     $("calendar-advance").style.display=isDM()?"":"none";
-    const totalBeforeYear=(calendarView.year-date.year)*config.months.reduce((sum,m)=>sum+m.days,0);
+    const epochYear=config.epochYear??date.year;
+    const totalBeforeYear=(calendarView.year-epochYear)*config.months.reduce((sum,m)=>sum+m.days,0);
     const totalBeforeMonth=config.months.slice(0,calendarView.month).reduce((sum,m)=>sum+m.days,0);
     const weekdayOffset=((totalBeforeYear+totalBeforeMonth)%config.weekdays.length+config.weekdays.length)%config.weekdays.length;
     $("calendar-grid").style.gridTemplateColumns=`repeat(${config.weekdays.length},minmax(0,1fr))`;
@@ -322,7 +325,7 @@
       return `<div class="calendar-day ${isCurrent?"is-current":""} ${isPast?"is-past":""}"><span class="calendar-day-number">${day}</span>${dayEvents.map(e=>`<div class="calendar-event-chip" title="${escapeHTML(e.title)}">${escapeHTML(e.title)}</div>`).join("")}</div>`;
     }).join("");
     $("calendar-grid").innerHTML=weekdayHeaders+blanks+cells;
-    const upcoming=[...state.events].filter(e=>e.fantasyDate).sort((a,b)=>a.fantasyDate.year-b.fantasyDate.year||a.fantasyDate.month-b.fantasyDate.month||a.fantasyDate.day-b.fantasyDate.day);
+    const upcoming=[...state.events].filter(e=>e.fantasyDate&&(e.fantasyDate.year>date.year||(e.fantasyDate.year===date.year&&(e.fantasyDate.month>date.month||(e.fantasyDate.month===date.month&&e.fantasyDate.day>=date.day))))).sort((a,b)=>a.fantasyDate.year-b.fantasyDate.year||a.fantasyDate.month-b.fantasyDate.month||a.fantasyDate.day-b.fantasyDate.day);
     $("calendar-list").innerHTML=upcoming.length?upcoming.map(e=>{
       const m=config.months[e.fantasyDate.month];
       return `<article class="list-card"><div class="list-meta">${escapeHTML(m?.name||"Unknown month")} ${safeNumber(e.fantasyDate.day)}, ${escapeHTML(config.yearLabel||"Year")} ${safeNumber(e.fantasyDate.year)}</div><h3>${escapeHTML(e.title)}</h3><p>${escapeHTML(e.description)}</p>${(isDM()||e.ownerId===member?.id)?'<div class="card-actions"><button onclick="Hub.editEvent(\''+e.id+'\')">EDIT EVENT</button><button onclick="Hub.removeItem(\'events\',\''+e.id+'\')">DELETE EVENT</button></div>':""}</article>`;
@@ -339,7 +342,7 @@
       return;
     }
     const year=Math.max(0,safeNumber($("calendar-start-year").value,1));
-    mutate(()=>{state.calendarConfig={yearLabel:$("calendar-year-label").value.trim()||"Year",months:names.map((name,i)=>({name,days:lengths[i]})),weekdays,currentDate:{year,month:0,day:1}};calendarView={year,month:0};});
+    mutate(()=>{state.calendarConfig={yearLabel:$("calendar-year-label").value.trim()||"Year",months:names.map((name,i)=>({name,days:lengths[i]})),weekdays,epochYear:year,currentDate:{year,month:0,day:1}};calendarView={year,month:0};});
   }
 
   function editCalendarSetup(){
@@ -430,7 +433,7 @@
   function addCharacter(isNPC=false){
     if(!isDM()&&isNPC)return;const c=defaultsCharacter();
     const fields=[
-      {name:"name",label:"Character name",required:true},{name:"player",label:"Player name",value:isDM()?"":member.display_name},
+      {name:"name",label:"Character name",required:true},{name:"player",label:"Player name",value:isDM()?"":member.display_name},{name:"portrait",label:"Portrait image URL",type:"url",placeholder:"https://…"},
       {name:"race",label:"Race / species"},{name:"className",label:"Class"},
       {name:"level",label:"Level",type:"number",value:1,min:1},{name:"hp",label:"Current HP",type:"number",value:10,min:0},
       {name:"maxHp",label:"Maximum HP",type:"number",value:10,min:1},{name:"ac",label:"Armour Class",type:"number",value:10},
@@ -439,11 +442,11 @@
       {name:"gear",label:"Equipment & inventory",type:"textarea",full:true},{name:"loveInterest",label:"Relationships / love interest",type:"textarea",full:true},
       {name:"backstory",label:"Backstory",type:"textarea",full:true},{name:"notes",label:"Personal notes",type:"textarea",full:true}
     ];
-    openForm("Add character",fields,v=>{if(!v.name.trim())return alert("Please enter a character name.");Object.assign(c,{name:v.name.trim(),player:isDM()?v.player:member.display_name,race:v.race,className:v.className,level:Math.max(1,safeNumber(v.level,1)),hp:Math.max(0,safeNumber(v.hp,10)),maxHp:Math.max(1,safeNumber(v.maxHp,10)),ac:safeNumber(v.ac,10),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed,30),gear:v.gear,loveInterest:v.loveInterest,backstory:v.backstory,notes:v.notes,isNPC:isDM()&&v.isNPC==="yes"});c.hp=Math.min(c.hp,c.maxHp);if(!isDM())c.ownerId=member.id;mutate(()=>state.characters.push(c));});
+    openForm("Add character",fields,v=>{if(!v.name.trim())return alert("Please enter a character name.");Object.assign(c,{name:v.name.trim(),player:isDM()?v.player:member.display_name,portrait:v.portrait,race:v.race,className:v.className,level:Math.max(1,safeNumber(v.level,1)),hp:Math.max(0,safeNumber(v.hp,10)),maxHp:Math.max(1,safeNumber(v.maxHp,10)),ac:safeNumber(v.ac,10),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed,30),gear:v.gear,loveInterest:v.loveInterest,backstory:v.backstory,notes:v.notes,isNPC:isDM()&&v.isNPC==="yes"});c.hp=Math.min(c.hp,c.maxHp);if(!isDM())c.ownerId=member.id;mutate(()=>state.characters.push(c));});
   }  function editCharacter(id){
     const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;
     const fields=[
-      {name:"name",label:"Character name",value:c.name,required:true},{name:"player",label:"Player name",value:c.player||""},
+      {name:"name",label:"Character name",value:c.name,required:true},{name:"player",label:"Player name",value:c.player||""},{name:"portrait",label:"Portrait image URL",type:"url",value:c.portrait||"",placeholder:"https://…"},
       {name:"race",label:"Race / species",value:c.race||""},{name:"className",label:"Class",value:c.className||""},
       {name:"level",label:"Level",type:"number",value:c.level||1,min:1},{name:"hp",label:"Current HP",type:"number",value:c.hp||0,min:0},
       {name:"maxHp",label:"Maximum HP",type:"number",value:c.maxHp||1,min:1},{name:"ac",label:"Armour Class",type:"number",value:c.ac||0},
@@ -452,7 +455,7 @@
       {name:"gear",label:"Equipment & inventory",type:"textarea",value:c.gear||"",full:true},{name:"loveInterest",label:"Relationships / love interest",type:"textarea",value:c.loveInterest||"",full:true},
       {name:"backstory",label:"Backstory",type:"textarea",value:c.backstory||"",full:true},{name:"notes",label:"Personal notes",type:"textarea",value:c.notes||"",full:true}
     ];
-    openForm("Edit character",fields,v=>{const u={name:v.name.trim(),player:v.player,race:v.race,className:v.className,level:Math.max(1,safeNumber(v.level,1)),hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),gear:v.gear,loveInterest:v.loveInterest,backstory:v.backstory,notes:v.notes};u.hp=Math.min(u.hp,u.maxHp);if(isDM())u.isNPC=v.isNPC==="yes";mutate(()=>Object.assign(c,u));});
+    openForm("Edit character",fields,v=>{const u={name:v.name.trim(),player:v.player,portrait:v.portrait,race:v.race,className:v.className,level:Math.max(1,safeNumber(v.level,1)),hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),gear:v.gear,loveInterest:v.loveInterest,backstory:v.backstory,notes:v.notes};u.hp=Math.min(u.hp,u.maxHp);if(isDM())u.isNPC=v.isNPC==="yes";mutate(()=>Object.assign(c,u));});
   }  function changeHP(id,amount) {
     const c = state.characters.find(x=>x.id===id);
     if (!c || !canEditCharacter(c)) return;
