@@ -34,8 +34,7 @@
     <button data-tab="adventure">✥ Adventure</button>
     <button data-tab="characters">▤ Character & NPC Archive</button>
     <button data-tab="inventory">♜ Inventory & Loot</button>
-    <button data-tab="sessions">▣ Session History</button>
-    <button data-tab="search">⌕ Search</button>
+    <button data-tab="reference">✧ Rules Library</button>
     <button data-tab="journal">✎ Journal</button>
     <button data-tab="announcements">✉ Notices</button>
   </nav>
@@ -44,6 +43,8 @@
 
     <!-- DASHBOARD -->
     <section class="hub-page active" id="page-dashboard">
+      <div class="overview-backup-actions dm-only"><button class="small-button" onclick="Hub.exportCampaign()">↓ EXPORT CAMPAIGN</button><label class="small-button import-campaign-label">↑ IMPORT CAMPAIGN<input id="campaign-import-file" type="file" accept="application/json,.json" hidden></label></div>
+      <div class="hub-panel overview-search search-panel"><label for="campaign-search-input">⌕ SEARCH YOUR CAMPAIGN</label><input id="campaign-search-input" type="search" placeholder="Find a character, place, item, quest or clue..." autocomplete="off"><div id="campaign-search-count" class="list-meta">Search your campaign.</div><div id="campaign-search-results" class="search-results"></div></div>
       <div class="welcome-panel">
         <div>
           <div class="hub-kicker">WELCOME, ADVENTURERS</div>
@@ -99,6 +100,7 @@
           <div id="dashboard-events"></div>
         </div>
       </div>
+      <section class="overview-sessions hub-panel"><div class="panel-heading"><div><h3>▣ SESSION HISTORY</h3><p>The story so far, from your latest adventure.</p></div><button class="hub-button dm-only" onclick="Hub.addSession()">+ LOG SESSION</button></div><div id="session-list" class="hub-list"></div></section>
     </section>
 
     <!-- MAP -->
@@ -234,16 +236,17 @@
       <div class="hub-panel"><div class="panel-heading"><div><h3>♙ CHARACTER INVENTORIES</h3><p>Players can manage their own character; the DM can manage everyone.</p></div></div><div id="character-inventory-list" class="inventory-character-grid"></div></div>
     </section>
 
-    <!-- SESSION HISTORY -->
-    <section class="hub-page" id="page-sessions">
-      <div class="page-heading"><div><div class="hub-kicker">THE STORY SO FAR</div><h2>Session History</h2><p>Keep a record of every adventure, discovery and unresolved thread.</p></div><button class="hub-button dm-only" onclick="Hub.addSession()">+ LOG SESSION</button></div>
-      <div id="session-list" class="hub-list"></div>
-    </section>
+    <!-- Session history and search now live on Overview -->
 
-    <!-- CAMPAIGN SEARCH -->
-    <section class="hub-page" id="page-search">
-      <div class="page-heading"><div><div class="hub-kicker">FIND YOUR WAY</div><h2>Campaign Search</h2><p>Search characters, NPCs, quests, journal entries, events, locations, inventory and session notes.</p></div></div>
-      <div class="hub-panel search-panel"><label for="campaign-search-input">SEARCH THE CAMPAIGN</label><input id="campaign-search-input" type="search" placeholder="Try a character, place, item, quest or keyword..." autocomplete="off"><div id="campaign-search-count" class="list-meta">Enter a search term to explore your campaign.</div><div id="campaign-search-results" class="search-results"></div></div>
+    <!-- RULES LIBRARY -->
+    <section class="hub-page" id="page-reference">
+      <div class="page-heading"><div><div class="hub-kicker">THE RULES OF YOUR WORLD</div><h2>Rules & Reference Library</h2><p>Browse open 2014 and 2024 SRD material. Add entries to characters or create your own homebrew.</p></div><button class="hub-button" onclick="Hub.addHomebrew()">+ CREATE HOMEBREW</button></div>
+      <div class="hub-panel reference-library-panel">
+        <div class="reference-toolbar"><input id="reference-search" type="search" placeholder="Search spells, classes, species, equipment..." autocomplete="off"><select id="reference-edition"><option value="both">2014 + 2024</option><option value="2014">2014 rules</option><option value="2024">2024 rules</option></select><button class="small-button" onclick="Hub.loadReference()">SEARCH</button></div>
+        <div class="reference-categories"><button class="active" data-reference-category="spells">Spells</button><button data-reference-category="species">Species</button><button data-reference-category="classes">Classes</button><button data-reference-category="items">Equipment</button><button data-reference-category="creatures">Creatures</button></div>
+        <div id="reference-count" class="list-meta">Loading reference library...</div><div id="reference-results" class="reference-results"></div>
+      </div>
+      <div class="hub-panel reference-attribution"><h3>CONTENT SOURCES</h3><p>Open rules reference content is retrieved from Open5e and limited to applicable SRD 5.1 (2014) and SRD 5.2 (2024) sources. Campaign homebrew is stored separately. Some official D&D material is not included in the SRD.</p><p>This work includes material from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC, available at https://dnd.wizards.com/resources/systems-reference-document. SRD 5.1 is licensed under CC-BY-4.0.</p><p>This work includes material from the System Reference Document 5.2 (“SRD 5.2”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. SRD 5.2 is licensed under CC-BY-4.0.</p><p>Reference data provided via <a href="https://open5e.com/api-docs" target="_blank" rel="noopener">Open5e API</a>.</p></div>
     </section>
 
     <!-- JOURNAL -->
