@@ -78,6 +78,11 @@
       const {error} = await client.functions.invoke("campaign-data", {
         body:{action:"save-state",data:state}
       });
+      if (error?.context?.status === 409) {
+        pending = false;
+        status("Save conflict — reload the page to get the latest campaign.");
+        return;
+      }
       if (error) throw error;
       status("✓ All changes saved");
     } catch (err) {
