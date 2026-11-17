@@ -270,7 +270,7 @@
       const detail=String(entry.desc||entry.description||"").replace(/<[^>]*>/g," ").slice(0,300);
       const meta=referenceCategory==="spells"?"Level "+safeNumber(entry.level)+" · "+(entry.school||"Spell"):source;
       const controls='<button onclick="Hub.openReferenceEntry('+i+')">VIEW DETAILS</button><button onclick="Hub.applyReferenceEntry('+i+')">ADD TO CHARACTER</button>';
-      const own=entry._homebrew&&(isDM()||entry.ownerId===member?.id)?'<button onclick="Hub.editHomebrew(\\''+entry.id+'\\')">EDIT</button><button onclick="Hub.removeHomebrew(\\''+entry.id+'\\')">DELETE</button>':"";
+      const own=entry._homebrew&&(isDM()||entry.ownerId===member?.id)?"<button onclick=\"Hub.editHomebrew(\'"+entry.id+"\')\">EDIT</button><button onclick=\"Hub.removeHomebrew(\'"+entry.id+"\')\">DELETE</button>":"";
       return '<article class="reference-card"><div class="reference-card-top"><span class="tag">'+escapeHTML(edition)+'</span><span class="list-meta">'+escapeHTML(meta)+'</span></div><h3>'+escapeHTML(entry.name||"Untitled")+'</h3><p>'+escapeHTML(detail||"Open the entry to view details.")+'</p><div class="list-meta">'+escapeHTML(source)+'</div><div class="card-actions">'+controls+own+'</div></article>';
     }).join("");
     $("reference-count").textContent=entries.length+" entries shown · Open SRD material and campaign homebrew";
