@@ -138,7 +138,7 @@
 
     const quests = state.quests.filter(q=>q.status==="Active").slice(0,4);
     $("dashboard-quests").innerHTML = quests.length
-      ? quests.map(q=>`<div class="list-card"><h3>${escapeHTML(q.title)}</h3><p>${escapeHTML(q.description)}</p></div>`).join("")
+      ? quests.map(q=>`<div class="list-card quest-card" onclick="Hub.openQuestDetails('${q.id}')"><h3>${escapeHTML(q.title)}</h3><p>${escapeHTML(q.description)}</p></div>`).join("")
       : empty("No active quests.");
 
     const notice = state.notices[0];
@@ -538,6 +538,7 @@
       {type:"section",label:"ADVENTURER DETAILS",group:"player companion"},
       {name:"level",label:"Level",type:"number",value:data.level??1,min:1,group:"player companion"},
       {name:"experience",label:"Experience points",type:"number",value:data.experience??0,min:0,group:"player companion"},
+      {type:"section",label:"COMBAT STATISTICS",group:"player companion npc"},
       {name:"hp",label:"Current hit points",type:"number",value:data.hp??10,min:0,group:"player companion npc"},
       {name:"maxHp",label:"Maximum hit points",type:"number",value:data.maxHp??10,min:1,group:"player companion npc"},
       {name:"ac",label:"Armour class",type:"number",value:data.ac??10,min:0,group:"player companion npc"},
@@ -552,7 +553,7 @@
       {name:"intelligence",label:"Intelligence (INT)",type:"number",value:data.intelligence??10,group:"player companion npc"},
       {name:"wisdom",label:"Wisdom (WIS)",type:"number",value:data.wisdom??10,group:"player companion npc"},
       {name:"charisma",label:"Charisma (CHA)",type:"number",value:data.charisma??10,group:"player companion npc"},
-      {type:"section",label:"PROFICIENCIES & FEATURES",group:"player companion"},
+      {type:"section",label:"PROFICIENCIES & FEATURES",group:"player companion npc"},
       {name:"savingThrows",label:"Saving throw proficiencies",type:"textarea",rows:2,value:data.savingThrows||"",group:"player companion npc",full:true},
       {name:"skills",label:"Skills & proficiencies",type:"textarea",rows:3,value:data.skills||"",group:"player companion npc",full:true},
       {name:"features",label:"Class features, racial traits & feats",type:"textarea",rows:4,value:data.features||"",group:"player companion npc",full:true},
