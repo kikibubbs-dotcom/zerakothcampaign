@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
       const code = randomCode();
       const id = crypto.randomUUID();
       const email = memberEmail(id);
-      const { data: created, error: createError } = await admin.auth.admin.createUser({ id, email, email_confirm: true, password: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, "0")).join("") });
+      const { data: created, error: createError } = await admin.auth.admin.createUser({ email, email_confirm: true, password: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, "0")).join("") });
       if (createError) throw createError;
       const { error } = await admin.schema("private").from("campaign_members").insert({ id, display_name: displayName, role: "player", auth_user_id: created.user.id, code_hash: await hashCode(code) });
       if (error) { await admin.auth.admin.deleteUser(created.user.id); throw error; }
