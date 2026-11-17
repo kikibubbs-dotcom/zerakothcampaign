@@ -413,13 +413,7 @@
     if(!isDM()||!state.calendarConfig)return;const c=state.calendarConfig,d=c.currentDate,month=c.months[d.month];
     if(!Array.isArray(state.elapsedDays))state.elapsedDays=[];const passed=`${d.year}-${d.month}-${d.day}`;if(!state.elapsedDays.includes(passed))state.elapsedDays.push(passed);
     if(d.day<month.days)d.day++;else if(d.month<c.months.length-1){d.month++;d.day=1;}else{d.month=0;d.year++;d.day=1;}
-    calendarView={year:d.year,month:d.month};refresh();persist();showCalendarStamp();
-  }
-  function showCalendarStamp(){
-    const old=root.querySelector(".calendar-stamp-layer");if(old)old.remove();
-    const layer=document.createElement("div");layer.className="calendar-stamp-layer";
-    layer.innerHTML='<div class="calendar-stamp"><strong>DAY ADVANCED</strong><span class="stamp-star">✦</span><strong>✧ CHRONICLE ✧</strong></div>';
-    root.appendChild(layer);setTimeout(()=>layer.remove(),1050);
+    calendarView={year:d.year,month:d.month};refresh();persist();
   }
   function renderNotices(){
     const unread=state.notices.filter(n=>n.createdAt&&!(n.readBy||[]).includes(member?.id)).length,bar=$("notice-alert");
@@ -903,11 +897,8 @@
         },payload=>{
           if (pending || saving) return;
           if (payload.new && payload.new.data) {
-            const previousCalendar=state.calendarConfig,nextCalendar=payload.new.data.calendarConfig;
-            const dayAdvanced=!!(previousCalendar&&nextCalendar&&calendarOrdinal(nextCalendar.currentDate,nextCalendar)-calendarOrdinal(previousCalendar.currentDate,previousCalendar)===1);
             state={...blank(),...payload.new.data};
             refresh();
-            if(dayAdvanced)showCalendarStamp();
             status("✓ Live update received");
           }
         })
