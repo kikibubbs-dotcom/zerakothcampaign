@@ -61,6 +61,9 @@ function validatePlayerChange(before: any, after: any, memberId: string) {
       if (isOwner && newItem && newItem.ownerId !== memberId) {
         return "An entry cannot be transferred to another account.";
       }
+      if (collection === "characters" && newItem && newItem.isNPC) {
+        return "Player-owned characters cannot be changed into NPC companions.";
+      }
     }
     for (const [id, newItem] of newById) {
       if (!oldById.has(id)) {
