@@ -48,8 +48,8 @@ function validatePlayerChange(before: any, after: any, memberId: string) {
     const oldItems = asArray(before?.[collection]);
     const newItems = asArray(after?.[collection]);
     if (!oldItems || !newItems) return "Campaign collection is invalid: " + collection + ".";
-    const oldById = new Map(oldItems.map((item: any) => [String(item?.id), item]));
-    const newById = new Map(newItems.map((item: any) => [String(item?.id), item]));
+    const oldById = new Map<string, any>(oldItems.map((item: any) => [String(item?.id), item] as [string, any]));
+    const newById = new Map<string, any>(newItems.map((item: any) => [String(item?.id), item] as [string, any]));
     if (newById.size !== newItems.length) return "Duplicate entries are not allowed.";
 
     for (const [id, oldItem] of oldById) {
