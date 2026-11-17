@@ -309,6 +309,11 @@
   }
   function applyReferenceEntry(index){
     const entry=referenceEntries()[index];if(!entry)return;
+    if(referenceCategory==="creatures"){
+      if(!isDM())return alert("Only the DM can add creatures to the NPC archive.");
+      mutate(()=>state.npcs.unshift({id:makeId(),name:entry.name||"Unnamed creature",role:"Creature",description:entry.desc||"",challengeRating:entry.cr||entry.challenge_rating||"",hp:safeNumber(entry.hp),maxHp:Math.max(1,safeNumber(entry.hp,1)),ac:safeNumber(entry.ac),npcActions:Array.isArray(entry.actions)?entry.actions.map(x=>x.name+": "+x.desc).join("\n"):"",source:entry.document?.display_name||"Open5e"}));
+      alert(entry.name+" added to the NPC archive.");return;
+    }
     const owned=state.characters.filter(c=>canEditCharacter(c));
     if(!owned.length)return alert("Create a character first, or ask the DM to add one to the archive.");
     openForm("Add "+entry.name+" to a character",[
