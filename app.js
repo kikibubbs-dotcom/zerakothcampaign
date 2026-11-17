@@ -283,6 +283,7 @@
       {name:"source",label:"Source",value:entry.document?.display_name||entry.source||"Open5e / campaign homebrew"},
       {name:"edition",label:"Rules version",value:entry._homebrew?entry.edition:sourceEdition(entry)}
     ],()=>{});
+    const saveButton=$("hub-modal-form")?.querySelector("button[type=submit]");if(saveButton)saveButton.textContent="CLOSE";
   }
   function applyReferenceEntry(index){
     const entry=referenceEntries()[index];if(!entry)return;
@@ -353,7 +354,7 @@
     count.textContent=entries.length+" result"+(entries.length===1?"":"s")+" found";
     results.innerHTML=entries.length?entries.map(x=>'<button class="search-result" onclick="Hub.openSearchResult(\''+x.page+'\')"><span class="tag">'+escapeHTML(x.type)+'</span><strong>'+escapeHTML(x.title||"Untitled")+'</strong><span>'+escapeHTML((x.body||"").slice(0,180))+'</span></button>').join(""):empty("No matching campaign records found.");
   }
-  function openSearchResult(page){go(page);}
+  function openSearchResult(page){go(page==="sessions"?"dashboard":page);}
 
   function renderDashboard() {
     $("stat-party").textContent = state.characters.filter(c=>!c.isNPC).length;
@@ -956,7 +957,7 @@
           else state.npcs.unshift(npc);
         });
       }else{
-        const c={...common,player:type==="player"?(isDM()?v.player:member.display_name):"",background:v.background,level:Math.max(1,safeNumber(v.level,1)),experience:Math.max(0,safeNumber(v.experience)),hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),hitDice:v.hitDice,proficiency:safeNumber(v.proficiency),strength:safeNumber(v.strength,10),dexterity:safeNumber(v.dexterity,10),constitution:safeNumber(v.constitution,10),intelligence:safeNumber(v.intelligence,10),wisdom:safeNumber(v.wisdom,10),charisma:safeNumber(v.charisma,10),savingThrows:v.savingThrows,skills:v.skills,features:v.features,spells:v.spells,gear:v.gear,isNPC:type==="companion"};
+        const c={...common,player:type==="player"?(isDM()?v.player:member.display_name):"",background:v.background,level:Math.max(1,safeNumber(v.level,1)),experience:Math.max(0,safeNumber(v.experience)),hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),hitDice:v.hitDice,proficiency:safeNumber(v.proficiency),strength:safeNumber(v.strength,10),dexterity:safeNumber(v.dexterity,10),constitution:safeNumber(v.constitution,10),intelligence:safeNumber(v.intelligence,10),wisdom:safeNumber(v.wisdom,10),charisma:safeNumber(v.charisma,10),savingThrows:v.savingThrows,skills:v.skills,features:v.features,spells:v.spells,gear:v.gear,isNPC:type==="companion",resources:Array.isArray(data?.resources)?data.resources:[],hitDiceUsed:Math.max(0,safeNumber(data?.hitDiceUsed))};
         c.hp=Math.min(c.hp,c.maxHp);
         if(!isDM())c.ownerId=member.id;else if(data?.ownerId)c.ownerId=data.ownerId;
         mutate(()=>{
