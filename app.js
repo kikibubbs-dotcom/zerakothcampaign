@@ -903,8 +903,11 @@
         },payload=>{
           if (pending || saving) return;
           if (payload.new && payload.new.data) {
+            const previousCalendar=state.calendarConfig,nextCalendar=payload.new.data.calendarConfig;
+            const dayAdvanced=!!(previousCalendar&&nextCalendar&&calendarOrdinal(nextCalendar.currentDate,nextCalendar)-calendarOrdinal(previousCalendar.currentDate,previousCalendar)===1);
             state={...blank(),...payload.new.data};
             refresh();
+            if(dayAdvanced)showCalendarStamp();
             status("✓ Live update received");
           }
         })
