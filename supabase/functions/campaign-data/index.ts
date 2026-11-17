@@ -99,6 +99,21 @@ Deno.serve(async (req) => {
       return json({ data: data.data, updated_at: data.updated_at, member });
     }
 
+    if (action === "create-map-upload") {
+      if (member.role !== "dm") return json({ error: "Only the Dungeon Master can upload or replace the world map." }, 403);
+      const filename = String(body.filename || "map").replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100);
+      const contentType = String(body.content_type || "").toLowerCase();
+      if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(contentType)) {
+        return json({ error: "Use a PNG, JPG, WEBP, or GIF map image." }, 400);
+      }
+      const extension = filename.includes(".") ? filename.split(".").pop()!.toLowerCase() : "png";
+      const path = "maps/" + crypto.randomUUID() + "." + extension;
+      const { data: signed, error: signError } = await admin.storage.from("campaign-maps").createSignedUploadUrl(path);
+      if (signError) throw signError;
+      const { data: publicData } = admin.storage.from("campaign-maps").getPublicUrl(path);
+      return json({ path, token: signed.token, publicUrl: publicData.publicUrl });
+    }
+
     if (action === "save-state") {
       const next = body.data;
       if (!next || typeof next !== "object" || Array.isArray(next)) return json({ error: "Campaign data is invalid." }, 400);
