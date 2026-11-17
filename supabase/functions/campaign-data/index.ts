@@ -146,17 +146,16 @@ Deno.serve(async (req) => {
       let mapFilesRemoved = 0;
       let storageCleanupWarning = false;
       try {
-        for (let offset = 0; ; offset += 1000) {
+        for (;;) {
           const { data: files, error: listError } = await admin.storage.from("campaign-maps")
-            .list("maps", { limit: 1000, offset });
+            .list("maps", { limit: 1000, offset: 0 });
           if (listError) throw listError;
           const paths = (files || []).filter((file: any) => file.id && file.name)
             .map((file: any) => "maps/" + file.name);
-          if (paths.length) {
-            const { data: removed, error: removeError } = await admin.storage.from("campaign-maps").remove(paths);
-            if (removeError) throw removeError;
-            mapFilesRemoved += (removed || []).length;
-          }
+          if (!paths.length) break;
+          const { data: removed, error: removeError } = await admin.storage.from("campaign-maps").remove(paths);
+          if (removeError) throw removeError;
+          mapFilesRemoved += (removed || []).length;
           if (!files || files.length < 1000) break;
         }
       } catch (storageError) {
