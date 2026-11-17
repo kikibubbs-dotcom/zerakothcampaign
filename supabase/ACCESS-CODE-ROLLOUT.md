@@ -15,7 +15,8 @@ This folder contains the access-code identity system and the authenticated campa
 - `campaign-data` authenticates each request and enforces the role/ownership rules before loading or saving campaign data.
 - `private.save_campaign_data` performs a compare-and-swap update so simultaneous saves cannot silently overwrite one another.
 - The frontend access screen, account panel, DM player controls, and initial role-based interface are on the development branch.
-- Player-owned character, journal, and event records use an `ownerId` matching the stable campaign member ID.
+- Player characters use an `ownerId` matching the stable member ID; players can only edit their own character.
+- Journal entries and calendar events record their creator in `ownerId`, while all campaign players can collaboratively add, edit, and delete shared entries/events.
 
 ## Important current-state warning
 The live/main branch still uses direct browser writes to the shared `campaign_hub` row and the existing Storage bucket. The old anonymous write permissions have deliberately NOT been removed yet. The replacement frontend and server functions must be deployed and tested first; only then should the lockdown migration remove direct anonymous writes and restrict Storage uploads. Do not invite players or treat the system as production-secure until that final lockdown is applied.
