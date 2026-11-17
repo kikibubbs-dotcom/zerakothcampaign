@@ -222,3 +222,58 @@
   #dnd-hub .map-frame {min-height:260px;}
   #dnd-hub .map-placeholder {min-height:260px;}
 }
+
+
+/* Custom fantasy calendar */
+#dnd-hub .calendar-setup-fields {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:20px 0;}
+#dnd-hub .calendar-setup-fields label {display:flex;flex-direction:column;gap:7px;color:var(--gold);font:11px Arial,sans-serif;}
+#dnd-hub .calendar-setup-fields label span {color:var(--muted);font-size:10px;}
+#dnd-hub .calendar-setup-fields input,#dnd-hub .calendar-setup-fields textarea {width:100%;font:12px Arial,sans-serif;}
+#dnd-hub .calendar-controls {display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;}
+#dnd-hub .calendar-controls h3 {font-size:18px;margin:0;}
+#dnd-hub .calendar-actions {display:flex;gap:8px;flex-wrap:wrap;}
+#dnd-hub .calendar-heading h3 {font-size:18px;margin:0 0 15px;}
+#dnd-hub .fantasy-calendar-grid {display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;}
+#dnd-hub .calendar-weekday {text-align:center;color:var(--gold);font:10px Arial,sans-serif;padding:8px 2px;}
+#dnd-hub .calendar-day,#dnd-hub .calendar-blank {min-height:78px;background:#191d29;border:1px solid var(--line);border-radius:5px;padding:7px;min-width:0;}
+#dnd-hub .calendar-day.is-current {border:2px solid var(--gold);background:#343348;}
+#dnd-hub .calendar-day-number {font:bold 12px Arial,sans-serif;color:var(--text);}
+#dnd-hub .calendar-event-chip {overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#49445a;color:#f0d49c;border-radius:3px;padding:3px 4px;margin-top:5px;font:9px Arial,sans-serif;}
+@media(max-width:650px) {
+ #dnd-hub .calendar-setup-fields {grid-template-columns:1fr;}
+ #dnd-hub .calendar-day,#dnd-hub .calendar-blank {min-height:54px;padding:4px;}
+ #dnd-hub .calendar-weekday {font-size:8px;overflow-wrap:anywhere;}
+ #dnd-hub .calendar-event-chip {font-size:8px;}
+}
+
+
+/* Shared modal forms, campaign notifications and map drawing */
+#dnd-hub .notice-alert{padding:11px 18px;background:#3b3540;border-bottom:1px solid var(--gold2);color:#f2dcae;font:12px Arial,sans-serif;cursor:pointer;text-align:center}
+#dnd-hub .notice-alert:hover{background:#494052}
+#dnd-hub .hub-modal{position:fixed;inset:0;z-index:99999;background:#090b12d9;display:flex;align-items:center;justify-content:center;padding:18px}
+#dnd-hub .hub-modal[hidden]{display:none}
+#dnd-hub .modal-card{width:min(760px,100%);max-height:90vh;overflow:auto;background:#222633;border:1px solid var(--gold2);border-radius:10px;padding:22px;box-shadow:0 18px 70px #000b}
+#dnd-hub .modal-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+#dnd-hub .modal-top h3{font-size:19px;margin:0}
+#dnd-hub .modal-close{background:transparent;border:1px solid var(--line);color:var(--text);border-radius:5px;padding:6px 10px}
+#dnd-hub .modal-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+#dnd-hub .modal-field{display:flex;flex-direction:column;gap:6px;color:var(--gold);font:11px Arial,sans-serif;min-width:0}
+#dnd-hub .modal-field.full{grid-column:1/-1}
+#dnd-hub .modal-field input,#dnd-hub .modal-field textarea,#dnd-hub .modal-field select{width:100%;font:13px Arial,sans-serif}
+#dnd-hub .modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+#dnd-hub .journal-editor-canvas{display:block;width:100%;height:190px;background:#f4f0e6;border:1px solid var(--gold2);border-radius:5px;touch-action:none}
+#dnd-hub .map-drawing-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+#dnd-hub .map-drawing-canvas.is-drawing{pointer-events:auto;cursor:crosshair;touch-action:none}
+#dnd-hub .map-frame.is-drawing #map-markers{pointer-events:none}
+#dnd-hub .map-frame.is-drawing .map-marker{pointer-events:none}
+#dnd-hub .map-legend .legend-item{background:#191d29;border:1px solid var(--line);padding:6px 9px;border-radius:5px}
+#dnd-hub .calendar-day.is-past{background:#26332e;border-color:#587864}
+#dnd-hub .calendar-day.is-past .calendar-day-number:after{content:" ✓";color:#79bd91}
+@media(max-width:650px){#dnd-hub .modal-fields{grid-template-columns:1fr}#dnd-hub .modal-field.full{grid-column:auto}#dnd-hub .hub-modal{padding:8px}#dnd-hub .modal-card{padding:15px;max-height:94vh}}
+
+#dnd-hub .modal-field textarea{min-height:145px;resize:vertical}
+#dnd-hub .modal-field textarea[name="body"]{min-height:250px}
+#dnd-hub .journal-editor-canvas{min-height:190px}
+#dnd-hub .notice-card{cursor:pointer}
+#dnd-hub .calendar-day-check{float:right;border:1px solid var(--line);background:#303747;color:var(--gold);border-radius:4px;width:22px;height:22px;padding:0;font:12px Arial,sans-serif}
+#dnd-hub .calendar-day-check:hover{border-color:var(--gold);background:#414356}

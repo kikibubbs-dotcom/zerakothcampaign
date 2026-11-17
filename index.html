@@ -26,15 +26,14 @@
     </div>
   </header>
 
+  <div id="notice-alert" class="notice-alert" hidden onclick="Hub.go('announcements')"></div>
+
   <nav class="hub-nav">
     <button class="active" data-tab="dashboard">⌂ Overview</button>
-    <button data-tab="map">✥ World Map</button>
-    <button data-tab="party">♙ Party</button>
+    <button data-tab="adventure">✥ Adventure</button>
     <button data-tab="characters">▤ Characters</button>
-    <button data-tab="quests">⚑ Quests</button>
     <button data-tab="npcs">♟ NPCs</button>
     <button data-tab="journal">✎ Journal</button>
-    <button data-tab="calendar">▦ Calendar</button>
     <button data-tab="announcements">✉ Notices</button>
   </nav>
 
@@ -74,14 +73,14 @@
         <div class="hub-panel">
           <div class="panel-heading">
             <h3>✦ PARTY STATUS</h3>
-            <button class="small-button" onclick="Hub.go('party')">VIEW ALL →</button>
+            <button class="small-button" onclick="Hub.go('adventure')">VIEW ALL →</button>
           </div>
           <div id="dashboard-party"></div>
         </div>
         <div class="hub-panel">
           <div class="panel-heading">
             <h3>⚑ ACTIVE QUESTS</h3>
-            <button class="small-button" onclick="Hub.go('quests')">VIEW ALL →</button>
+            <button class="small-button" onclick="Hub.go('adventure')">VIEW ALL →</button>
           </div>
           <div id="dashboard-quests"></div>
         </div>
@@ -129,6 +128,9 @@
           <option value="#E9E5DA">White marker</option>
         </select>
         <span class="map-tip">Selected colour is used for new markers.</span>
+        <button class="small-button" id="map-draw-toggle" onclick="Hub.toggleMapDrawing()">DRAW ON MAP</button>
+        <button class="small-button" onclick="Hub.editMapLegend()">EDIT LEGEND</button>
+        <button class="small-button" onclick="Hub.removeMap()">REMOVE MAP</button>
         <button class="small-button" onclick="Hub.clearMarkers()">CLEAR MARKERS</button>
       </div>
 
@@ -140,6 +142,7 @@
           <p>Upload a map to get started.</p>
         </div>
         <div id="map-markers"></div>
+        <canvas id="map-drawing-canvas" class="map-drawing-canvas" aria-label="Map drawing layer"></canvas>
       </div>
 
       <div class="hub-panel">
@@ -223,7 +226,31 @@
         </div>
         <button class="hub-button" onclick="Hub.addEvent()">+ New event</button>
       </div>
-      <div id="calendar-list" class="hub-list"></div>
+      <div id="calendar-setup" class="hub-panel"></div>
+      <div id="calendar-workspace" hidden>
+        <div class="calendar-controls hub-panel">
+          <div>
+            <div class="hub-kicker">CURRENT CAMPAIGN DATE</div>
+            <h3 id="calendar-current-date">Not configured</h3>
+          </div>
+          <div class="calendar-actions">
+            <button class="small-button" onclick="Hub.calendarMonth(-1)">← PREVIOUS MONTH</button>
+            <button class="small-button" onclick="Hub.calendarToday()">CURRENT DATE</button>
+            <button class="small-button" onclick="Hub.calendarMonth(1)">NEXT MONTH →</button>
+            <button class="hub-button" id="calendar-advance" onclick="Hub.advanceCalendarDay()">ADVANCE ONE DAY</button>
+          </div>
+        </div>
+        <div class="hub-panel">
+          <div class="calendar-heading">
+            <h3 id="calendar-month-heading">Month</h3>
+          </div>
+          <div id="calendar-grid" class="fantasy-calendar-grid"></div>
+        </div>
+        <div class="hub-panel">
+          <div class="panel-heading"><h3>UPCOMING EVENTS</h3></div>
+          <div id="calendar-list" class="hub-list"></div>
+        </div>
+      </div>
     </section>
 
     <!-- ANNOUNCEMENTS -->
@@ -239,7 +266,9 @@
       <div id="notice-list" class="hub-list"></div>
     </section>
 
-    <footer class="hub-footer">
+    <div id="hub-modal" class="hub-modal" hidden></div>
+
+  <footer class="hub-footer">
       <span>✦ THE ADVENTURERS' CHRONICLE ✦</span>
       <span id="save-status">Connecting to campaign...</span>
     </footer>

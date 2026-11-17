@@ -17,11 +17,15 @@
     title:"THE CAMPAIGN",
     mapUrl:"",
     markers:[],
+    mapDrawings:[],
+    markerLegend:{},
     characters:[],
     quests:[],
     npcs:[],
     journal:[],
     events:[],
+    calendarConfig:null,
+    elapsedDays:[],
     notices:[]
   });
 
@@ -35,6 +39,9 @@
   let ready = false;
   let dragging = null;
   let lastRemote = 0;
+  let calendarView = null;
+  let mapDrawing = false;
+  let journalCanvasDirty = false;
 
   const empty = text => `<div class="empty-state">${escapeHTML(text)}</div>`;
   const isDM = () => member?.role === "dm";
@@ -162,9 +169,11 @@
 
     const colours = {};
     state.markers.forEach(m=>colours[m.colour]=true);
-    $("map-legend").innerHTML = Object.keys(colours).map(c=>
-      `<span class="legend-item"><i class="legend-dot" style="background:${escapeHTML(c)}"></i>${escapeHTML(c)}</span>`
+    const defaults={"#E66D69":"Red marker","#6D9DD5":"Blue marker","#76B68A":"Green marker","#D6AD5D":"Gold marker","#B28BD6":"Purple marker","#E69AC0":"Pink marker","#E9E5DA":"White marker"};
+    $("map-legend").innerHTML = [...new Set([...Object.keys(defaults),...Object.keys(colours)])].map(c=>
+      `<span class="legend-item"><i class="legend-dot" style="background:${escapeHTML(c)}"></i>${escapeHTML(state.markerLegend?.[c]||defaults[c]||c)}</span>`
     ).join("") || "No markers placed yet.";
+    redrawMapCanvas();
   }
 
   function renderParty() {
@@ -182,6 +191,7 @@
     return `
       <article class="character-card">
         <div class="card-subtitle">${c.isNPC?"NPC COMPANION":"PLAYER CHARACTER"}</div>
+        ${c.portrait?`<img src="${escapeHTML(c.portrait)}" alt="" style="width:76px;height:76px;object-fit:cover;border-radius:8px;margin:8px 0">`:""}
         <h3>${escapeHTML(c.name)}</h3>
         <p>${escapeHTML(c.race)} ${escapeHTML(c.className)} · Level ${safeNumber(c.level,1)}</p>
         ${tracker?`
@@ -235,6 +245,7 @@
           <h3>${escapeHTML(q.title)}</h3>
           <p>${escapeHTML(q.description)}</p>
           ${isDM()?`<div class="card-actions">
+            <button onclick="Hub.editQuest('${q.id}')">EDIT QUEST</button>
             <button onclick="Hub.cycleQuest('${q.id}')">CHANGE STATUS</button>
             <button onclick="Hub.removeItem('quests','${q.id}')">DELETE</button>
           </div>`:""}
@@ -263,89 +274,188 @@
           <div class="list-meta">${escapeHTML(j.date)} · ${escapeHTML(j.author||"Campaign")}</div>
           <h3>${escapeHTML(j.title)}</h3>
           <p>${escapeHTML(j.body)}</p>
+          ${j.imageData?`<img class="journal-attachment" src="${j.imageData}" alt="Journal drawing or attached image" style="max-width:100%;max-height:420px;border-radius:6px;margin-top:12px">`:""}
           ${(isDM() || j.ownerId===member?.id)?`${(isDM() || member?.role==="player")?`<div class="card-actions"><button onclick="Hub.editJournal('${j.id}')">EDIT ENTRY</button><button onclick="Hub.removeItem('journal','${j.id}')">DELETE ENTRY</button></div>`:""}`:""}
         </article>`).join("")
       : empty("Your campaign story starts here.");
   }
 
   function renderCalendar() {
-    const events = [...state.events].sort((a,b)=>(a.date||"").localeCompare(b.date||""));
-    $("calendar-list").innerHTML = events.length
-      ? events.map(e=>`
-        <article class="list-card">
-          <div class="list-meta">${escapeHTML(e.date)}</div>
-          <h3>${escapeHTML(e.title)}</h3>
-          <p>${escapeHTML(e.description)}</p>
-          ${(isDM() || e.ownerId===member?.id)?`${(isDM() || member?.role==="player")?`<div class="card-actions"><button onclick="Hub.editEvent('${e.id}')">EDIT EVENT</button><button onclick="Hub.removeItem('events','${e.id}')">DELETE EVENT</button></div>`:""}`:""}
-        </article>`).join("")
-      : empty("No events scheduled.");
+    const setup=$("calendar-setup"), workspace=$("calendar-workspace");
+    const config=state.calendarConfig;
+    if (!config || !Array.isArray(config.months) || !config.months.length || !Array.isArray(config.weekdays) || !config.weekdays.length) {
+      workspace.hidden=true;
+      setup.innerHTML=isDM()?`
+        <div class="hub-kicker">CREATE YOUR WORLD'S CALENDAR</div>
+        <h3>Start with a blank calendar</h3>
+        <p>Choose your own months, the length of each month, and the names of your weekdays. Nothing is pre-filled.</p>
+        <div class="calendar-setup-fields">
+          <label>Year label<input id="calendar-year-label" placeholder="e.g. Year"></label>
+          <label>Starting year<input id="calendar-start-year" type="number" value="1" min="0"></label>
+          <label>Month names <span>Separate each month with a comma</span><textarea id="calendar-month-names" rows="2" placeholder="e.g. Frostfall, Thawtide, Bloomrise"></textarea></label>
+          <label>Days in each month <span>Enter one number per month, in the same order</span><input id="calendar-month-lengths" placeholder="e.g. 30, 28, 31"></label>
+          <label>Weekday names <span>Separate each weekday with a comma</span><textarea id="calendar-weekday-names" rows="2" placeholder="e.g. Moonday, Starsday, Emberday"></textarea></label>
+        </div>
+        <button class="hub-button" onclick="Hub.saveCalendarSetup()">CREATE CALENDAR</button>
+      `:empty("The DM hasn't created the campaign calendar yet.");
+      return;
+    }
+    setup.innerHTML=isDM()?'<button class="small-button" onclick="Hub.editCalendarSetup()">EDIT CALENDAR SETTINGS</button>':"";
+    workspace.hidden=false;
+    const date=config.currentDate||{year:1,month:0,day:1};
+    if (!calendarView) calendarView={year:date.year,month:date.month};
+    if (calendarView.month<0) {calendarView.month=config.months.length-1;calendarView.year--;}
+    if (calendarView.month>=config.months.length) {calendarView.month=0;calendarView.year++;}
+    const month=config.months[calendarView.month];
+    const currentMonth=config.months[date.month];
+    $("calendar-current-date").textContent=`${currentMonth.name} ${date.day}, ${config.yearLabel||"Year"} ${date.year}`;
+    $("calendar-month-heading").textContent=`${month.name} · ${config.yearLabel||"Year"} ${calendarView.year}`;
+    $("calendar-advance").style.display=isDM()?"":"none";
+    const epochYear=config.epochYear??date.year;
+    const totalBeforeYear=(calendarView.year-epochYear)*config.months.reduce((sum,m)=>sum+m.days,0);
+    const totalBeforeMonth=config.months.slice(0,calendarView.month).reduce((sum,m)=>sum+m.days,0);
+    const weekdayOffset=((totalBeforeYear+totalBeforeMonth)%config.weekdays.length+config.weekdays.length)%config.weekdays.length;
+    $("calendar-grid").style.gridTemplateColumns=`repeat(${config.weekdays.length},minmax(0,1fr))`;
+    const weekdayHeaders=config.weekdays.map(day=>`<div class="calendar-weekday">${escapeHTML(day)}</div>`).join("");
+    const blanks=Array.from({length:weekdayOffset},()=>'<div class="calendar-blank"></div>').join("");
+    const cells=Array.from({length:month.days},(_,i)=>{
+      const day=i+1, isCurrent=calendarView.year===date.year&&calendarView.month===date.month&&day===date.day;
+      const isPast=(state.elapsedDays||[]).includes(`${calendarView.year}-${calendarView.month}-${day}`);
+      const dayEvents=state.events.filter(e=>e.fantasyDate&&e.fantasyDate.year===calendarView.year&&e.fantasyDate.month===calendarView.month&&e.fantasyDate.day===day);
+      return `<div class="calendar-day ${isCurrent?"is-current":""} ${isPast?"is-past":""}"><span class="calendar-day-number">${day}</span>${isDM()?`<button class="calendar-day-check" title="Toggle elapsed day" onclick="Hub.toggleCalendarDay(${calendarView.year},${calendarView.month},${day})">${isPast?"✓":"○"}</button>`:""}${dayEvents.map(e=>`<div class="calendar-event-chip" title="${escapeHTML(e.title)}">${escapeHTML(e.title)}</div>`).join("")}</div>`;
+    }).join("");
+    $("calendar-grid").innerHTML=weekdayHeaders+blanks+cells;
+    const upcoming=[...state.events].filter(e=>e.fantasyDate&&(e.fantasyDate.year>date.year||(e.fantasyDate.year===date.year&&(e.fantasyDate.month>date.month||(e.fantasyDate.month===date.month&&e.fantasyDate.day>=date.day))))).sort((a,b)=>a.fantasyDate.year-b.fantasyDate.year||a.fantasyDate.month-b.fantasyDate.month||a.fantasyDate.day-b.fantasyDate.day);
+    $("calendar-list").innerHTML=upcoming.length?upcoming.map(e=>{
+      const m=config.months[e.fantasyDate.month];
+      return `<article class="list-card"><div class="list-meta">${escapeHTML(m?.name||"Unknown month")} ${safeNumber(e.fantasyDate.day)}, ${escapeHTML(config.yearLabel||"Year")} ${safeNumber(e.fantasyDate.year)}</div><h3>${escapeHTML(e.title)}</h3><p>${escapeHTML(e.description)}</p>${(isDM()||e.ownerId===member?.id)?'<div class="card-actions"><button onclick="Hub.editEvent(\''+e.id+'\')">EDIT EVENT</button><button onclick="Hub.removeItem(\'events\',\''+e.id+'\')">DELETE EVENT</button></div>':""}</article>`;
+    }).join(""):empty("No events have been added to the calendar yet.");
   }
 
-  function renderNotices() {
-    $("notice-list").innerHTML = state.notices.length
-      ? state.notices.map(n=>`
-        <article class="list-card">
-          <div class="list-meta">${escapeHTML(n.date)}</div>
-          <h3>${escapeHTML(n.title)}</h3>
-          <p>${escapeHTML(n.body)}</p>
-          ${isDM()?`<div class="card-actions"><button onclick="Hub.removeItem('notices','${n.id}')">DELETE NOTICE</button></div>`:""}
-        </article>`).join("")
-      : empty("The notice board is empty.");
+  function saveCalendarSetup() {
+    if (!isDM()) return;
+    const names=$("calendar-month-names").value.split(",").map(x=>x.trim()).filter(Boolean);
+    const lengths=$("calendar-month-lengths").value.split(",").map(x=>Number(x.trim()));
+    const weekdays=$("calendar-weekday-names").value.split(",").map(x=>x.trim()).filter(Boolean);
+    if (!names.length || names.length!==lengths.length || lengths.some(n=>!Number.isInteger(n)||n<1||n>1000) || !weekdays.length) {
+      alert("Please provide a month name and a valid number of days for every month, plus at least one weekday.");
+      return;
+    }
+    const year=Math.max(0,safeNumber($("calendar-start-year").value,1));
+    mutate(()=>{state.calendarConfig={yearLabel:$("calendar-year-label").value.trim()||"Year",months:names.map((name,i)=>({name,days:lengths[i]})),weekdays,epochYear:year,currentDate:{year,month:0,day:1}};calendarView={year,month:0};});
   }
 
-  function mutate(fn) {
+  function editCalendarSetup(){
+    if(!isDM()||!state.calendarConfig)return;const c=state.calendarConfig;
+    openForm("Edit fantasy calendar",[
+      {name:"yearLabel",label:"Year label",value:c.yearLabel||"Year"},
+      {name:"monthNames",label:"Month names (comma-separated)",value:c.months.map(m=>m.name).join(", "),full:true},
+      {name:"monthLengths",label:"Days per month (comma-separated)",value:c.months.map(m=>m.days).join(", "),full:true},
+      {name:"weekdays",label:"Weekday names (comma-separated)",value:c.weekdays.join(", "),full:true}
+    ],v=>{
+      const names=v.monthNames.split(",").map(x=>x.trim()).filter(Boolean),days=v.monthLengths.split(",").map(x=>Number(x.trim())),weekdays=v.weekdays.split(",").map(x=>x.trim()).filter(Boolean);
+      if(!names.length||names.length!==days.length||days.some(n=>!Number.isInteger(n)||n<1||n>1000)||!weekdays.length)return alert("Please check your month names, month lengths and weekday names. No changes were made.");
+      mutate(()=>{c.months=names.map((name,i)=>({name,days:days[i]}));c.weekdays=weekdays;c.yearLabel=v.yearLabel.trim()||"Year";c.currentDate.month=Math.min(c.currentDate.month,names.length-1);c.currentDate.day=Math.min(c.currentDate.day,days[c.currentDate.month]);calendarView={year:c.currentDate.year,month:c.currentDate.month};});
+    });
+  }  function calendarMonth(amount) {
+    if (!state.calendarConfig) return;
+    calendarView=calendarView||{...state.calendarConfig.currentDate};
+    calendarView.month+=amount;
+    renderCalendar();
+  }
+
+  function calendarToday() {
+    if (!state.calendarConfig) return;
+    calendarView={year:state.calendarConfig.currentDate.year,month:state.calendarConfig.currentDate.month};
+    renderCalendar();
+  }
+
+  function toggleCalendarDay(year,month,day){
+    if(!isDM())return;if(!Array.isArray(state.elapsedDays))state.elapsedDays=[];const key=`${year}-${month}-${day}`;const index=state.elapsedDays.indexOf(key);if(index>=0)state.elapsedDays.splice(index,1);else state.elapsedDays.push(key);refresh();persist();
+  }
+
+  function advanceCalendarDay(){
+    if(!isDM()||!state.calendarConfig)return;const c=state.calendarConfig,d=c.currentDate,month=c.months[d.month];
+    if(!Array.isArray(state.elapsedDays))state.elapsedDays=[];const passed=`${d.year}-${d.month}-${d.day}`;if(!state.elapsedDays.includes(passed))state.elapsedDays.push(passed);
+    if(d.day<month.days)d.day++;else if(d.month<c.months.length-1){d.month++;d.day=1;}else{d.month=0;d.year++;d.day=1;}
+    calendarView={year:d.year,month:d.month};refresh();persist();
+  }  function renderNotices(){
+    const unread=state.notices.filter(n=>n.createdAt&&!(n.readBy||[]).includes(member?.id)).length,bar=$("notice-alert");
+    bar.hidden=!unread;bar.textContent=unread?`✉ ${unread} new notice${unread===1?"":"s"} — click to read`:"";
+    $("notice-list").innerHTML=state.notices.length?state.notices.map(n=>{const fresh=!!n.createdAt&&!(n.readBy||[]).includes(member?.id);return `<article class="list-card notice-card" onclick="Hub.markNoticeRead('${n.id}')"><div class="list-meta">${escapeHTML(n.date)} ${fresh?'<span class="tag">NEW!</span>':""}</div><h3>${escapeHTML(n.title)}</h3><p>${escapeHTML(n.body)}</p>${isDM()? `<div class="card-actions"><button onclick="event.stopPropagation();Hub.removeItem('notices','${n.id}')">DELETE NOTICE</button></div>`:""}</article>`;}).join(""):empty("The notice board is empty.");
+  }  function mutate(fn) {
     fn();
     refresh();
     persist();
   }
 
-  function ask(label,initial="") {
-    const value = prompt(label,initial);
-    return value === null ? null : value.trim();
+
+  let modalSaveHandler = null;
+  function closeModal(){const modal=$("hub-modal");modal.hidden=true;modal.innerHTML="";modalSaveHandler=null;}
+  function openForm(title,fields,onSave){
+    const modal=$("hub-modal");modalSaveHandler=onSave;
+    const controls=fields.map((field,i)=>{
+      const id="modal-field-"+i, value=field.value??"", full=field.full?" full":"";
+      let control="";
+      if(field.type==="textarea")control=`<textarea id="${id}" name="${escapeHTML(field.name)}" rows="${field.rows||4}" ${field.required?"required":""} placeholder="${escapeHTML(field.placeholder||"")}">${escapeHTML(value)}</textarea>`;
+      else if(field.type==="select")control=`<select id="${id}" name="${escapeHTML(field.name)}" ${field.required?"required":""}>${(field.options||[]).map(o=>`<option value="${escapeHTML(o.value)}" ${String(o.value)===String(value)?"selected":""}>${escapeHTML(o.label)}</option>`).join("")}</select>`;
+      else if(field.type==="drawing")control=`<canvas id="journal-drawing-canvas" class="journal-editor-canvas" width="900" height="260"></canvas><div class="card-actions"><label class="small-button" style="cursor:pointer">UPLOAD IMAGE<input id="journal-image-upload" type="file" accept="image/*" hidden></label><button type="button" class="small-button" id="journal-clear-drawing">CLEAR DRAWING</button></div><p>Draw with your mouse or finger, or upload an image to attach it to this entry.</p>`;
+      else control=`<input id="${id}" name="${escapeHTML(field.name)}" type="${field.type||"text"}" value="${escapeHTML(value)}" ${field.required?"required":""} placeholder="${escapeHTML(field.placeholder||"")}" ${field.min!==undefined?`min="${field.min}"`:""} ${field.max!==undefined?`max="${field.max}"`:""}>`;
+      return `<label class="modal-field${full}" for="${id}">${escapeHTML(field.label)}${control}</label>`;
+    }).join("");
+    modal.innerHTML=`<div class="modal-card"><div class="modal-top"><h3>${escapeHTML(title)}</h3><button type="button" class="modal-close" id="modal-close">✕</button></div><form id="hub-modal-form"><div class="modal-fields">${controls}</div><div class="modal-actions"><button type="button" class="small-button" id="modal-cancel">CANCEL</button><button type="submit" class="hub-button">SAVE</button></div></form></div>`;
+    modal.hidden=false;$("modal-close").onclick=closeModal;$("modal-cancel").onclick=closeModal;modal.onclick=e=>{if(e.target===modal)closeModal();};
+    $("hub-modal-form").addEventListener("submit",e=>{e.preventDefault();const values={};fields.forEach(field=>{if(field.type==="drawing")return;const el=e.currentTarget.elements.namedItem(field.name);values[field.name]=el?el.value:"";});if(modalSaveHandler)modalSaveHandler(values);closeModal();});
+    if(fields.some(x=>x.type==="drawing"))setupJournalCanvas(fields.find(x=>x.type==="drawing").value||"");
+  }
+  function setupJournalCanvas(existingImage){
+    const canvas=$("journal-drawing-canvas"),ctx=canvas.getContext("2d");journalCanvasDirty=false;ctx.fillStyle="#f4f0e6";ctx.fillRect(0,0,canvas.width,canvas.height);
+    if(existingImage){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,canvas.width,canvas.height);img.src=existingImage;}
+    let drawing=false;const point=e=>{const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*canvas.width,y:(e.clientY-r.top)/r.height*canvas.height};};
+    canvas.onpointerdown=e=>{drawing=true;journalCanvasDirty=true;const p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);canvas.setPointerCapture(e.pointerId);};
+    canvas.onpointermove=e=>{if(!drawing)return;const p=point(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle="#282633";ctx.lineWidth=4;ctx.lineCap="round";ctx.lineJoin="round";ctx.stroke();};
+    canvas.onpointerup=()=>drawing=false;canvas.onpointercancel=()=>drawing=false;
+    $("journal-clear-drawing").onclick=()=>{ctx.fillStyle="#f4f0e6";ctx.fillRect(0,0,canvas.width,canvas.height);journalCanvasDirty=true;};
+    $("journal-image-upload").onchange=e=>{const file=e.target.files[0];if(!file)return;if(file.size>2*1024*1024){alert("Please choose an image smaller than 2MB.");e.target.value="";return;}const reader=new FileReader();reader.onload=()=>{const img=new Image();img.onload=()=>{ctx.fillStyle="#f4f0e6";ctx.fillRect(0,0,canvas.width,canvas.height);const scale=Math.min(canvas.width/img.width,canvas.height/img.height),w=img.width*scale,h=img.height*scale;ctx.drawImage(img,(canvas.width-w)/2,(canvas.height-h)/2,w,h);journalCanvasDirty=true;};img.src=reader.result;};reader.readAsDataURL(file);};
+  }
+  function openJournalEditor(entry){
+    const editing=!!entry,data=entry||{};
+    openForm(editing?"Edit journal entry":"New journal entry",[
+      {name:"title",label:"Entry title",value:data.title||"",required:true,full:true},
+      {name:"date",label:"In-world date or session",value:data.date||""},
+      {name:"author",label:"Author / character",value:data.author||""},
+      {name:"body",label:"Your journal entry",type:"textarea",rows:8,value:data.body||"",full:true},
+      {name:"drawing",label:"Drawing or image",type:"drawing",value:data.imageData||"",full:true}
+    ],v=>{const imageData=journalCanvasDirty?$("journal-drawing-canvas")?.toDataURL("image/jpeg",0.78):(data.imageData||"");const updated={title:v.title.trim(),date:v.date,author:v.author,body:v.body,imageData};if(!updated.title)return alert("Please enter a title.");if(editing)mutate(()=>Object.assign(entry,updated));else mutate(()=>state.journal.unshift({id:makeId(),...updated,...(!isDM()?{ownerId:member.id}:{})}));});
   }
 
-  function addCharacter(isNPC=false) {
-    if (!isDM() && isNPC) return;
-    const c = defaultsCharacter();
-    c.isNPC = isDM() ? (isNPC || confirm("Is this character an NPC companion?")) : false;
-    c.name = ask("Character name:");
-    if (!c.name) return;
-    c.player = isDM() ? (ask("Player name (optional):") || "") : member.display_name;
-    c.race = ask("Race / species:") || "";
-    c.className = ask("Class:") || "";
-    c.level = Math.max(1,safeNumber(ask("Level:","1"),1));
-    c.maxHp = Math.max(1,safeNumber(ask("Maximum HP:","10"),10));
-    c.hp = Math.max(0,c.maxHp);
-    c.ac = safeNumber(ask("Armour Class:","10"),10);
-    c.isNPC = isDM() ? c.isNPC : false;
-    if (!isDM()) c.ownerId = member.id;
-    mutate(()=>state.characters.push(c));
-  }
-
-  function editCharacter(id) {
-    const c = state.characters.find(x=>x.id===id);
-    if (!c || !canEditCharacter(c)) return;
-    const fields = [
-      ["name","Character name"],["player","Player name"],["race","Race"],
-      ["className","Class"],["level","Level"],["hp","Current HP"],
-      ["maxHp","Maximum HP"],["ac","Armour Class"],["initiative","Initiative"],
-      ["speed","Movement speed"],["gear","Equipment and inventory"],
-      ["loveInterest","Relationships / love interest"],
-      ["backstory","Backstory"],["notes","Personal notes"]
+  function addCharacter(isNPC=false){
+    if(!isDM()&&isNPC)return;const c=defaultsCharacter();
+    const fields=[
+      {name:"name",label:"Character name",required:true},{name:"player",label:"Player name",value:isDM()?"":member.display_name},{name:"portrait",label:"Portrait image URL",type:"url",placeholder:"https://…"},
+      {name:"race",label:"Race / species"},{name:"className",label:"Class"},
+      {name:"level",label:"Level",type:"number",value:1,min:1},{name:"hp",label:"Current HP",type:"number",value:10,min:0},
+      {name:"maxHp",label:"Maximum HP",type:"number",value:10,min:1},{name:"ac",label:"Armour Class",type:"number",value:10},
+      {name:"initiative",label:"Initiative",type:"number",value:0},{name:"speed",label:"Movement speed (ft)",type:"number",value:30},
+      ...(isDM()?[{name:"isNPC",label:"Is this an NPC companion?",type:"select",value:"no",options:[{value:"no",label:"No — player character"},{value:"yes",label:"Yes — NPC companion"}]}]:[]),
+      {name:"gear",label:"Equipment & inventory",type:"textarea",full:true},{name:"loveInterest",label:"Relationships / love interest",type:"textarea",full:true},
+      {name:"backstory",label:"Backstory",type:"textarea",full:true},{name:"notes",label:"Personal notes",type:"textarea",full:true}
     ];
-    const copy = {...c};
-    for (const [key,label] of fields) {
-      const value = ask(label + ":",copy[key] ?? "");
-      if (value === null) return;
-      copy[key] = ["level","hp","maxHp","ac","initiative","speed"].includes(key)
-        ? safeNumber(value) : value;
-    }
-    copy.maxHp = Math.max(1,copy.maxHp);
-    copy.hp = Math.max(0,Math.min(copy.hp,copy.maxHp));
-    mutate(()=>Object.assign(c,copy));
-  }
-
-  function changeHP(id,amount) {
+    openForm("Add character",fields,v=>{if(!v.name.trim())return alert("Please enter a character name.");Object.assign(c,{name:v.name.trim(),player:isDM()?v.player:member.display_name,portrait:v.portrait,race:v.race,className:v.className,level:Math.max(1,safeNumber(v.level,1)),hp:Math.max(0,safeNumber(v.hp,10)),maxHp:Math.max(1,safeNumber(v.maxHp,10)),ac:safeNumber(v.ac,10),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed,30),gear:v.gear,loveInterest:v.loveInterest,backstory:v.backstory,notes:v.notes,isNPC:isDM()&&v.isNPC==="yes"});c.hp=Math.min(c.hp,c.maxHp);if(!isDM())c.ownerId=member.id;mutate(()=>state.characters.push(c));});
+  }  function editCharacter(id){
+    const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;
+    const fields=[
+      {name:"name",label:"Character name",value:c.name,required:true},{name:"player",label:"Player name",value:c.player||""},{name:"portrait",label:"Portrait image URL",type:"url",value:c.portrait||"",placeholder:"https://…"},
+      {name:"race",label:"Race / species",value:c.race||""},{name:"className",label:"Class",value:c.className||""},
+      {name:"level",label:"Level",type:"number",value:c.level||1,min:1},{name:"hp",label:"Current HP",type:"number",value:c.hp||0,min:0},
+      {name:"maxHp",label:"Maximum HP",type:"number",value:c.maxHp||1,min:1},{name:"ac",label:"Armour Class",type:"number",value:c.ac||0},
+      {name:"initiative",label:"Initiative",type:"number",value:c.initiative||0},{name:"speed",label:"Movement speed (ft)",type:"number",value:c.speed||0},
+      ...(isDM()?[{name:"isNPC",label:"Is this an NPC companion?",type:"select",value:c.isNPC?"yes":"no",options:[{value:"no",label:"No — player character"},{value:"yes",label:"Yes — NPC companion"}]}]:[]),
+      {name:"gear",label:"Equipment & inventory",type:"textarea",value:c.gear||"",full:true},{name:"loveInterest",label:"Relationships / love interest",type:"textarea",value:c.loveInterest||"",full:true},
+      {name:"backstory",label:"Backstory",type:"textarea",value:c.backstory||"",full:true},{name:"notes",label:"Personal notes",type:"textarea",value:c.notes||"",full:true}
+    ];
+    openForm("Edit character",fields,v=>{const u={name:v.name.trim(),player:v.player,portrait:v.portrait,race:v.race,className:v.className,level:Math.max(1,safeNumber(v.level,1)),hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),gear:v.gear,loveInterest:v.loveInterest,backstory:v.backstory,notes:v.notes};u.hp=Math.min(u.hp,u.maxHp);if(isDM())u.isNPC=v.isNPC==="yes";mutate(()=>Object.assign(c,u));});
+  }  function changeHP(id,amount) {
     const c = state.characters.find(x=>x.id===id);
     if (!c || !canEditCharacter(c)) return;
     mutate(()=>c.hp=Math.max(0,Math.min(safeNumber(c.maxHp),safeNumber(c.hp)+amount)));
@@ -359,124 +469,36 @@
     if (amount>0 && s.used>=s.total) return;
     mutate(()=>s.used=Math.max(0,s.used+amount));
   }
-function configureSlots(id) {
-  const c = state.characters.find(x=>x.id===id);
-  if (!c || !canEditCharacter(c)) return;
-
-  if (!c.spellSlots) {
-    c.spellSlots = Array.from({length:9},()=>({used:0,total:0}));
+  function configureSlots(id){
+    const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;
+    const slots=c.spellSlots||Array.from({length:9},()=>({used:0,total:0}));
+    openForm("Configure spell slots",slots.map((slot,i)=>({name:"level"+i,label:"Spell slot level "+(i+1),type:"number",min:0,value:slot.total})),v=>{
+      const updated=slots.map((slot,i)=>{const total=Math.max(0,safeNumber(v["level"+i]));return{total,used:Math.min(safeNumber(slot.used),total)};});
+      mutate(()=>c.spellSlots=updated);
+    });
+  }  function addQuest(){if(!isDM())return;openForm("Add quest",[{name:"title",label:"Quest title",required:true,full:true},{name:"description",label:"Quest description",type:"textarea",rows:5,full:true},{name:"reward",label:"Reward",type:"textarea",rows:2,full:true}],v=>{if(!v.title.trim())return alert("Please enter a quest title.");mutate(()=>state.quests.unshift({id:makeId(),title:v.title.trim(),description:v.description,reward:v.reward,status:"Active"}));});}  function cycleQuest(id){
+    if(!isDM())return;const q=state.quests.find(x=>x.id===id);if(!q)return;
+    const states=["Active","Completed","Failed"];mutate(()=>q.status=states[(states.indexOf(q.status)+1)%states.length]);
   }
-
-  const updated = c.spellSlots.map((slot,i)=>{
-    const total = ask(
-      "Total spell slots for level " + (i+1) + ":",
-      String(slot.total)
-    );
-    if (total === null) return null;
-    return {
-      total:Math.max(0,safeNumber(total)),
-      used:Math.min(slot.used,Math.max(0,safeNumber(total)))
-    };
-  });
-
-  if (updated.some(x=>x===null)) return;
-  mutate(()=>c.spellSlots=updated);
-}
-  function addQuest() {
-    if (!isDM()) return;
-    const title=ask("Quest title:");
-    if (!title) return;
-    const description=ask("Quest description:")||"";
-    const reward=ask("Reward (optional):")||"";
-    mutate(()=>state.quests.unshift({id:makeId(),title,description,reward,status:"Active"}));
-  }
-
-  function cycleQuest(id) {
-    if (!isDM()) return;
-    const q=state.quests.find(x=>x.id===id);
-    if (!q) return;
-    const states=["Active","Completed","Failed"];
-    mutate(()=>q.status=states[(states.indexOf(q.status)+1)%states.length]);
-  }
-
-  function addNPC() {
-    if (!isDM()) return;
-    const name=ask("NPC name:");
-    if (!name) return;
-    const role=ask("Role / occupation:")||"";
-    const description=ask("Description:")||"";
-    const location=ask("Location:")||"";
-    const relationship=ask("Relationship to the party:")||"";
-    mutate(()=>state.npcs.unshift({id:makeId(),name,role,description,location,relationship}));
-  }
-
-  function editNPC(id) {
-    if (!isDM()) return;
-    const n=state.npcs.find(x=>x.id===id);
-    if (!n) return;
-    for (const key of ["name","role","description","location","relationship"]) {
-      const v=ask(key.charAt(0).toUpperCase()+key.slice(1)+":",n[key]||"");
-      if (v===null) return;
-      n[key]=v;
-    }
-    refresh();persist();
-  }
-
-  function addJournal() {
-    const title=ask("Journal entry title:");
-    if (!title) return;
-    const date=ask("In-world date or session number:")||"";
-    const author=ask("Author / character:")||"";
-    const body=ask("What happened?")||"";
-    mutate(()=>state.journal.unshift({id:makeId(),title,date,author,body,...(!isDM()?{ownerId:member.id}:{})}));
-  }
-
-  function editJournal(id) {
-    const entry=state.journal.find(x=>x.id===id);
-    if (!entry) return;
-    const title=ask("Journal entry title:",entry.title||"");
-    if (title===null || !title) return;
-    const date=ask("In-world date or session number:",entry.date||"");
-    if (date===null) return;
-    const author=ask("Author / character:",entry.author||"");
-    if (author===null) return;
-    const body=ask("What happened?",entry.body||"");
-    if (body===null) return;
-    mutate(()=>Object.assign(entry,{title,date,author,body}));
-  }
-
-  function addEvent() {
-    const title=ask("Event title:");
-    if (!title) return;
-    const date=ask("Date (YYYY-MM-DD or your fantasy calendar):")||"";
-    const description=ask("Event description:")||"";
-    mutate(()=>state.events.push({id:makeId(),title,date,description,...(!isDM()?{ownerId:member.id}:{})}));
-  }
-
-  function editEvent(id) {
-    const event=state.events.find(x=>x.id===id);
-    if (!event) return;
-    const title=ask("Event title:",event.title||"");
-    if (title===null || !title) return;
-    const date=ask("Date (YYYY-MM-DD or your fantasy calendar):",event.date||"");
-    if (date===null) return;
-    const description=ask("Event description:",event.description||"");
-    if (description===null) return;
-    mutate(()=>Object.assign(event,{title,date,description}));
-  }
-
-  function addNotice() {
-    if (!isDM()) return;
-    const title=ask("Announcement title:");
-    if (!title) return;
-    const body=ask("Announcement message:")||"";
-    mutate(()=>state.notices.unshift({id:makeId(),title,body,date:new Date().toLocaleDateString()}));
-  }
-
-  function removeItem(collection,id) {
+  function editQuest(id){
+    if(!isDM())return;const q=state.quests.find(x=>x.id===id);if(!q)return;
+    openForm("Edit quest",[{name:"title",label:"Quest title",value:q.title,required:true,full:true},{name:"description",label:"Quest description",type:"textarea",rows:5,value:q.description||"",full:true},{name:"reward",label:"Reward",type:"textarea",rows:2,value:q.reward||"",full:true},{name:"status",label:"Status",type:"select",value:q.status||"Active",options:["Active","Completed","Failed"].map(x=>({value:x,label:x}))}],v=>{if(!v.title.trim())return alert("Please enter a quest title.");mutate(()=>Object.assign(q,{title:v.title.trim(),description:v.description,reward:v.reward,status:v.status}));});
+  }  function addNPC(){if(!isDM())return;openForm("Add NPC",[{name:"name",label:"NPC name",required:true},{name:"role",label:"Role / occupation"},{name:"location",label:"Location"},{name:"relationship",label:"Relationship to the party"},{name:"description",label:"Description",type:"textarea",rows:6,full:true}],v=>{if(!v.name.trim())return alert("Please enter an NPC name.");mutate(()=>state.npcs.unshift({id:makeId(),name:v.name.trim(),role:v.role,description:v.description,location:v.location,relationship:v.relationship}));});}  function editNPC(id){if(!isDM())return;const n=state.npcs.find(x=>x.id===id);if(!n)return;openForm("Edit NPC",[{name:"name",label:"NPC name",value:n.name,required:true},{name:"role",label:"Role / occupation",value:n.role||""},{name:"location",label:"Location",value:n.location||""},{name:"relationship",label:"Relationship to the party",value:n.relationship||""},{name:"description",label:"Description",type:"textarea",rows:6,value:n.description||"",full:true}],v=>{if(!v.name.trim())return alert("Please enter an NPC name.");mutate(()=>Object.assign(n,{name:v.name.trim(),role:v.role,location:v.location,relationship:v.relationship,description:v.description}));});}  function addJournal(){openJournalEditor(null);}  function editJournal(id){const entry=state.journal.find(x=>x.id===id);if(!entry||(!isDM()&&entry.ownerId!==member?.id))return;openJournalEditor(entry);}  function addEvent(){
+    const c=state.calendarConfig,fields=[{name:"title",label:"Event title",required:true,full:true}];
+    if(c)fields.push({name:"month",label:"Month",type:"select",value:String(c.currentDate.month),options:c.months.map((m,i)=>({value:String(i),label:m.name}))},{name:"day",label:"Day",type:"number",value:c.currentDate.day,min:1,max:c.months[c.currentDate.month].days},{name:"year",label:"Year",type:"number",value:c.currentDate.year,min:0});
+    else fields.push({name:"date",label:"Date or session"});
+    fields.push({name:"description",label:"Event description",type:"textarea",rows:5,full:true});
+    openForm("Add calendar event",fields,v=>{let fantasyDate=null;if(c){const month=safeNumber(v.month),day=safeNumber(v.day),year=safeNumber(v.year);if(!c.months[month]||day<1||day>c.months[month].days||year<0)return alert("Please enter a valid date.");fantasyDate={year,month,day};}mutate(()=>state.events.push({id:makeId(),title:v.title.trim(),date:c?null:v.date,fantasyDate,description:v.description,...(!isDM()?{ownerId:member.id}:{})}));});
+  }  function editEvent(id){
+    const e=state.events.find(x=>x.id===id);if(!e||(!isDM()&&e.ownerId!==member?.id))return;const c=state.calendarConfig,d=e.fantasyDate||(c?c.currentDate:null),fields=[{name:"title",label:"Event title",value:e.title||"",required:true,full:true}];
+    if(c)fields.push({name:"month",label:"Month",type:"select",value:String(d.month),options:c.months.map((m,i)=>({value:String(i),label:m.name}))},{name:"day",label:"Day",type:"number",value:d.day,min:1,max:c.months[d.month].days},{name:"year",label:"Year",type:"number",value:d.year,min:0});else fields.push({name:"date",label:"Date or session",value:e.date||""});
+    fields.push({name:"description",label:"Event description",type:"textarea",rows:5,value:e.description||"",full:true});
+    openForm("Edit calendar event",fields,v=>{let fantasyDate=null;if(c){const month=safeNumber(v.month),day=safeNumber(v.day),year=safeNumber(v.year);if(!c.months[month]||day<1||day>c.months[month].days||year<0)return alert("Please enter a valid date.");fantasyDate={year,month,day};}mutate(()=>Object.assign(e,{title:v.title.trim(),date:c?null:v.date,fantasyDate,description:v.description}));});
+  }  function addNotice(){if(!isDM())return;openForm("Publish notice",[{name:"title",label:"Notice title",required:true,full:true},{name:"body",label:"Announcement",type:"textarea",rows:7,full:true}],v=>{if(!v.title.trim())return alert("Please enter a notice title.");mutate(()=>state.notices.unshift({id:makeId(),title:v.title.trim(),body:v.body,date:new Date().toLocaleDateString(),createdAt:new Date().toISOString(),readBy:[member.id]}));});}
+  function markNoticeRead(id){const n=state.notices.find(x=>x.id===id);if(!n||!member)return;if(!Array.isArray(n.readBy))n.readBy=[];if(n.readBy.includes(member.id))return;n.readBy.push(member.id);refresh();persist();}  function removeItem(collection,id) {
     const item = state[collection]?.find(x=>x.id===id);
     if (!item) return;
-    if (!isDM() && !(["journal","events"].includes(collection) && member?.role==="player")) return;
+    if (!isDM() && !(["journal","events"].includes(collection) && item.ownerId===member?.id)) return;
     if (!confirm("Are you sure you want to delete this?")) return;
     mutate(()=>state[collection]=state[collection].filter(x=>x.id!==id));
   }
@@ -494,11 +516,12 @@ function configureSlots(id) {
     mutate(()=>state.markers=[]);
   }
 
-  function go(tab) {
+  function go(tab){
+    const adventureTabs=["map","party","quests","calendar"];
     root.querySelectorAll(".hub-page").forEach(p=>p.classList.remove("active"));
     root.querySelectorAll(".hub-nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
-    const page=$("page-"+tab);
-    if (page) page.classList.add("active");
+    if(tab==="adventure")adventureTabs.forEach(name=>$("page-"+name).classList.add("active"));
+    else{const page=$("page-"+tab);if(page)page.classList.add("active");}
   }
 
   root.querySelectorAll(".hub-nav button").forEach(b=>{
@@ -506,15 +529,22 @@ function configureSlots(id) {
   });
 
   const frame=$("map-frame");
+  window.addEventListener("resize",()=>redrawMapCanvas());
+  const mapCanvas=$("map-drawing-canvas");
+  function redrawMapCanvas(){if(!mapCanvas)return;const rect=frame.getBoundingClientRect();mapCanvas.width=Math.max(1,Math.round(rect.width));mapCanvas.height=Math.max(1,Math.round(rect.height));const ctx=mapCanvas.getContext("2d");ctx.clearRect(0,0,mapCanvas.width,mapCanvas.height);(state.mapDrawings||[]).forEach(path=>{if(!path.points||path.points.length<2)return;ctx.beginPath();ctx.strokeStyle=path.colour||"#f3d58b";ctx.lineWidth=path.width||3;ctx.lineCap="round";ctx.lineJoin="round";path.points.forEach((p,i)=>{const x=p.x*mapCanvas.width,y=p.y*mapCanvas.height;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();});}
+  function toggleMapDrawing(){if(!isDM())return;mapDrawing=!mapDrawing;mapCanvas.classList.toggle("is-drawing",mapDrawing);frame.classList.toggle("is-drawing",mapDrawing);$("map-draw-toggle").textContent=mapDrawing?"FINISH DRAWING":"DRAW ON MAP";}
+  function removeMap(){if(!isDM()||!state.mapUrl)return;if(!confirm("Remove the uploaded map image and its drawings?"))return;mutate(()=>{state.mapUrl="";state.mapDrawings=[];});}
+  function editMapLegend(){if(!isDM())return;const colours=[["#E66D69","Red"],["#6D9DD5","Blue"],["#76B68A","Green"],["#D6AD5D","Gold"],["#B28BD6","Purple"],["#E69AC0","Pink"],["#E9E5DA","White"]];openForm("Map legend",colours.map(([colour,name])=>({name:colour,label:name+" marker meaning",value:state.markerLegend?.[colour]||"",placeholder:"e.g. Settlements"})),v=>mutate(()=>{state.markerLegend={...(state.markerLegend||{}),...v};}));}
+  mapCanvas.addEventListener("pointerdown",e=>{if(!mapDrawing||!isDM())return;const r=mapCanvas.getBoundingClientRect(),path={colour:"#f3d58b",width:3,points:[{x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height}]};state.mapDrawings=state.mapDrawings||[];state.mapDrawings.push(path);mapCanvas.setPointerCapture(e.pointerId);redrawMapCanvas();});
+  mapCanvas.addEventListener("pointermove",e=>{if(!mapDrawing||!isDM()||!e.buttons)return;const path=state.mapDrawings?.[state.mapDrawings.length-1];if(!path)return;const r=mapCanvas.getBoundingClientRect();path.points.push({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height});redrawMapCanvas();});
+  mapCanvas.addEventListener("pointerup",()=>{if(mapDrawing)persist();});mapCanvas.addEventListener("pointercancel",()=>{if(mapDrawing)persist();});
   frame.addEventListener("click",e=>{
-    if (!isDM() || e.target.closest(".map-marker")) return;
+    if (!isDM() || mapDrawing || e.target.closest(".map-marker")) return;
     const rect=frame.getBoundingClientRect();
     const x=Math.max(0,Math.min(100,(e.clientX-rect.left)/rect.width*100));
     const y=Math.max(0,Math.min(100,(e.clientY-rect.top)/rect.height*100));
-    const label=ask("Name this location:");
-    if (!label) return;
     const colour=$("marker-colour").value;
-    mutate(()=>state.markers.push({id:makeId(),x,y,label,colour}));
+    openForm("Add map location",[{name:"label",label:"Location name",required:true}],v=>{if(!v.label.trim())return alert("Please enter a location name.");mutate(()=>state.markers.push({id:makeId(),x,y,label:v.label.trim(),colour}));});
   });
 
   frame.addEventListener("pointerdown",e=>{
@@ -554,14 +584,7 @@ function configureSlots(id) {
     e.stopPropagation();
     const m=state.markers.find(x=>x.id===marker.dataset.marker);
     if (!m || !isDM()) return;
-    const action=prompt("Location: "+m.label+"\nType EDIT to rename, DELETE to remove, or CANCEL.", "CANCEL");
-    if (!action) return;
-    if (action.toUpperCase()==="DELETE") {
-      mutate(()=>state.markers=state.markers.filter(x=>x.id!==m.id));
-    } else if (action.toUpperCase()==="EDIT") {
-      const label=ask("New location name:",m.label);
-      if (label) mutate(()=>m.label=label);
-    }
+    openForm("Edit map location",[{name:"label",label:"Location name",value:m.label,required:true},{name:"action",label:"Location action",type:"select",value:"keep",options:[{value:"keep",label:"Keep this location"},{value:"delete",label:"Delete this location"}]}],v=>{if(v.action==="delete"){if(confirm("Delete this map location?"))mutate(()=>state.markers=state.markers.filter(x=>x.id!==m.id));return;}if(!v.label.trim())return alert("Please enter a location name.");mutate(()=>m.label=v.label.trim());});
   });
 
   $("map-upload").addEventListener("change",async e=>{
@@ -592,11 +615,23 @@ function configureSlots(id) {
     addCharacter:()=>addCharacter(false),
     addNPC:()=>addNPC(),
     addQuest,
+    editQuest,
     addJournal,
     editJournal,
     addEvent,
     editEvent,
+    saveCalendarSetup,
+    editCalendarSetup,
+    calendarMonth,
+    calendarToday,
+    toggleCalendarDay,
+    advanceCalendarDay,
     addNotice,
+    markNoticeRead,
+    closeModal,
+    toggleMapDrawing,
+    editMapLegend,
+    removeMap,
     editCharacter,
     editNPC,
     changeHP,
@@ -604,7 +639,8 @@ function configureSlots(id) {
     cycleQuest,
     removeItem,
     removeCharacter,
-    clearMarkers
+    clearMarkers,
+    removeMapMarker:(id)=>{if(!isDM())return;mutate(()=>state.markers=state.markers.filter(m=>m.id!==id));}
   };
   window.Hub=Hub;
 
@@ -630,7 +666,7 @@ function configureSlots(id) {
       if (error) throw error;
 
       state={...blank(),...(data.data||{})};
-      ["markers","characters","quests","npcs","journal","events","notices"].forEach(k=>{
+      ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays"].forEach(k=>{
         if (!Array.isArray(state[k])) state[k]=[];
       });
 
@@ -638,6 +674,7 @@ function configureSlots(id) {
       $("hub-loading").style.display="none";
       applyPermissions();
       refresh();
+      redrawMapCanvas();
       status("✓ Connected to campaign");
 
       channel=client.channel("campaign-live")
