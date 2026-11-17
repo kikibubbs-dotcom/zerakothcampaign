@@ -116,6 +116,16 @@ Deno.serve(async (req) => {
     const member = await memberForUser(caller.id);
     if (!member) return json({ error: "This campaign account is inactive." }, 403);
 
+    if (action === "change-display-name") {
+      const displayName = String(body.display_name || "").trim().slice(0, 80);
+      if (!displayName) return json({ error: "Enter a display name." }, 400);
+      const { data: updated, error } = await admin.schema("private").from("campaign_members")
+        .update({ display_name: displayName, updated_at: new Date().toISOString() }).eq("id", member.id)
+        .select("id,display_name,role,active").single();
+      if (error) throw error;
+      return json({ success: true, member: updated });
+    }
+
     if (action === "change-code") {
       const current = String(body.current_code || "");
       const next = String(body.new_code || "").trim();
