@@ -111,6 +111,7 @@
     renderDashboard();
     renderMap();
     renderParty();
+    renderCombat();
     renderCharacters();
     renderQuests();
     renderNPCs();
@@ -180,6 +181,135 @@
     $("party-list").innerHTML = state.characters.length
       ? state.characters.map(c=>characterCard(c,true)).join("")
       : empty("Your party is waiting for its first adventurer.");
+  }
+
+  function getCombat(){
+    const combat=state.combat&&typeof state.combat==="object"?state.combat:{active:false,round:1,activeTurnId:null,combatants:[]};
+    if(!Array.isArray(combat.combatants))combat.combatants=[];
+    combat.round=Math.max(1,safeNumber(combat.round,1));
+    return combat;
+  }
+  function ensureCombat(){
+    if(!state.combat||typeof state.combat!=="object")state.combat={active:false,round:1,activeTurnId:null,combatants:[]};
+    if(!Array.isArray(state.combat.combatants))state.combat.combatants=[];
+    state.combat.round=Math.max(1,safeNumber(state.combat.round,1));
+    return state.combat;
+  }
+  function orderedCombatants(){
+    return [...getCombat().combatants].sort((a,b)=>safeNumber(b.initiative)-safeNumber(a.initiative)||safeNumber(a.order)-safeNumber(b.order));
+  }
+  function renderCombat(){
+    const combat=getCombat(),list=$("combat-list"),ordered=orderedCombatants();
+    $("combat-round-label").textContent=combat.active?("ROUND "+combat.round):ordered.length?"ENCOUNTER READY":"NO ACTIVE ENCOUNTER";
+    $("combat-round-label").classList.toggle("is-active",combat.active);
+    const controls=root.querySelector(".combat-toolbar");
+    if(controls)controls.style.display=isDM()?"":"none";
+    $("combat-view-note").textContent=isDM()?"Only the DM can change combat. Everyone can follow the initiative order and live HP updates.":"Live encounter view · The DM manages initiative and combatant stats.";
+    if(!ordered.length){list.innerHTML=empty(isDM()?"Add party members or enemies to prepare an encounter.":"The DM hasn't added anyone to this encounter yet.");return;}
+    list.innerHTML=ordered.map((c,i)=>{
+      const hp=Math.max(0,safeNumber(c.hp)),max=Math.max(1,safeNumber(c.maxHp,1)),percent=Math.max(0,Math.min(100,hp/max*100));
+      const active=combat.active&&combat.activeTurnId===c.id;
+      const conditions=String(c.conditions||"").split(",").map(x=>x.trim()).filter(Boolean);
+      return `<article class="combatant-card ${active?"is-current-turn":""} ${hp===0?"is-unconscious":""}">
+        <div class="combat-initiative">${safeNumber(c.initiative)}</div>
+        <div class="combatant-main">
+          <div class="combatant-title-row"><div><span class="combatant-type">${escapeHTML(c.kind||"COMBATANT")}</span><h3>${escapeHTML(c.name)}</h3></div>${active?'<span class="turn-indicator">CURRENT TURN</span>':""}</div>
+          <div class="combatant-stats"><span><strong>${hp}</strong> / ${max} HP</span><span>${safeNumber(c.ac)} AC</span></div>
+          <div class="hp-bar"><div class="hp-fill" style="width:${percent}%;background:${percent<25?"#dc6969":percent<50?"#d6ad5d":"#79bd91"}"></div></div>
+          <div class="combat-conditions">${conditions.length?conditions.map(x=>'<span class="tag">'+escapeHTML(x)+'</span>').join(""):'<span class="combat-no-conditions">No conditions</span>'}</div>
+          ${isDM()?'<div class="combatant-actions"><button onclick="Hub.adjustCombatHP(\''+c.id+'\',-5)">−5 HP</button><button onclick="Hub.adjustCombatHP(\''+c.id+'\',-1)">−1 HP</button><button onclick="Hub.adjustCombatHP(\''+c.id+'\',1)">+1 HP</button><button onclick="Hub.adjustCombatHP(\''+c.id+'\',5)">+5 HP</button><button onclick="Hub.editCombatant(\''+c.id+'\')">EDIT</button><button onclick="Hub.removeCombatant(\''+c.id+'\')">REMOVE</button></div>':""}
+        </div>
+      </article>`;
+    }).join("");
+  }
+  function addCombatant(){
+    if(!isDM())return;
+    const combat=ensureCombat(),options=[];
+    state.characters.forEach(c=>{if(!combat.combatants.some(x=>x.sourceId===c.id))options.push({value:"character:"+c.id,label:c.name+" · "+(c.isNPC?"Companion":"Player")});});
+    state.npcs.forEach(n=>{if(!combat.combatants.some(x=>x.sourceId===n.id))options.push({value:"npc:"+n.id,label:n.name+" · NPC"});});
+    if(!options.length)return alert("Everyone in the character and NPC archive is already in this encounter. Use ADD ENEMY for another combatant.");
+    openForm("Add combatant from archive",[
+      {name:"source",label:"Choose a character or NPC",type:"select",options,required:true,full:true},
+      {name:"initiative",label:"Initiative roll",type:"number",value:"",placeholder:"Enter the initiative roll"},
+      {name:"conditions",label:"Conditions (comma-separated)",placeholder:"e.g. Poisoned, Prone",full:true}
+    ],v=>{
+      const [type,id]=v.source.split(":"),source=type==="npc"?state.npcs.find(x=>x.id===id):state.characters.find(x=>x.id===id);
+      if(!source||ensureCombat().combatants.some(x=>x.sourceId===id))return;
+      const combatant={id:makeId(),sourceId:id,sourceType:type,name:source.name,kind:type==="npc"?"NPC":source.isNPC?"ALLY":"PLAYER",initiative:v.initiative.trim()===""?safeNumber(source.initiative):safeNumber(v.initiative),hp:safeNumber(source.hp),maxHp:Math.max(1,safeNumber(source.maxHp,1)),ac:safeNumber(source.ac),conditions:v.conditions||"",order:Date.now()};
+      mutate(()=>ensureCombat().combatants.push(combatant));
+    });
+  }
+  function addCombatEnemy(){
+    if(!isDM())return;
+    openForm("Add enemy to encounter",[
+      {name:"name",label:"Enemy name",required:true,full:true},
+      {name:"initiative",label:"Initiative roll",type:"number",value:0},
+      {name:"hp",label:"Current HP",type:"number",value:10,min:0},
+      {name:"maxHp",label:"Maximum HP",type:"number",value:10,min:1},
+      {name:"ac",label:"Armour class",type:"number",value:10,min:0},
+      {name:"conditions",label:"Conditions (comma-separated)",placeholder:"e.g. Restrained, Frightened",full:true}
+    ],v=>{
+      if(!v.name.trim())return alert("Please enter an enemy name.");
+      const maxHp=Math.max(1,safeNumber(v.maxHp,10));
+      mutate(()=>ensureCombat().combatants.push({id:makeId(),name:v.name.trim(),kind:"ENEMY",initiative:safeNumber(v.initiative),hp:Math.min(maxHp,Math.max(0,safeNumber(v.hp))),maxHp,ac:safeNumber(v.ac),conditions:v.conditions||"",order:Date.now()}));
+    });
+  }
+  function adjustCombatHP(id,amount){
+    if(!isDM())return;const combatant=ensureCombat().combatants.find(x=>x.id===id);if(!combatant)return;
+    mutate(()=>{
+      combatant.hp=Math.max(0,Math.min(safeNumber(combatant.maxHp,1),safeNumber(combatant.hp)+amount));
+      if(combatant.sourceId){
+        const source=combatant.sourceType==="npc"?state.npcs.find(x=>x.id===combatant.sourceId):state.characters.find(x=>x.id===combatant.sourceId);
+        if(source)source.hp=combatant.hp;
+      }
+    });
+  }
+  function editCombatant(id){
+    if(!isDM())return;const c=ensureCombat().combatants.find(x=>x.id===id);if(!c)return;
+    openForm("Edit combatant",[
+      {name:"name",label:"Name",value:c.name,required:true,full:true},
+      {name:"initiative",label:"Initiative",type:"number",value:c.initiative},
+      {name:"hp",label:"Current HP",type:"number",value:c.hp,min:0},
+      {name:"maxHp",label:"Maximum HP",type:"number",value:c.maxHp,min:1},
+      {name:"ac",label:"Armour class",type:"number",value:c.ac,min:0},
+      {name:"conditions",label:"Conditions (comma-separated)",value:c.conditions||"",full:true}
+    ],v=>{
+      const maxHp=Math.max(1,safeNumber(v.maxHp,1));
+      mutate(()=>{
+        Object.assign(c,{name:v.name.trim(),initiative:safeNumber(v.initiative),hp:Math.min(maxHp,Math.max(0,safeNumber(v.hp))),maxHp,ac:safeNumber(v.ac),conditions:v.conditions||""});
+        if(c.sourceId){
+          const source=c.sourceType==="npc"?state.npcs.find(x=>x.id===c.sourceId):state.characters.find(x=>x.id===c.sourceId);
+          if(source){source.hp=c.hp;source.maxHp=c.maxHp;source.ac=c.ac;}
+        }
+      });
+    });
+  }
+  function removeCombatant(id){
+    if(!isDM())return;const combat=ensureCombat();if(!combat.combatants.some(x=>x.id===id))return;
+    if(!confirm("Remove this combatant from the encounter?"))return;
+    mutate(()=>{combat.combatants=combat.combatants.filter(x=>x.id!==id);if(combat.activeTurnId===id)combat.activeTurnId=null;if(!combat.combatants.length){combat.active=false;combat.round=1;}});
+  }
+  function startCombat(){
+    if(!isDM())return;const combat=ensureCombat(),ordered=orderedCombatants();if(!ordered.length)return alert("Add at least one combatant before starting.");
+    mutate(()=>{combat.active=true;combat.round=1;combat.activeTurnId=ordered[0].id;});
+  }
+  function nextCombatTurn(){
+    if(!isDM())return;const combat=ensureCombat(),ordered=orderedCombatants();if(!combat.active||!ordered.length)return;
+    const index=ordered.findIndex(x=>x.id===combat.activeTurnId),next=index<0?0:(index+1)%ordered.length;
+    mutate(()=>{if(index>=0&&next===0)combat.round++;combat.activeTurnId=ordered[next].id;});
+  }
+  function previousCombatTurn(){
+    if(!isDM())return;const combat=ensureCombat(),ordered=orderedCombatants();if(!combat.active||!ordered.length)return;
+    const index=ordered.findIndex(x=>x.id===combat.activeTurnId),previous=index<=0?ordered.length-1:index-1;
+    mutate(()=>{if(index===0)combat.round=Math.max(1,combat.round-1);combat.activeTurnId=ordered[previous].id;});
+  }
+  function endCombat(){
+    if(!isDM())return;const combat=ensureCombat();if(!combat.active)return;
+    mutate(()=>{combat.active=false;combat.activeTurnId=null;});
+  }
+  function clearCombat(){
+    if(!isDM())return;if(!confirm("Clear this encounter and remove all its combatants?"))return;
+    mutate(()=>{state.combat={active:false,round:1,activeTurnId:null,combatants:[]};});
   }
 
   function characterCard(c,tracker) {
@@ -837,6 +967,16 @@
     calendarToday,
     toggleCalendarDay,
     advanceCalendarDay,
+    addCombatant,
+    addCombatEnemy,
+    startCombat,
+    nextCombatTurn,
+    previousCombatTurn,
+    endCombat,
+    clearCombat,
+    adjustCombatHP,
+    editCombatant,
+    removeCombatant,
     addNotice,
     markNoticeRead,
     closeModal,

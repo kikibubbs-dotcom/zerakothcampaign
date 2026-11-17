@@ -333,3 +333,31 @@
 
 #dnd-hub .quest-card.quest-completed .quest-status-actions button {color:#a8e0b8;border-color:#4e9369;background:#243d31;}
 #dnd-hub .quest-card.quest-failed .quest-status-actions button {color:#e9aab1;border-color:#8b4650;background:#3b252b;}
+
+
+/* Live combat tracker */
+#dnd-hub .combat-tracker-panel{grid-column:1/-1;margin:0;padding:24px;}
+#dnd-hub .combat-heading{align-items:flex-start;gap:18px;margin-bottom:18px;}
+#dnd-hub .combat-heading h2{margin:4px 0 6px;}
+#dnd-hub .combat-round-label{flex:0 0 auto;border:1px solid var(--line);border-radius:5px;padding:9px 12px;color:var(--muted);font:10px Arial,sans-serif;letter-spacing:1px;}
+#dnd-hub .combat-round-label.is-active{border-color:var(--gold2);background:#3b3440;color:var(--gold);}
+#dnd-hub .combat-toolbar{display:flex;gap:9px;flex-wrap:wrap;margin:18px 0 20px;}
+#dnd-hub .combat-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+#dnd-hub .combatant-card{display:flex;align-items:flex-start;gap:13px;padding:15px;background:#191d29;border:1px solid var(--line);border-radius:8px;min-width:0;}
+#dnd-hub .combatant-card.is-current-turn{border:2px solid var(--gold);background:#343348;box-shadow:0 0 18px #d6b87926;}
+#dnd-hub .combatant-card.is-unconscious{opacity:.62;}
+#dnd-hub .combat-initiative{width:43px;height:43px;flex:0 0 43px;display:grid;place-items:center;border:1px solid var(--gold2);border-radius:7px;color:var(--gold);font:bold 19px Arial,sans-serif;background:#292c3b;}
+#dnd-hub .combatant-main{min-width:0;flex:1;}
+#dnd-hub .combatant-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+#dnd-hub .combatant-title-row h3{margin:2px 0 7px;color:#fff;font-size:17px;overflow-wrap:anywhere;}
+#dnd-hub .combatant-type{color:var(--gold);font:9px Arial,sans-serif;letter-spacing:1px;}
+#dnd-hub .turn-indicator{color:var(--gold);font:bold 9px Arial,sans-serif;letter-spacing:1px;white-space:nowrap;}
+#dnd-hub .combatant-stats{display:flex;justify-content:space-between;color:var(--muted);font:10px Arial,sans-serif;margin:7px 0;}
+#dnd-hub .combatant-stats strong{color:var(--text);font-size:13px;}
+#dnd-hub .combat-conditions{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;min-height:22px;}
+#dnd-hub .combat-no-conditions{color:var(--muted);font:10px Arial,sans-serif;padding:4px 0;}
+#dnd-hub .combatant-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:12px;}
+#dnd-hub .combatant-actions button{padding:6px 8px;background:#303747;color:var(--text);border:1px solid var(--line);border-radius:4px;font:9px Arial,sans-serif;}
+#dnd-hub .combat-view-note{font-size:10px;margin-top:15px;}
+@media(max-width:850px){#dnd-hub .combat-list{grid-template-columns:1fr;}}
+@media(max-width:650px){#dnd-hub .combat-tracker-panel{padding:16px;}#dnd-hub .combat-heading{flex-direction:column;}#dnd-hub .combat-round-label{align-self:flex-start;}}

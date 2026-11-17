@@ -176,6 +176,28 @@
         </div>
         <div id="quest-list" class="hub-list"></div>
       </section>
+
+      <section class="combat-tracker-panel hub-panel" id="combat-tracker">
+        <div class="panel-heading combat-heading">
+          <div>
+            <div class="hub-kicker">THE CLASH OF STEEL</div>
+            <h2>Combat Tracker</h2>
+            <p>Initiative order, hit points and conditions for the current encounter.</p>
+          </div>
+          <span class="combat-round-label" id="combat-round-label">NO ACTIVE ENCOUNTER</span>
+        </div>
+        <div class="combat-toolbar dm-only">
+          <button class="hub-button" onclick="Hub.addCombatant()">+ ADD FROM ARCHIVE</button>
+          <button class="small-button" onclick="Hub.addCombatEnemy()">+ ADD ENEMY</button>
+          <button class="small-button" onclick="Hub.startCombat()">START COMBAT</button>
+          <button class="small-button" onclick="Hub.previousCombatTurn()">← PREVIOUS TURN</button>
+          <button class="small-button" onclick="Hub.nextCombatTurn()">NEXT TURN →</button>
+          <button class="small-button" onclick="Hub.endCombat()">END COMBAT</button>
+          <button class="small-button" onclick="Hub.clearCombat()">CLEAR ENCOUNTER</button>
+        </div>
+        <div id="combat-list" class="combat-list"></div>
+        <p class="combat-view-note" id="combat-view-note">The DM controls this encounter. Changes appear live for everyone.</p>
+      </section>
     </div>
 
     <!-- CHARACTER & NPC ARCHIVE -->
