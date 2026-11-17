@@ -169,9 +169,11 @@
 
     const colours = {};
     state.markers.forEach(m=>colours[m.colour]=true);
+    const defaults={"#E66D69":"Red marker","#6D9DD5":"Blue marker","#76B68A":"Green marker","#D6AD5D":"Gold marker","#B28BD6":"Purple marker","#E69AC0":"Pink marker","#E9E5DA":"White marker"};
     $("map-legend").innerHTML = Object.keys(colours).map(c=>
-      `<span class="legend-item"><i class="legend-dot" style="background:${escapeHTML(c)}"></i>${escapeHTML(c)}</span>`
+      `<span class="legend-item"><i class="legend-dot" style="background:${escapeHTML(c)}"></i>${escapeHTML(state.markerLegend?.[c]||defaults[c]||c)}</span>`
     ).join("") || "No markers placed yet.";
+    redrawMapCanvas();
   }
 
   function renderParty() {
@@ -314,8 +316,9 @@
     const blanks=Array.from({length:weekdayOffset},()=>'<div class="calendar-blank"></div>').join("");
     const cells=Array.from({length:month.days},(_,i)=>{
       const day=i+1, isCurrent=calendarView.year===date.year&&calendarView.month===date.month&&day===date.day;
+      const isPast=(state.elapsedDays||[]).includes(`${calendarView.year}-${calendarView.month}-${day}`);
       const dayEvents=state.events.filter(e=>e.fantasyDate&&e.fantasyDate.year===calendarView.year&&e.fantasyDate.month===calendarView.month&&e.fantasyDate.day===day);
-      return `<div class="calendar-day ${isCurrent?"is-current":""}"><span class="calendar-day-number">${day}</span>${dayEvents.map(e=>`<div class="calendar-event-chip" title="${escapeHTML(e.title)}">${escapeHTML(e.title)}</div>`).join("")}</div>`;
+      return `<div class="calendar-day ${isCurrent?"is-current":""} ${isPast?"is-past":""}"><span class="calendar-day-number">${day}</span>${dayEvents.map(e=>`<div class="calendar-event-chip" title="${escapeHTML(e.title)}">${escapeHTML(e.title)}</div>`).join("")}</div>`;
     }).join("");
     $("calendar-grid").innerHTML=weekdayHeaders+blanks+cells;
     const upcoming=[...state.events].filter(e=>e.fantasyDate).sort((a,b)=>a.fantasyDate.year-b.fantasyDate.year||a.fantasyDate.month-b.fantasyDate.month||a.fantasyDate.day-b.fantasyDate.day);
@@ -367,17 +370,12 @@
     renderCalendar();
   }
 
-  function advanceCalendarDay() {
-    if (!isDM()||!state.calendarConfig) return;
-    const c=state.calendarConfig, d=c.currentDate, month=c.months[d.month];
-    if (d.day<month.days) d.day++;
-    else if (d.month<c.months.length-1) {d.month++;d.day=1;}
-    else {d.month=0;d.year++;d.day=1;}
-    calendarView={year:d.year,month:d.month};
-    refresh();persist();
-  }
-
-  function renderNotices(){
+  function advanceCalendarDay(){
+    if(!isDM()||!state.calendarConfig)return;const c=state.calendarConfig,d=c.currentDate,month=c.months[d.month];
+    if(!Array.isArray(state.elapsedDays))state.elapsedDays=[];const passed=`${d.year}-${d.month}-${d.day}`;if(!state.elapsedDays.includes(passed))state.elapsedDays.push(passed);
+    if(d.day<month.days)d.day++;else if(d.month<c.months.length-1){d.month++;d.day=1;}else{d.month=0;d.year++;d.day=1;}
+    calendarView={year:d.year,month:d.month};refresh();persist();
+  }  function renderNotices(){
     const unread=state.notices.filter(n=>n.createdAt&&!(n.readBy||[]).includes(member?.id)).length,bar=$("notice-alert");
     bar.hidden=!unread;bar.textContent=unread?`✉ ${unread} new notice${unread===1?"":"s"} — click to read`:"";
     $("notice-list").innerHTML=state.notices.length?state.notices.map(n=>{const fresh=!!n.createdAt&&!(n.readBy||[]).includes(member?.id);return `<article class="list-card notice-card" onclick="Hub.markNoticeRead('${n.id}')"><div class="list-meta">${escapeHTML(n.date)} ${fresh?'<span class="tag">NEW!</span>':""}</div><h3>${escapeHTML(n.title)}</h3><p>${escapeHTML(n.body)}</p>${isDM()? `<div class="card-actions"><button onclick="event.stopPropagation();Hub.removeItem('notices','${n.id}')">DELETE NOTICE</button></div>`:""}</article>`;}).join(""):empty("The notice board is empty.");
@@ -536,11 +534,12 @@ function configureSlots(id) {
     mutate(()=>state.markers=[]);
   }
 
-  function go(tab) {
+  function go(tab){
+    const adventureTabs=["map","party","quests","calendar"];
     root.querySelectorAll(".hub-page").forEach(p=>p.classList.remove("active"));
     root.querySelectorAll(".hub-nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
-    const page=$("page-"+tab);
-    if (page) page.classList.add("active");
+    if(tab==="adventure")adventureTabs.forEach(name=>$("page-"+name).classList.add("active"));
+    else{const page=$("page-"+tab);if(page)page.classList.add("active");}
   }
 
   root.querySelectorAll(".hub-nav button").forEach(b=>{
@@ -548,8 +547,16 @@ function configureSlots(id) {
   });
 
   const frame=$("map-frame");
+  const mapCanvas=$("map-drawing-canvas");
+  function redrawMapCanvas(){if(!mapCanvas)return;const rect=frame.getBoundingClientRect();mapCanvas.width=Math.max(1,Math.round(rect.width));mapCanvas.height=Math.max(1,Math.round(rect.height));const ctx=mapCanvas.getContext("2d");ctx.clearRect(0,0,mapCanvas.width,mapCanvas.height);(state.mapDrawings||[]).forEach(path=>{if(!path.points||path.points.length<2)return;ctx.beginPath();ctx.strokeStyle=path.colour||"#f3d58b";ctx.lineWidth=path.width||3;ctx.lineCap="round";ctx.lineJoin="round";path.points.forEach((p,i)=>{const x=p.x*mapCanvas.width,y=p.y*mapCanvas.height;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();});}
+  function toggleMapDrawing(){if(!isDM())return;mapDrawing=!mapDrawing;mapCanvas.classList.toggle("is-drawing",mapDrawing);frame.classList.toggle("is-drawing",mapDrawing);$("map-draw-toggle").textContent=mapDrawing?"FINISH DRAWING":"DRAW ON MAP";}
+  function removeMap(){if(!isDM()||!state.mapUrl)return;if(!confirm("Remove the uploaded map image and its drawings?"))return;mutate(()=>{state.mapUrl="";state.mapDrawings=[];});}
+  function editMapLegend(){if(!isDM())return;const colours=[["#E66D69","Red"],["#6D9DD5","Blue"],["#76B68A","Green"],["#D6AD5D","Gold"],["#B28BD6","Purple"],["#E69AC0","Pink"],["#E9E5DA","White"]];openForm("Map legend",colours.map(([colour,name])=>({name:colour,label:name+" marker meaning",value:state.markerLegend?.[colour]||"",placeholder:"e.g. Settlements"})),v=>mutate(()=>{state.markerLegend={...(state.markerLegend||{}),...v};}));}
+  mapCanvas.addEventListener("pointerdown",e=>{if(!mapDrawing||!isDM())return;const r=mapCanvas.getBoundingClientRect(),path={colour:"#f3d58b",width:3,points:[{x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height}]};state.mapDrawings=state.mapDrawings||[];state.mapDrawings.push(path);mapCanvas.setPointerCapture(e.pointerId);redrawMapCanvas();});
+  mapCanvas.addEventListener("pointermove",e=>{if(!mapDrawing||!isDM()||!e.buttons)return;const path=state.mapDrawings?.[state.mapDrawings.length-1];if(!path)return;const r=mapCanvas.getBoundingClientRect();path.points.push({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height});redrawMapCanvas();});
+  mapCanvas.addEventListener("pointerup",()=>{if(mapDrawing)persist();});mapCanvas.addEventListener("pointercancel",()=>{if(mapDrawing)persist();});
   frame.addEventListener("click",e=>{
-    if (!isDM() || e.target.closest(".map-marker")) return;
+    if (!isDM() || mapDrawing || e.target.closest(".map-marker")) return;
     const rect=frame.getBoundingClientRect();
     const x=Math.max(0,Math.min(100,(e.clientX-rect.left)/rect.width*100));
     const y=Math.max(0,Math.min(100,(e.clientY-rect.top)/rect.height*100));
@@ -644,6 +651,11 @@ function configureSlots(id) {
     calendarToday,
     advanceCalendarDay,
     addNotice,
+    markNoticeRead,
+    closeModal,
+    toggleMapDrawing,
+    editMapLegend,
+    removeMap,
     editCharacter,
     editNPC,
     changeHP,
@@ -677,7 +689,7 @@ function configureSlots(id) {
       if (error) throw error;
 
       state={...blank(),...(data.data||{})};
-      ["markers","characters","quests","npcs","journal","events","notices"].forEach(k=>{
+      ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays"].forEach(k=>{
         if (!Array.isArray(state[k])) state[k]=[];
       });
 
@@ -685,6 +697,7 @@ function configureSlots(id) {
       $("hub-loading").style.display="none";
       applyPermissions();
       refresh();
+      redrawMapCanvas();
       status("✓ Connected to campaign");
 
       channel=client.channel("campaign-live")
