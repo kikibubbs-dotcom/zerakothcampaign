@@ -258,7 +258,7 @@
           <div class="list-meta">${escapeHTML(j.date)} · ${escapeHTML(j.author||"Campaign")}</div>
           <h3>${escapeHTML(j.title)}</h3>
           <p>${escapeHTML(j.body)}</p>
-          ${(isDM() || j.ownerId===member?.id)?`<div class="card-actions"><button onclick="Hub.removeItem('journal','${j.id}')">DELETE ENTRY</button></div>`:""}
+          ${(isDM() || j.ownerId===member?.id)?`${(isDM() || j.ownerId===member?.id)?`<div class="card-actions"><button onclick="Hub.editJournal('${j.id}')">EDIT ENTRY</button><button onclick="Hub.removeItem('journal','${j.id}')">DELETE ENTRY</button></div>`:""}`:""}
         </article>`).join("")
       : empty("Your campaign story starts here.");
   }
@@ -271,7 +271,7 @@
           <div class="list-meta">${escapeHTML(e.date)}</div>
           <h3>${escapeHTML(e.title)}</h3>
           <p>${escapeHTML(e.description)}</p>
-          ${(isDM() || e.ownerId===member?.id)?`<div class="card-actions"><button onclick="Hub.removeItem('events','${e.id}')">DELETE EVENT</button></div>`:""}
+          ${(isDM() || e.ownerId===member?.id)?`${(isDM() || e.ownerId===member?.id)?`<div class="card-actions"><button onclick="Hub.editEvent('${e.id}')">EDIT EVENT</button><button onclick="Hub.removeItem('events','${e.id}')">DELETE EVENT</button></div>`:""}`:""}
         </article>`).join("")
       : empty("No events scheduled.");
   }
@@ -426,12 +426,38 @@ function configureSlots(id) {
     mutate(()=>state.journal.unshift({id:makeId(),title,date,author,body,...(!isDM()?{ownerId:member.id}:{})}));
   }
 
+  function editJournal(id) {
+    const entry=state.journal.find(x=>x.id===id);
+    if (!entry || (!isDM() && entry.ownerId!==member?.id)) return;
+    const title=ask("Journal entry title:",entry.title||"");
+    if (title===null || !title) return;
+    const date=ask("In-world date or session number:",entry.date||"");
+    if (date===null) return;
+    const author=ask("Author / character:",entry.author||"");
+    if (author===null) return;
+    const body=ask("What happened?",entry.body||"");
+    if (body===null) return;
+    mutate(()=>Object.assign(entry,{title,date,author,body}));
+  }
+
   function addEvent() {
     const title=ask("Event title:");
     if (!title) return;
     const date=ask("Date (YYYY-MM-DD or your fantasy calendar):")||"";
     const description=ask("Event description:")||"";
     mutate(()=>state.events.push({id:makeId(),title,date,description,...(!isDM()?{ownerId:member.id}:{})}));
+  }
+
+  function editEvent(id) {
+    const event=state.events.find(x=>x.id===id);
+    if (!event || (!isDM() && event.ownerId!==member?.id)) return;
+    const title=ask("Event title:",event.title||"");
+    if (title===null || !title) return;
+    const date=ask("Date (YYYY-MM-DD or your fantasy calendar):",event.date||"");
+    if (date===null) return;
+    const description=ask("Event description:",event.description||"");
+    if (description===null) return;
+    mutate(()=>Object.assign(event,{title,date,description}));
   }
 
   function addNotice() {
@@ -559,7 +585,9 @@ function configureSlots(id) {
     addNPC:()=>addNPC(),
     addQuest,
     addJournal,
+    editJournal,
     addEvent,
+    editEvent,
     addNotice,
     editCharacter,
     editNPC,
