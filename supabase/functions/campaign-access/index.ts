@@ -83,6 +83,18 @@ Deno.serve(async (req) => {
       return json({ code, message: "Save this DM code somewhere safe. It will not be shown again." });
     }
 
+    if (action === "reset-dm-code") {
+      if (body.setup_secret !== setupSecret) return json({ error: "Invalid setup secret." }, 403);
+      const { data: dm, error: dmError } = await admin.schema("private").from("campaign_members")
+        .select("id").eq("role", "dm").eq("active", true).single();
+      if (dmError || !dm) return json({ error: "No active DM account was found." }, 404);
+      const code = randomCode();
+      const { error } = await admin.schema("private").from("campaign_members")
+        .update({ code_hash: await hashCode(code), updated_at: new Date().toISOString() }).eq("id", dm.id);
+      if (error) throw error;
+      return json({ code, message: "The previous DM code is now invalid. Save this new code somewhere safe; it will not be shown again." });
+    }
+
     if (action === "redeem-code") {
       const code = String(body.code || "").trim();
       if (code.length < 8 || code.length > 40) return json({ error: "Invalid access code." }, 400);
