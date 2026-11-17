@@ -4,7 +4,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const cors = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://kikibubbs-dotcom.github.io",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
@@ -29,6 +29,16 @@ async function hashCode(code: string) {
   return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
 }
 function memberEmail(id: string) { return "campaign-" + id + "@members.invalid"; }
+async function allowRedemption(req: Request) {
+  const forwarded = req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || "unknown";
+  const ip = forwarded.split(",")[0].trim();
+  const fingerprint = await hashCode("redeem:" + ip);
+  const { data, error } = await admin.schema("private").rpc("consume_campaign_access_attempt", {
+    p_fingerprint: fingerprint, p_limit: 10, p_window_seconds: 900
+  });
+  if (error) throw error;
+  return data === true;
+}
 
 async function getCaller(req: Request) {
   const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
@@ -76,6 +86,7 @@ Deno.serve(async (req) => {
     if (action === "redeem-code") {
       const code = String(body.code || "").trim();
       if (code.length < 8 || code.length > 40) return json({ error: "Invalid access code." }, 400);
+      if (!await allowRedemption(req)) return json({ error: "Too many attempts. Please wait 15 minutes before trying again." }, 429);
       const { data: member, error } = await admin.schema("private").from("campaign_members").select("*").eq("code_hash", await hashCode(code)).eq("active", true).single();
       if (error || !member) return json({ error: "That access code is invalid or has been revoked." }, 403);
       return json(await issueSession(member));
@@ -108,6 +119,28 @@ Deno.serve(async (req) => {
       const { error } = await admin.schema("private").from("campaign_members").insert({ id, display_name: displayName, role: "player", auth_user_id: created.user.id, code_hash: await hashCode(code) });
       if (error) { await admin.auth.admin.deleteUser(created.user.id); throw error; }
       return json({ code, display_name: displayName, message: "Copy this code now. It will not be shown again." });
+    }
+
+    if (action === "list-players") {
+      if (member.role !== "dm") return json({ error: "DM access required." }, 403);
+      const { data, error } = await admin.schema("private").from("campaign_members")
+        .select("id,display_name,active,created_at,updated_at")
+        .eq("role", "player").order("display_name", { ascending: true });
+      if (error) throw error;
+      return json({ players: data || [] });
+    }
+
+    if (action === "reset-player-code") {
+      if (member.role !== "dm") return json({ error: "DM access required." }, 403);
+      const targetId = String(body.member_id || "");
+      const code = randomCode();
+      const { data: target, error: targetError } = await admin.schema("private").from("campaign_members")
+        .select("id,display_name").eq("id", targetId).eq("role", "player").eq("active", true).single();
+      if (targetError || !target) return json({ error: "Active player not found." }, 404);
+      const { error } = await admin.schema("private").from("campaign_members")
+        .update({ code_hash: await hashCode(code), updated_at: new Date().toISOString() }).eq("id", targetId);
+      if (error) throw error;
+      return json({ code, display_name: target.display_name, message: "The previous code is now invalid. Copy this new code now." });
     }
 
     if (action === "revoke-player") {
