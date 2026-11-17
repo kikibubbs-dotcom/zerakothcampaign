@@ -54,20 +54,24 @@ function validatePlayerChange(before: any, after: any, memberId: string) {
 
     for (const [id, oldItem] of oldById) {
       const newItem: any = newById.get(id);
-      const isOwner = (oldItem as any)?.ownerId === memberId;
-      if (!isOwner && (!newItem || !same(oldItem, newItem))) {
-        return "You can only edit or remove your own " + collection + " entries.";
-      }
-      if (isOwner && newItem && newItem.ownerId !== memberId) {
-        return "An entry cannot be transferred to another account.";
-      }
-      if (collection === "characters" && newItem && newItem.isNPC) {
-        return "Player-owned characters cannot be changed into NPC companions.";
+      if (collection === "characters") {
+        const isOwner = (oldItem as any)?.ownerId === memberId;
+        if (!isOwner && (!newItem || !same(oldItem, newItem))) {
+          return "You can only edit or remove your own character.";
+        }
+        if (isOwner && newItem && newItem.ownerId !== memberId) {
+          return "A character cannot be transferred to another account.";
+        }
+        if (newItem && newItem.isNPC) {
+          return "Player-owned characters cannot be changed into NPC companions.";
+        }
+      } else if (newItem && (oldItem as any)?.ownerId && newItem.ownerId !== (oldItem as any).ownerId) {
+        return "An entry's original author cannot be changed.";
       }
     }
     for (const [id, newItem] of newById) {
       if (!oldById.has(id)) {
-        if ((newItem as any)?.ownerId !== memberId) return "New " + collection + " entries must belong to your account.";
+        if ((newItem as any)?.ownerId !== memberId) return "New " + collection + " entries must be attributed to your account.";
         if (collection === "characters" && (newItem as any)?.isNPC) return "Players cannot create NPC companions.";
       }
     }
