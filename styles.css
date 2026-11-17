@@ -286,7 +286,8 @@
 
 /* Archive, spacing and quest/calendar polish */
 #dnd-hub .hub-page > * + * {margin-top:26px;}
-#dnd-hub .adventure-board-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start;}
+#dnd-hub .adventure-board-grid {display:none;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start;}
+#dnd-hub .adventure-board-grid.adventure-visible {display:grid;}
 #dnd-hub .adventure-board-grid > .hub-page {min-width:0;}
 #dnd-hub .archive-section {margin-top:24px;padding:18px;background:#1d202c;border:1px solid var(--line);border-radius:9px;}
 #dnd-hub .archive-section .panel-heading {margin-bottom:14px;}
