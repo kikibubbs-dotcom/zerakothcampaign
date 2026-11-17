@@ -308,7 +308,7 @@
   function renderReferenceLibrary(){
     const list=$("reference-results");if(!list)return;
     const entries=referenceEntries();
-    if(!entries.length){list.innerHTML=empty("No entries found. Try a different search or create a homebrew entry.");return;}
+    if(!entries.length){list.innerHTML=empty("No entries found. Try a different search or create a homebrew entry.");const pager=$("reference-pagination");if(pager)pager.innerHTML="";return;}
     list.innerHTML=entries.map((entry,i)=>{
       const source=entry._homebrew?"CAMPAIGN HOMEBREW":(entry.document?.display_name||entry.document?.name||"OPEN SRD");
       const edition=entry._homebrew?(entry.edition||"Homebrew"):sourceEdition(entry);
@@ -405,6 +405,7 @@
     (state.sharedInventory||[]).forEach(x=>add("Party loot",x.id,x.name,[x.category,x.rarity,x.notes,x.value].join(" "),"inventory"));
     (state.characters||[]).forEach(c=>(c.inventoryItems||[]).forEach(x=>add("Character item",x.id,x.name,[c.name,x.category,x.rarity,x.notes,x.value].join(" "),"inventory")));
     (state.sessions||[]).forEach(x=>add("Session "+safeNumber(x.number),x.id,x.title,[x.date,x.summary,x.decisions,x.discoveries,x.npcEncounters,x.openHooks].join(" "),"sessions"));
+    (state.homebrew||[]).forEach(x=>add("Homebrew",x.id,x.name,[x.description,x.mechanics,x.category,x.edition].join(" "),"reference"));
     count.textContent=entries.length+" result"+(entries.length===1?"":"s")+" found";
     results.innerHTML=entries.length?entries.map(x=>'<button class="search-result" onclick="Hub.openSearchResult(\''+x.page+'\')"><span class="tag">'+escapeHTML(x.type)+'</span><strong>'+escapeHTML(x.title||"Untitled")+'</strong><span>'+escapeHTML((x.body||"").slice(0,180))+'</span></button>').join(""):empty("No matching campaign records found.");
   }
