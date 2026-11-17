@@ -51,6 +51,18 @@ function validatePlayerChange(before: any, after: any, memberId: string) {
     }
   }
 
+  const oldHomebrew = asArray(before?.homebrew) || [];
+  const newHomebrew = asArray(after?.homebrew) || [];
+  const oldHomebrewById = new Map<string, any>(oldHomebrew.map((item: any) => [String(item?.id), item] as [string, any]));
+  const newHomebrewById = new Map<string, any>(newHomebrew.map((item: any) => [String(item?.id), item] as [string, any]));
+  if (newHomebrewById.size !== newHomebrew.length) return "Duplicate homebrew entries are not allowed.";
+  for (const [id, oldEntry] of oldHomebrewById) {
+    const nextEntry = newHomebrewById.get(id);
+    if (oldEntry.ownerId !== memberId && (!nextEntry || !same(oldEntry, nextEntry))) return "You can only edit or remove your own homebrew entries.";
+    if (nextEntry && nextEntry.ownerId !== oldEntry.ownerId) return "A homebrew entry cannot be transferred to another account.";
+  }
+  for (const [id, entry] of newHomebrewById) if (!oldHomebrewById.has(id) && entry.ownerId !== memberId) return "New homebrew entries must be attributed to your account.";
+
   for (const collection of ["characters", "journal", "events"]) {
     const oldItems = asArray(before?.[collection]);
     const newItems = asArray(after?.[collection]);
