@@ -449,7 +449,7 @@
           const canvas=document.createElement("canvas");
           canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));
           canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
-          resolve(canvas.toDataURL("image/jpeg",0.78));
+          const webp=canvas.toDataURL("image/webp",0.8);resolve(webp.startsWith("data:image/webp")?webp:canvas.toDataURL("image/jpeg",0.78));
         };
         img.src=reader.result;
       };
