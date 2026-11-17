@@ -83,6 +83,11 @@
         status("Save conflict — reload the page to get the latest campaign.");
         return;
       }
+      if (error?.context?.status === 401 || error?.context?.status === 403) {
+        pending = false;
+        status("Save denied — " + error.message);
+        return;
+      }
       if (error) throw error;
       status("✓ All changes saved");
     } catch (err) {
