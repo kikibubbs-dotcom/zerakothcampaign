@@ -642,7 +642,7 @@
             `).join("")}
           </div>
           ${(c.resources||[]).length?`<div class="card-subtitle" style="margin-top:14px">CLASS & CHARACTER RESOURCES</div>${c.resources.map(r=>`<div class="hp-line"><span>${escapeHTML(r.name)}</span><span>${safeNumber(r.used)}/${safeNumber(r.max)} used · ${escapeHTML(r.recovery||"long")} rest</span></div>`).join("")}`:""}
-          ${c.rulesEdition==="2024"?`<div class="hp-line"><strong>EXHAUSTION</strong><span>${safeNumber(c.exhaustion)}/6</span></div>`:""}
+          ${safeNumber(c.exhaustion)>0?`<div class="hp-line"><strong>EXHAUSTION · ${escapeHTML(c.rulesEdition||"2014")}</strong><span>${safeNumber(c.exhaustion)}/6</span></div>`:""}
         `:`
           <div class="tag">HP ${hp}/${max}</div>
           <div class="tag">AC ${safeNumber(c.ac)}</div>
