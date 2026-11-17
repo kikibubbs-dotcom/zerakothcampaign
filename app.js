@@ -322,7 +322,7 @@
       const day=i+1, isCurrent=calendarView.year===date.year&&calendarView.month===date.month&&day===date.day;
       const isPast=(state.elapsedDays||[]).includes(`${calendarView.year}-${calendarView.month}-${day}`);
       const dayEvents=state.events.filter(e=>e.fantasyDate&&e.fantasyDate.year===calendarView.year&&e.fantasyDate.month===calendarView.month&&e.fantasyDate.day===day);
-      return `<div class="calendar-day ${isCurrent?"is-current":""} ${isPast?"is-past":""}"><span class="calendar-day-number">${day}</span>${dayEvents.map(e=>`<div class="calendar-event-chip" title="${escapeHTML(e.title)}">${escapeHTML(e.title)}</div>`).join("")}</div>`;
+      return `<div class="calendar-day ${isCurrent?"is-current":""} ${isPast?"is-past":""}"><span class="calendar-day-number">${day}</span>${isDM()?`<button class="calendar-day-check" title="Toggle elapsed day" onclick="Hub.toggleCalendarDay(${calendarView.year},${calendarView.month},${day})">${isPast?"✓":"○"}</button>`:""}${dayEvents.map(e=>`<div class="calendar-event-chip" title="${escapeHTML(e.title)}">${escapeHTML(e.title)}</div>`).join("")}</div>`;
     }).join("");
     $("calendar-grid").innerHTML=weekdayHeaders+blanks+cells;
     const upcoming=[...state.events].filter(e=>e.fantasyDate&&(e.fantasyDate.year>date.year||(e.fantasyDate.year===date.year&&(e.fantasyDate.month>date.month||(e.fantasyDate.month===date.month&&e.fantasyDate.day>=date.day))))).sort((a,b)=>a.fantasyDate.year-b.fantasyDate.year||a.fantasyDate.month-b.fantasyDate.month||a.fantasyDate.day-b.fantasyDate.day);
@@ -368,6 +368,10 @@
     if (!state.calendarConfig) return;
     calendarView={year:state.calendarConfig.currentDate.year,month:state.calendarConfig.currentDate.month};
     renderCalendar();
+  }
+
+  function toggleCalendarDay(year,month,day){
+    if(!isDM())return;if(!Array.isArray(state.elapsedDays))state.elapsedDays=[];const key=`${year}-${month}-${day}`;const index=state.elapsedDays.indexOf(key);if(index>=0)state.elapsedDays.splice(index,1);else state.elapsedDays.push(key);refresh();persist();
   }
 
   function advanceCalendarDay(){
@@ -620,6 +624,7 @@
     editCalendarSetup,
     calendarMonth,
     calendarToday,
+    toggleCalendarDay,
     advanceCalendarDay,
     addNotice,
     markNoticeRead,
