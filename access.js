@@ -1,6 +1,6 @@
 (function () {
   const URL = "https://imcwmrvtnucstizhkrhl.supabase.co";
-  const KEY = "sb_publishable_gx32auqh2BrgkVFneXCMxW_V7GCjkTf";
+  const KEY = "sb_publishable_gx32auqh2BrgkVFneXCMXw_V7GCjkTf";
   const client = window.supabase.createClient(URL, KEY);
   window.campaignClient = client;
   window.campaignMember = null;
