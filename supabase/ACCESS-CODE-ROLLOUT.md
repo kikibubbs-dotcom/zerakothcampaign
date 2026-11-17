@@ -29,7 +29,7 @@ The live/main branch still uses direct browser writes to the shared `campaign_hu
 5. Deploy the new `campaign-data` Edge Function.
 6. Ensure the Supabase `private` schema remains in Exposed schemas for the service-side RPC calls, while its tables and functions remain inaccessible to `anon` and `authenticated`.
 7. Deploy the development frontend and test DM sign-in, player sign-in, player code changes, DM player creation/reset/revocation, own-character edits, own journal/event edits, and denied edits to DM-only content.
-8. Only after those tests pass, apply a separate lockdown migration for `campaign_hub` and `campaign-maps` Storage. Preserve read/realtime access as needed, but remove browser write access and route all changes through the authenticated server layer.
+8. Only after those tests pass, apply `migrations/20261117_lockdown_campaign_writes.sql`. It removes direct browser write access to `campaign_hub`, keeps authenticated read access for Realtime, and blocks direct client uploads/updates/deletes in `campaign-maps`. Map uploads then work only through DM-authorized signed upload URLs.
 
 ## Secrets and deployment safety
 - Supabase supplies `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` to Edge Functions. Do not create manually named secrets with the `SUPABASE_` prefix.
