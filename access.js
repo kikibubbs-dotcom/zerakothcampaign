@@ -19,7 +19,8 @@
     #campaign-access-screen button{width:100%}
     #campaign-access-screen .access-error{color:#f08e8e;min-height:18px;font-size:12px}
     #campaign-access-screen .access-kicker{color:#c5a66e;letter-spacing:2px;font-size:10px;margin-bottom:12px}
-    #campaign-account-button{margin-left:12px;background:transparent;color:#e2c58e;border:1px solid #8e7549;border-radius:4px;padding:7px 10px;font-size:10px;cursor:pointer}
+    #dnd-hub .hub-status{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+    #campaign-account-button{margin:0 0 0 2px;background:transparent;color:#e2c58e;border:1px solid #8e7549;border-radius:4px;padding:7px 10px;font-size:10px;cursor:pointer;flex:0 0 auto}
     #campaign-account-panel{position:fixed;z-index:99998;inset:0;background:#000a;display:none;align-items:center;justify-content:center;padding:18px;font-family:Arial,sans-serif;color:#eee}
     #campaign-account-panel .access-panel{width:min(600px,100%);max-height:85vh;overflow:auto;background:#202433;border:1px solid #9c804d;border-radius:10px;padding:22px}
     #campaign-account-panel h3{color:#e2c58e;margin:8px 0}
