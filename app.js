@@ -26,8 +26,7 @@
     events:[],
     calendarConfig:null,
     elapsedDays:[],
-    notices:[],
-    combat:{active:false,round:1,activeTurnId:null,combatants:[]}
+    notices:[]
   });
 
   let state = blank();
@@ -184,6 +183,12 @@
       : empty("Your party is waiting for its first adventurer.");
   }
 
+  function getCombat(){
+    const combat=state.combat&&typeof state.combat==="object"?state.combat:{active:false,round:1,activeTurnId:null,combatants:[]};
+    if(!Array.isArray(combat.combatants))combat.combatants=[];
+    combat.round=Math.max(1,safeNumber(combat.round,1));
+    return combat;
+  }
   function ensureCombat(){
     if(!state.combat||typeof state.combat!=="object")state.combat={active:false,round:1,activeTurnId:null,combatants:[]};
     if(!Array.isArray(state.combat.combatants))state.combat.combatants=[];
@@ -191,10 +196,10 @@
     return state.combat;
   }
   function orderedCombatants(){
-    return [...ensureCombat().combatants].sort((a,b)=>safeNumber(b.initiative)-safeNumber(a.initiative)||safeNumber(a.order)-safeNumber(b.order));
+    return [...getCombat().combatants].sort((a,b)=>safeNumber(b.initiative)-safeNumber(a.initiative)||safeNumber(a.order)-safeNumber(b.order));
   }
   function renderCombat(){
-    const combat=ensureCombat(),list=$("combat-list"),ordered=orderedCombatants();
+    const combat=getCombat(),list=$("combat-list"),ordered=orderedCombatants();
     $("combat-round-label").textContent=combat.active?("ROUND "+combat.round):ordered.length?"ENCOUNTER READY":"NO ACTIVE ENCOUNTER";
     $("combat-round-label").classList.toggle("is-active",combat.active);
     const controls=root.querySelector(".combat-toolbar");
