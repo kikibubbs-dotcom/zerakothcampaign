@@ -245,3 +245,28 @@
  #dnd-hub .calendar-weekday {font-size:8px;overflow-wrap:anywhere;}
  #dnd-hub .calendar-event-chip {font-size:8px;}
 }
+
+
+/* Shared modal forms, campaign notifications and map drawing */
+#dnd-hub .notice-alert{padding:11px 18px;background:#3b3540;border-bottom:1px solid var(--gold2);color:#f2dcae;font:12px Arial,sans-serif;cursor:pointer;text-align:center}
+#dnd-hub .notice-alert:hover{background:#494052}
+#dnd-hub .hub-modal{position:fixed;inset:0;z-index:99999;background:#090b12d9;display:flex;align-items:center;justify-content:center;padding:18px}
+#dnd-hub .hub-modal[hidden]{display:none}
+#dnd-hub .modal-card{width:min(760px,100%);max-height:90vh;overflow:auto;background:#222633;border:1px solid var(--gold2);border-radius:10px;padding:22px;box-shadow:0 18px 70px #000b}
+#dnd-hub .modal-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+#dnd-hub .modal-top h3{font-size:19px;margin:0}
+#dnd-hub .modal-close{background:transparent;border:1px solid var(--line);color:var(--text);border-radius:5px;padding:6px 10px}
+#dnd-hub .modal-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+#dnd-hub .modal-field{display:flex;flex-direction:column;gap:6px;color:var(--gold);font:11px Arial,sans-serif;min-width:0}
+#dnd-hub .modal-field.full{grid-column:1/-1}
+#dnd-hub .modal-field input,#dnd-hub .modal-field textarea,#dnd-hub .modal-field select{width:100%;font:13px Arial,sans-serif}
+#dnd-hub .modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+#dnd-hub .journal-editor-canvas{display:block;width:100%;height:190px;background:#f4f0e6;border:1px solid var(--gold2);border-radius:5px;touch-action:none}
+#dnd-hub .map-drawing-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+#dnd-hub .map-drawing-canvas.is-drawing{pointer-events:auto;cursor:crosshair;touch-action:none}
+#dnd-hub .map-frame.is-drawing #map-markers{pointer-events:none}
+#dnd-hub .map-frame.is-drawing .map-marker{pointer-events:none}
+#dnd-hub .map-legend .legend-item{background:#191d29;border:1px solid var(--line);padding:6px 9px;border-radius:5px}
+#dnd-hub .calendar-day.is-past{background:#26332e;border-color:#587864}
+#dnd-hub .calendar-day.is-past .calendar-day-number:after{content:" ✓";color:#79bd91}
+@media(max-width:650px){#dnd-hub .modal-fields{grid-template-columns:1fr}#dnd-hub .modal-field.full{grid-column:auto}#dnd-hub .hub-modal{padding:8px}#dnd-hub .modal-card{padding:15px;max-height:94vh}}
