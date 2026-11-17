@@ -29,7 +29,8 @@
     notices:[],
     sharedInventory:[],
     partyGold:0,
-    sessions:[]
+    sessions:[],
+    homebrew:[]
   });
 
   let state = blank();
@@ -176,6 +177,64 @@
   function addSession(){if(!isDM())return;openForm("Log a session",sessionFields(),v=>{if(!v.title.trim())return alert("Please enter a session title.");mutate(()=>{if(!Array.isArray(state.sessions))state.sessions=[];state.sessions.push({id:makeId(),number:Math.max(1,safeNumber(v.number,1)),date:v.date,title:v.title.trim(),summary:v.summary,decisions:v.decisions,discoveries:v.discoveries,npcEncounters:v.npcEncounters,openHooks:v.openHooks});});});}
   function editSession(id){if(!isDM())return;const s=state.sessions?.find(x=>x.id===id);if(!s)return;openForm("Edit session "+s.number,sessionFields(s),v=>{if(!v.title.trim())return alert("Please enter a session title.");mutate(()=>Object.assign(s,{number:Math.max(1,safeNumber(v.number,1)),date:v.date,title:v.title.trim(),summary:v.summary,decisions:v.decisions,discoveries:v.discoveries,npcEncounters:v.npcEncounters,openHooks:v.openHooks}));});}
   function removeSession(id){if(!isDM()||!confirm("Delete this session record?"))return;mutate(()=>state.sessions=(state.sessions||[]).filter(s=>s.id!==id));}
+
+  function exportCampaign(){
+    if(!isDM())return alert("Only the DM can export a campaign.");
+    const payload={format:"adventurers-chronicle-campaign",version:1,exportedAt:new Date().toISOString(),data:state};
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download=(state.title||"campaign").toLowerCase().replace(/[^a-z0-9]+/g,"-")+"-backup.json";a.click();URL.revokeObjectURL(url);
+  }
+  function importCampaign(file){
+    if(!isDM()||!file)return;
+    if(file.size>5*1024*1024)return alert("Please choose a campaign backup smaller than 5MB.");
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const parsed=JSON.parse(String(reader.result||""));
+        const incoming=parsed.format==="adventurers-chronicle-campaign"?parsed.data:parsed;
+        if(!incoming||typeof incoming!=="object"||Array.isArray(incoming)||!Array.isArray(incoming.characters)||!Array.isArray(incoming.quests)||!Array.isArray(incoming.npcs))throw new Error("This doesn't look like a valid campaign backup.");
+        if(!confirm("Import this campaign and replace the current campaign content? This cannot be undone. Player accounts and access codes will stay unchanged."))return;
+        const fresh={...blank(),...incoming};
+        ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions","homebrew"].forEach(k=>{if(!Array.isArray(fresh[k]))fresh[k]=[];});
+        mutate(()=>state=fresh);
+        alert("Campaign imported. Player accounts and access codes were not changed.");
+      }catch(err){alert(err.message||"The campaign backup could not be imported.");}
+    };
+    reader.onerror=()=>alert("The selected backup file could not be read.");
+    reader.readAsText(file);
+  }
+  function takeRest(id,type){
+    const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;
+    const title=type==="long"?"Long Rest":"Short Rest";
+    if(!confirm(type==="long"?"Finish a long rest for "+c.name+"? This restores HP, spell slots and long-rest resources.":"Finish a short rest for "+c.name+"? This restores short-rest resources and Warlock Pact Magic slots."))return;
+    mutate(()=>{
+      if(!Array.isArray(c.resources))c.resources=[];
+      if(type==="short"){
+        c.resources.forEach(r=>{if(r.recovery==="short"||r.recovery==="short or long")r.used=0;});
+        if(String(c.className||"").toLowerCase().includes("warlock")&&Array.isArray(c.spellSlots))c.spellSlots.forEach(slot=>{if(slot.total>0)slot.used=0;});
+      }else{
+        c.hp=Math.max(0,safeNumber(c.maxHp));
+        if(Array.isArray(c.spellSlots))c.spellSlots.forEach(slot=>slot.used=0);
+        c.resources.forEach(r=>{if(r.recovery!=="manual")r.used=0;});
+        const spent=Math.max(0,safeNumber(c.hitDiceUsed)),level=Math.max(1,safeNumber(c.level,1));
+        c.hitDiceUsed=Math.max(0,spent-Math.max(1,Math.floor(level/2)));
+      }
+      c.lastRest={type,at:new Date().toISOString()};
+    });
+    status(title+" completed for "+c.name+".");
+  }
+  function editResources(id){
+    const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;
+    const resources=Array.isArray(c.resources)?c.resources:[];
+    openForm("Class & character resources",[
+      {name:"resources",label:"One resource per line: Name | maximum | used | recovery (short/long/manual)",type:"textarea",rows:8,value:resources.map(r=>[r.name,r.max,r.used,r.recovery].join(" | ")).join("\n"),full:true}
+    ],v=>{
+      const parsed=v.resources.split("\n").map(line=>line.split("|").map(x=>x.trim())).filter(x=>x[0]).map(x=>({id:makeId(),name:x[0],max:Math.max(0,safeNumber(x[1])),used:Math.max(0,Math.min(safeNumber(x[1]),safeNumber(x[2]))),recovery:["short","long","short or long","manual"].includes((x[3]||"long").toLowerCase())?(x[3]||"long").toLowerCase():"long"}));
+      mutate(()=>c.resources=parsed);
+    });
+  }
+
   function searchCampaign(){
     const q=$("campaign-search-input").value.trim().toLowerCase(),results=$("campaign-search-results"),count=$("campaign-search-count");
     if(!q){count.textContent="Enter a search term to explore your campaign.";results.innerHTML="";return;}
@@ -407,7 +466,7 @@
             <button onclick="Hub.changeHP('${c.id}',1)">+1 HP</button>
             <button onclick="Hub.changeHP('${c.id}',5)">+5 HP</button>
             <button onclick="Hub.editCharacter('${c.id}')">EDIT</button>
-            <button onclick="Hub.configureSlots('${c.id}')">SET SPELL SLOTS</button>
+            <button onclick="Hub.configureSlots('${c.id}')">SET SPELL SLOTS</button><button onclick="Hub.takeRest('${c.id}','short')">SHORT REST</button><button onclick="Hub.takeRest('${c.id}','long')">LONG REST</button><button onclick="Hub.editResources('${c.id}')">RESOURCES</button>
           </div>`:`<p class="list-meta">VIEW ONLY</p>`}
           <div class="hp-line"><strong>ARMOUR CLASS</strong><span>${safeNumber(c.ac)}</span></div>
           <div class="hp-line"><strong>INITIATIVE / SPEED</strong><span>${safeNumber(c.initiative)} / ${safeNumber(c.speed)} ft</span></div>
@@ -939,6 +998,7 @@
   }
 
   $("campaign-search-input").addEventListener("input",searchCampaign);
+  $("campaign-import-file").addEventListener("change",e=>{const file=e.target.files?.[0];if(file)importCampaign(file);e.target.value="";});
   root.querySelectorAll(".hub-nav button").forEach(b=>{
     b.addEventListener("click",()=>go(b.dataset.tab));
   });
@@ -1026,6 +1086,10 @@
   });
 
   const Hub = {configureSlots,
+    takeRest,
+    editResources,
+    exportCampaign,
+    importCampaign,
     resetCampaign,
     go,
     addCharacter:()=>addCharacter(),
@@ -1106,7 +1170,7 @@
       if (error) throw error;
 
       state={...blank(),...(data.data||{})};
-      ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions"].forEach(k=>{
+      ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions","homebrew"].forEach(k=>{
         if (!Array.isArray(state[k])) state[k]=[];
       });
 
@@ -1116,6 +1180,7 @@
       applyPermissions();
       refresh();
       redrawMapCanvas();
+      loadReference();
       status("✓ Connected to campaign");
 
       channel=client.channel("campaign-live")
