@@ -235,6 +235,108 @@
     });
   }
 
+
+  let referenceCategory="spells", referenceResults=[], referenceEdition="both";
+  const referenceTypes={spells:"spells",species:"species",classes:"classes",items:"items",creatures:"creatures"};
+  function sourceEdition(entry){
+    const key=String(entry.document?.key||"").toLowerCase();
+    return key.includes("2024")?"2024":key.includes("2014")?"2014":"Open5e";
+  }
+  async function loadReference(){
+    const list=$("reference-results");if(!list)return;
+    const q=$("reference-search").value.trim();list.innerHTML=empty("Searching the open rules library...");
+    try{
+      const params=new URLSearchParams({limit:"30",ordering:"name",document__key__in:"srd-2014,srd-2024"});
+      if(q)params.set("name__icontains",q);
+      if(referenceEdition==="2014")params.set("document__key__iexact","srd-2014");
+      if(referenceEdition==="2024")params.set("document__key__iexact","srd-2024");
+      const response=await fetch("https://api.open5e.com/v2/"+referenceTypes[referenceCategory]+"/?"+params.toString());
+      if(!response.ok)throw new Error("The open reference source is temporarily unavailable.");
+      const payload=await response.json();referenceResults=Array.isArray(payload.results)?payload.results:[];
+      renderReferenceLibrary();
+    }catch(err){list.innerHTML=empty(err.message+" You can still create campaign homebrew.");}
+  }
+  function referenceEntries(){
+    const home=(state.homebrew||[]).filter(x=>x.category===referenceCategory||x.category==="all").map(x=>({...x,_homebrew:true}));
+    return [...home,...referenceResults];
+  }
+  function renderReferenceLibrary(){
+    const list=$("reference-results");if(!list)return;
+    const entries=referenceEntries();
+    if(!entries.length){list.innerHTML=empty("No entries found. Try a different search or create a homebrew entry.");return;}
+    list.innerHTML=entries.map((entry,i)=>{
+      const source=entry._homebrew?"CAMPAIGN HOMEBREW":(entry.document?.display_name||entry.document?.name||"OPEN SRD");
+      const edition=entry._homebrew?(entry.edition||"Homebrew"):sourceEdition(entry);
+      const detail=String(entry.desc||entry.description||"").replace(/<[^>]*>/g," ").slice(0,300);
+      const meta=referenceCategory==="spells"?"Level "+safeNumber(entry.level)+" · "+(entry.school||"Spell"):source;
+      const controls='<button onclick="Hub.openReferenceEntry('+i+')">VIEW DETAILS</button><button onclick="Hub.applyReferenceEntry('+i+')">ADD TO CHARACTER</button>';
+      const own=entry._homebrew&&(isDM()||entry.ownerId===member?.id)?'<button onclick="Hub.editHomebrew(\\''+entry.id+'\\')">EDIT</button><button onclick="Hub.removeHomebrew(\\''+entry.id+'\\')">DELETE</button>':"";
+      return '<article class="reference-card"><div class="reference-card-top"><span class="tag">'+escapeHTML(edition)+'</span><span class="list-meta">'+escapeHTML(meta)+'</span></div><h3>'+escapeHTML(entry.name||"Untitled")+'</h3><p>'+escapeHTML(detail||"Open the entry to view details.")+'</p><div class="list-meta">'+escapeHTML(source)+'</div><div class="card-actions">'+controls+own+'</div></article>';
+    }).join("");
+    $("reference-count").textContent=entries.length+" entries shown · Open SRD material and campaign homebrew";
+  }
+  function openReferenceEntry(index){
+    const entry=referenceEntries()[index];if(!entry)return;
+    openForm(entry.name||"Reference entry",[
+      {name:"details",label:"Description",type:"textarea",rows:8,value:entry.desc||entry.description||"No description available."},
+      {name:"mechanics",label:"Mechanics",type:"textarea",rows:5,value:entry.mechanics||""},
+      {name:"source",label:"Source",value:entry.document?.display_name||entry.source||"Open5e / campaign homebrew"},
+      {name:"edition",label:"Rules version",value:entry._homebrew?entry.edition:sourceEdition(entry)}
+    ],()=>{});
+  }
+  function applyReferenceEntry(index){
+    const entry=referenceEntries()[index];if(!entry)return;
+    const owned=state.characters.filter(c=>canEditCharacter(c));
+    if(!owned.length)return alert("Create a character first, or ask the DM to add one to the archive.");
+    openForm("Add "+entry.name+" to a character",[
+      {name:"characterId",label:"Character",type:"select",required:true,options:owned.map(c=>({value:c.id,label:c.name}))}
+    ],v=>{
+      const c=state.characters.find(x=>x.id===v.characterId);if(!c||!canEditCharacter(c))return;
+      const detail=String(entry.desc||entry.description||"").replace(/<[^>]*>/g," ").trim();
+      const line="• "+entry.name+(entry.level!==undefined?" (Level "+entry.level+")":"")+" — "+detail;
+      mutate(()=>{
+        if(referenceCategory==="classes")c.className=entry.name;
+        else if(referenceCategory==="species")c.race=entry.name;
+        else if(referenceCategory==="spells")c.spells=[c.spells||"",line].filter(Boolean).join("\n");
+        else if(referenceCategory==="items"){
+          if(!Array.isArray(c.inventoryItems))c.inventoryItems=[];
+          c.inventoryItems.push({id:makeId(),name:entry.name,category:"Equipment",rarity:"Common",quantity:1,notes:detail});
+        }else c.features=[c.features||"",line].filter(Boolean).join("\n");
+      });
+      alert(entry.name+" added to "+c.name+".");
+    });
+  }
+  function homebrewFields(entry={}){
+    return [
+      {name:"name",label:"Entry name",value:entry.name||"",required:true,full:true},
+      {name:"category",label:"Category",type:"select",value:entry.category||referenceCategory,options:Object.keys(referenceTypes).map(k=>({value:k,label:k[0].toUpperCase()+k.slice(1)})).concat([{value:"all",label:"Other / general"}])},
+      {name:"edition",label:"Rules version",type:"select",value:entry.edition||"Both",options:["2014","2024","Both","Homebrew / setting-specific"].map(x=>({value:x,label:x}))},
+      {name:"description",label:"Description & rules",type:"textarea",rows:8,value:entry.description||"",full:true},
+      {name:"mechanics",label:"Mechanics, prerequisites & effects",type:"textarea",rows:5,value:entry.mechanics||"",full:true},
+      {name:"source",label:"Source / attribution (optional)",value:entry.source||"",full:true}
+    ];
+  }
+  function addHomebrew(){
+    openForm("Create homebrew reference",homebrewFields(),v=>{
+      if(!v.name.trim())return alert("Enter an entry name.");
+      mutate(()=>{if(!Array.isArray(state.homebrew))state.homebrew=[];state.homebrew.unshift({id:makeId(),ownerId:member.id,name:v.name.trim(),category:v.category,edition:v.edition,description:v.description,mechanics:v.mechanics,source:v.source,createdAt:new Date().toISOString()});});
+      renderReferenceLibrary();
+    });
+  }
+  function editHomebrew(id){
+    const e=state.homebrew?.find(x=>x.id===id);if(!e||(!isDM()&&e.ownerId!==member.id))return;
+    openForm("Edit homebrew entry",homebrewFields(e),v=>mutate(()=>Object.assign(e,{name:v.name.trim(),category:v.category,edition:v.edition,description:v.description,mechanics:v.mechanics,source:v.source})));
+  }
+  function removeHomebrew(id){
+    const e=state.homebrew?.find(x=>x.id===id);if(!e||(!isDM()&&e.ownerId!==member.id)||!confirm("Delete this homebrew entry?"))return;
+    mutate(()=>state.homebrew=state.homebrew.filter(x=>x.id!==id));renderReferenceLibrary();
+  }
+  function selectReferenceCategory(category){
+    if(!referenceTypes[category])return;referenceCategory=category;
+    root.querySelectorAll("[data-reference-category]").forEach(b=>b.classList.toggle("active",b.dataset.referenceCategory===category));
+    loadReference();
+  }
+
   function searchCampaign(){
     const q=$("campaign-search-input").value.trim().toLowerCase(),results=$("campaign-search-results"),count=$("campaign-search-count");
     if(!q){count.textContent="Enter a search term to explore your campaign.";results.innerHTML="";return;}
@@ -999,6 +1101,9 @@
 
   $("campaign-search-input").addEventListener("input",searchCampaign);
   $("campaign-import-file").addEventListener("change",e=>{const file=e.target.files?.[0];if(file)importCampaign(file);e.target.value="";});
+  $("reference-search").addEventListener("keydown",e=>{if(e.key==="Enter")loadReference();});
+  $("reference-edition").addEventListener("change",e=>{referenceEdition=e.target.value;loadReference();});
+  root.querySelectorAll("[data-reference-category]").forEach(b=>b.addEventListener("click",()=>selectReferenceCategory(b.dataset.referenceCategory)));
   root.querySelectorAll(".hub-nav button").forEach(b=>{
     b.addEventListener("click",()=>go(b.dataset.tab));
   });
@@ -1086,6 +1191,13 @@
   });
 
   const Hub = {configureSlots,
+    openReferenceEntry,
+    applyReferenceEntry,
+    addHomebrew,
+    editHomebrew,
+    removeHomebrew,
+    selectReferenceCategory,
+    loadReference,
     takeRest,
     editResources,
     exportCampaign,
