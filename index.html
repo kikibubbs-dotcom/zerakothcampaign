@@ -32,8 +32,7 @@
   <nav class="hub-nav">
     <button class="active" data-tab="dashboard">⌂ Overview</button>
     <button data-tab="adventure">✥ Adventure</button>
-    <button data-tab="characters">▤ Characters</button>
-    <button data-tab="npcs">♟ NPCs</button>
+    <button data-tab="characters">▤ Character & NPC Archive</button>
     <button data-tab="journal">✎ Journal</button>
     <button data-tab="announcements">✉ Notices</button>
   </nav>
@@ -152,56 +151,51 @@
       </div>
     </section>
 
-    <!-- PARTY -->
-    <section class="hub-page" id="page-party">
-      <div class="page-heading">
-        <div>
-          <div class="hub-kicker">THE FELLOWSHIP</div>
-          <h2>Party Tracker</h2>
-          <p>Health, healing and magical resources.</p>
+    <!-- PARTY + QUEST BOARD -->
+    <div class="adventure-board-grid">
+      <section class="hub-page" id="page-party">
+        <div class="page-heading">
+          <div>
+            <div class="hub-kicker">THE FELLOWSHIP</div>
+            <h2>Party Tracker</h2>
+            <p>Health, healing and magical resources.</p>
+          </div>
+          <button class="hub-button" onclick="Hub.addCharacter()">+ Add member</button>
         </div>
-        <button class="hub-button" onclick="Hub.addCharacter()">+ Add member</button>
-      </div>
-      <div id="party-list" class="character-grid"></div>
-    </section>
+        <div id="party-list" class="character-grid"></div>
+      </section>
 
-    <!-- CHARACTERS -->
+      <section class="hub-page" id="page-quests">
+        <div class="page-heading">
+          <div>
+            <div class="hub-kicker">ADVENTURE AWAITS</div>
+            <h2>Quest Board</h2>
+            <p>Keep track of your party's current objectives.</p>
+          </div>
+          <button class="hub-button" onclick="Hub.addQuest()">+ New quest</button>
+        </div>
+        <div id="quest-list" class="hub-list"></div>
+      </section>
+    </div>
+
+    <!-- CHARACTER & NPC ARCHIVE -->
     <section class="hub-page" id="page-characters">
       <div class="page-heading">
         <div>
           <div class="hub-kicker">WHO ARE THEY?</div>
-          <h2>Character Archive</h2>
-          <p>Personal profiles, equipment, relationships and histories.</p>
+          <h2>Character & NPC Archive</h2>
+          <p>Full character sheets, companions, notable NPCs and the people behind your story.</p>
         </div>
-        <button class="hub-button" onclick="Hub.addCharacter()">+ New character</button>
+        <button class="hub-button" onclick="Hub.addCharacter()">+ Add character or NPC</button>
       </div>
-      <div id="character-list" class="character-grid"></div>
-    </section>
-
-    <!-- QUESTS -->
-    <section class="hub-page" id="page-quests">
-      <div class="page-heading">
-        <div>
-          <div class="hub-kicker">ADVENTURE AWAITS</div>
-          <h2>Quest Board</h2>
-          <p>Keep track of your party's current objectives.</p>
-        </div>
-        <button class="hub-button" onclick="Hub.addQuest()">+ New quest</button>
+      <div class="archive-section">
+        <div class="panel-heading"><h3>✦ PLAYER CHARACTERS & COMPANIONS</h3></div>
+        <div id="character-list" class="character-grid"></div>
       </div>
-      <div id="quest-list" class="hub-list"></div>
-    </section>
-
-    <!-- NPCS -->
-    <section class="hub-page" id="page-npcs">
-      <div class="page-heading">
-        <div>
-          <div class="hub-kicker">FRIEND OR FOE?</div>
-          <h2>NPC Directory</h2>
-          <p>Everyone your adventurers meet along the way.</p>
-        </div>
-        <button class="hub-button" onclick="Hub.addNPC()">+ Add NPC</button>
+      <div class="archive-section">
+        <div class="panel-heading"><h3>♟ NPC DIRECTORY</h3></div>
+        <div id="npc-list" class="character-grid"></div>
       </div>
-      <div id="npc-list" class="character-grid"></div>
     </section>
 
     <!-- JOURNAL -->
