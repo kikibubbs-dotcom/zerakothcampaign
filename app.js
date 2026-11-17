@@ -22,6 +22,7 @@
     npcs:[],
     journal:[],
     events:[],
+    calendarConfig:null,
     notices:[]
   });
 
@@ -35,6 +36,7 @@
   let ready = false;
   let dragging = null;
   let lastRemote = 0;
+  let calendarView = null;
 
   const empty = text => `<div class="empty-state">${escapeHTML(text)}</div>`;
   const isDM = () => member?.role === "dm";
@@ -269,16 +271,103 @@
   }
 
   function renderCalendar() {
-    const events = [...state.events].sort((a,b)=>(a.date||"").localeCompare(b.date||""));
-    $("calendar-list").innerHTML = events.length
-      ? events.map(e=>`
-        <article class="list-card">
-          <div class="list-meta">${escapeHTML(e.date)}</div>
-          <h3>${escapeHTML(e.title)}</h3>
-          <p>${escapeHTML(e.description)}</p>
-          ${(isDM() || e.ownerId===member?.id)?`${(isDM() || member?.role==="player")?`<div class="card-actions"><button onclick="Hub.editEvent('${e.id}')">EDIT EVENT</button><button onclick="Hub.removeItem('events','${e.id}')">DELETE EVENT</button></div>`:""}`:""}
-        </article>`).join("")
-      : empty("No events scheduled.");
+    const setup=$("calendar-setup"), workspace=$("calendar-workspace");
+    const config=state.calendarConfig;
+    if (!config || !Array.isArray(config.months) || !config.months.length || !Array.isArray(config.weekdays) || !config.weekdays.length) {
+      workspace.hidden=true;
+      setup.innerHTML=isDM()?`
+        <div class="hub-kicker">CREATE YOUR WORLD'S CALENDAR</div>
+        <h3>Start with a blank calendar</h3>
+        <p>Choose your own months, the length of each month, and the names of your weekdays. Nothing is pre-filled.</p>
+        <div class="calendar-setup-fields">
+          <label>Year label<input id="calendar-year-label" placeholder="e.g. Year"></label>
+          <label>Starting year<input id="calendar-start-year" type="number" value="1" min="0"></label>
+          <label>Month names <span>Separate each month with a comma</span><textarea id="calendar-month-names" rows="2" placeholder="e.g. Frostfall, Thawtide, Bloomrise"></textarea></label>
+          <label>Days in each month <span>Enter one number per month, in the same order</span><input id="calendar-month-lengths" placeholder="e.g. 30, 28, 31"></label>
+          <label>Weekday names <span>Separate each weekday with a comma</span><textarea id="calendar-weekday-names" rows="2" placeholder="e.g. Moonday, Starsday, Emberday"></textarea></label>
+        </div>
+        <button class="hub-button" onclick="Hub.saveCalendarSetup()">CREATE CALENDAR</button>
+      `:empty("The DM hasn't created the campaign calendar yet.");
+      return;
+    }
+    setup.innerHTML=isDM()?'<button class="small-button" onclick="Hub.editCalendarSetup()">EDIT CALENDAR SETTINGS</button>':"";
+    workspace.hidden=false;
+    const date=config.currentDate||{year:1,month:0,day:1};
+    if (!calendarView) calendarView={year:date.year,month:date.month};
+    if (calendarView.month<0) {calendarView.month=config.months.length-1;calendarView.year--;}
+    if (calendarView.month>=config.months.length) {calendarView.month=0;calendarView.year++;}
+    const month=config.months[calendarView.month];
+    $("calendar-current-date").textContent=`${month.name} ${date.day}, ${config.yearLabel||"Year"} ${date.year}`;
+    $("calendar-month-heading").textContent=`${month.name} · ${config.yearLabel||"Year"} ${calendarView.year}`;
+    $("calendar-advance").style.display=isDM()?"":"none";
+    const totalBeforeYear=(calendarView.year-date.year)*config.months.reduce((sum,m)=>sum+m.days,0);
+    const totalBeforeMonth=config.months.slice(0,calendarView.month).reduce((sum,m)=>sum+m.days,0);
+    const weekdayOffset=((totalBeforeYear+totalBeforeMonth)%config.weekdays.length+config.weekdays.length)%config.weekdays.length;
+    const weekdayHeaders=config.weekdays.map(day=>`<div class="calendar-weekday">${escapeHTML(day)}</div>`).join("");
+    const blanks=Array.from({length:weekdayOffset},()=>'<div class="calendar-blank"></div>').join("");
+    const cells=Array.from({length:month.days},(_,i)=>{
+      const day=i+1, isCurrent=calendarView.year===date.year&&calendarView.month===date.month&&day===date.day;
+      const dayEvents=state.events.filter(e=>e.fantasyDate&&e.fantasyDate.year===calendarView.year&&e.fantasyDate.month===calendarView.month&&e.fantasyDate.day===day);
+      return `<div class="calendar-day ${isCurrent?"is-current":""}"><span class="calendar-day-number">${day}</span>${dayEvents.map(e=>`<div class="calendar-event-chip" title="${escapeHTML(e.title)}">${escapeHTML(e.title)}</div>`).join("")}</div>`;
+    }).join("");
+    $("calendar-grid").innerHTML=weekdayHeaders+blanks+cells;
+    const upcoming=[...state.events].filter(e=>e.fantasyDate).sort((a,b)=>a.fantasyDate.year-b.fantasyDate.year||a.fantasyDate.month-b.fantasyDate.month||a.fantasyDate.day-b.fantasyDate.day);
+    $("calendar-list").innerHTML=upcoming.length?upcoming.map(e=>{
+      const m=config.months[e.fantasyDate.month];
+      return `<article class="list-card"><div class="list-meta">${escapeHTML(m?.name||"Unknown month")} ${safeNumber(e.fantasyDate.day)}, ${escapeHTML(config.yearLabel||"Year")} ${safeNumber(e.fantasyDate.year)}</div><h3>${escapeHTML(e.title)}</h3><p>${escapeHTML(e.description)}</p>${(isDM()||e.ownerId===member?.id)?'<div class="card-actions"><button onclick="Hub.editEvent(\''+e.id+'\')">EDIT EVENT</button><button onclick="Hub.removeItem(\'events\',\''+e.id+'\')">DELETE EVENT</button></div>':""}</article>`;
+    }).join(""):empty("No events have been added to the calendar yet.");
+  }
+
+  function saveCalendarSetup() {
+    if (!isDM()) return;
+    const names=$("calendar-month-names").value.split(",").map(x=>x.trim()).filter(Boolean);
+    const lengths=$("calendar-month-lengths").value.split(",").map(x=>Number(x.trim()));
+    const weekdays=$("calendar-weekday-names").value.split(",").map(x=>x.trim()).filter(Boolean);
+    if (!names.length || names.length!==lengths.length || lengths.some(n=>!Number.isInteger(n)||n<1||n>1000) || !weekdays.length) {
+      alert("Please provide a month name and a valid number of days for every month, plus at least one weekday.");
+      return;
+    }
+    const year=Math.max(0,safeNumber($("calendar-start-year").value,1));
+    mutate(()=>{state.calendarConfig={yearLabel:$("calendar-year-label").value.trim()||"Year",months:names.map((name,i)=>({name,days:lengths[i]})),weekdays,currentDate:{year,month:0,day:1}};calendarView={year,month:0};});
+  }
+
+  function editCalendarSetup() {
+    if (!isDM()||!state.calendarConfig) return;
+    const c=state.calendarConfig;
+    const names=prompt("Month names, separated by commas:",c.months.map(m=>m.name).join(", "));
+    if (names===null) return;
+    const lengths=prompt("Days in each month, in the same order:",c.months.map(m=>m.days).join(", "));
+    if (lengths===null) return;
+    const weekdays=prompt("Weekday names, separated by commas:",c.weekdays.join(", "));
+    if (weekdays===null) return;
+    const yearLabel=prompt("Year label:",c.yearLabel||"Year");
+    if (yearLabel===null) return;
+    const ns=names.split(",").map(x=>x.trim()).filter(Boolean), ds=lengths.split(",").map(x=>Number(x.trim())), ws=weekdays.split(",").map(x=>x.trim()).filter(Boolean);
+    if (!ns.length||ns.length!==ds.length||ds.some(n=>!Number.isInteger(n)||n<1)||!ws.length) return alert("Those calendar settings aren't valid. No changes were made.");
+    mutate(()=>{c.months=ns.map((name,i)=>({name,days:ds[i]}));c.weekdays=ws;c.yearLabel=yearLabel.trim()||"Year";c.currentDate.month=Math.min(c.currentDate.month,ns.length-1);c.currentDate.day=Math.min(c.currentDate.day,ds[c.currentDate.month]);calendarView={year:c.currentDate.year,month:c.currentDate.month};});
+  }
+
+  function calendarMonth(amount) {
+    if (!state.calendarConfig) return;
+    calendarView=calendarView||{...state.calendarConfig.currentDate};
+    calendarView.month+=amount;
+    renderCalendar();
+  }
+
+  function calendarToday() {
+    if (!state.calendarConfig) return;
+    calendarView={year:state.calendarConfig.currentDate.year,month:state.calendarConfig.currentDate.month};
+    renderCalendar();
+  }
+
+  function advanceCalendarDay() {
+    if (!isDM()||!state.calendarConfig) return;
+    const c=state.calendarConfig, d=c.currentDate, month=c.months[d.month];
+    if (d.day<month.days) d.day++;
+    else if (d.month<c.months.length-1) {d.month++;d.day=1;}
+    else {d.month=0;d.year++;d.day=1;}
+    calendarView={year:d.year,month:d.month};
+    refresh();persist();
   }
 
   function renderNotices() {
@@ -596,6 +685,11 @@ function configureSlots(id) {
     editJournal,
     addEvent,
     editEvent,
+    saveCalendarSetup,
+    editCalendarSetup,
+    calendarMonth,
+    calendarToday,
+    advanceCalendarDay,
     addNotice,
     editCharacter,
     editNPC,
