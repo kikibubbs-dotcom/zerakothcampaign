@@ -1,0 +1,224 @@
+#dnd-hub {
+  --bg:#171923;
+  --panel:#222633;
+  --panel2:#292e3d;
+  --gold:#d6b879;
+  --gold2:#a88a50;
+  --text:#eee9df;
+  --muted:#a9a9b4;
+  --line:#414252;
+  --green:#79bd91;
+  color:var(--text);
+  background:var(--bg);
+  border:1px solid #4c4b50;
+  border-radius:14px;
+  overflow:hidden;
+  font-family:Georgia,serif;
+  width:100%;
+  box-sizing:border-box;
+}
+#dnd-hub * {box-sizing:border-box;}
+#dnd-hub button,#dnd-hub input,#dnd-hub select,#dnd-hub textarea {font:inherit;}
+#dnd-hub button {cursor:pointer;}
+#dnd-hub .hub-header {
+  background:linear-gradient(130deg,#292e40,#191b29);
+  padding:30px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:15px;
+  border-bottom:1px solid var(--gold2);
+}
+#dnd-hub .hub-brand {display:flex;align-items:center;gap:16px;}
+#dnd-hub .hub-emblem {
+  width:57px;height:57px;border:1px solid var(--gold);
+  display:grid;place-items:center;color:var(--gold);
+  font-size:28px;border-radius:12px;
+}
+#dnd-hub .hub-kicker {
+  color:var(--gold);font-size:10px;letter-spacing:2px;
+  margin-bottom:7px;font-family:Arial,sans-serif;
+}
+#dnd-hub h1 {font-size:27px;margin:0;letter-spacing:2px;color:#fff;}
+#dnd-hub .hub-subtitle {color:var(--muted);font-size:12px;margin-top:6px;}
+#dnd-hub .hub-status {
+  color:var(--green);font:10px Arial,sans-serif;letter-spacing:1px;
+  white-space:nowrap;
+}
+#dnd-hub .live-dot {
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--green);margin-right:6px;
+}
+#dnd-hub .hub-nav {
+  display:flex;gap:4px;padding:10px 14px;
+  overflow-x:auto;background:#1d202c;
+  border-bottom:1px solid var(--line);
+}
+#dnd-hub .hub-nav button {
+  border:0;background:transparent;color:#bcbcc5;
+  padding:12px 13px;white-space:nowrap;font:11px Arial,sans-serif;
+  border-radius:6px;
+}
+#dnd-hub .hub-nav button:hover,#dnd-hub .hub-nav button.active {
+  background:#38394a;color:var(--gold);
+}
+#dnd-hub .hub-main {padding:24px;}
+#dnd-hub .hub-page {display:none;}
+#dnd-hub .hub-page.active {display:block;}
+#dnd-hub .welcome-panel {
+  background:linear-gradient(110deg,#33354b,#272b3b);
+  border:1px solid #555064;border-radius:10px;padding:30px;
+  display:flex;justify-content:space-between;align-items:center;
+  min-height:160px;margin-bottom:18px;
+}
+#dnd-hub h2 {font-size:27px;margin:4px 0 8px;color:#fff;}
+#dnd-hub h3 {font-size:14px;color:var(--gold);margin:0 0 15px;}
+#dnd-hub p {color:var(--muted);font:13px/1.7 Arial,sans-serif;margin:4px 0;}
+#dnd-hub .welcome-icon {font-size:65px;color:var(--gold);opacity:.7;}
+#dnd-hub .hub-stats {
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:12px;margin-bottom:18px;
+}
+#dnd-hub .stat-card {
+  background:var(--panel);border:1px solid var(--line);
+  padding:17px;border-radius:8px;
+}
+#dnd-hub .stat-card span {
+  display:block;color:var(--muted);font:9px Arial,sans-serif;
+  letter-spacing:1px;
+}
+#dnd-hub .stat-card strong {font-size:28px;color:var(--gold);display:block;margin-top:8px;}
+#dnd-hub .hub-grid {display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:15px;}
+#dnd-hub .hub-panel {
+  background:var(--panel);border:1px solid var(--line);
+  padding:19px;border-radius:8px;margin-bottom:15px;
+  min-width:0;
+}
+#dnd-hub .panel-heading {display:flex;justify-content:space-between;align-items:center;}
+#dnd-hub .panel-heading h3 {margin:0 0 14px;}
+#dnd-hub .page-heading {
+  display:flex;align-items:center;justify-content:space-between;
+  gap:15px;margin-bottom:24px;
+}
+#dnd-hub .hub-button {
+  background:var(--gold);color:#22202a;border:0;border-radius:5px;
+  padding:11px 16px;font: bold 11px Arial,sans-serif;
+}
+#dnd-hub .hub-button:hover {background:#f0d49c;}
+#dnd-hub .small-button {
+  border:1px solid var(--gold2);background:transparent;color:var(--gold);
+  border-radius:4px;padding:7px 10px;font:10px Arial,sans-serif;
+}
+#dnd-hub .map-instructions {
+  padding:12px 15px;background:#2c3040;border-radius:5px;
+  font:12px/1.6 Arial,sans-serif;color:var(--muted);margin-bottom:12px;
+}
+#dnd-hub .map-toolbar {display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+#dnd-hub select,#dnd-hub input,#dnd-hub textarea {
+  background:#191d29;color:var(--text);border:1px solid var(--line);
+  border-radius:5px;padding:10px;max-width:100%;
+}
+#dnd-hub .map-tip {font:11px Arial,sans-serif;color:var(--muted);flex:1;}
+#dnd-hub .map-frame {
+  position:relative;min-height:350px;max-height:700px;
+  background:#292d39;border:1px solid var(--gold2);
+  overflow:hidden;border-radius:8px;margin-bottom:15px;
+  touch-action:pan-y;
+}
+#dnd-hub #world-map-image {
+  width:100%;height:auto;display:block;min-height:350px;
+  object-fit:contain;max-height:700px;
+}
+#dnd-hub .map-placeholder {
+  min-height:350px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;
+  color:var(--gold);gap:12px;
+}
+#dnd-hub .map-placeholder div {font-size:55px;}
+#dnd-hub .map-placeholder strong {letter-spacing:2px;font-size:13px;}
+#dnd-hub .map-placeholder p {font-size:11px;}
+#dnd-hub #map-markers {position:absolute;inset:0;pointer-events:none;}
+#dnd-hub .map-marker {
+  position:absolute;width:22px;height:22px;border-radius:50%;
+  border:3px solid white;transform:translate(-50%,-50%);
+  cursor:grab;pointer-events:auto;box-shadow:0 2px 10px #0009;
+}
+#dnd-hub .map-marker:active {cursor:grabbing;z-index:5;}
+#dnd-hub .marker-label {
+  position:absolute;left:24px;top:-5px;white-space:nowrap;
+  background:#171923eF;color:white;padding:4px 7px;
+  border-radius:3px;font:10px Arial,sans-serif;
+}
+#dnd-hub .map-legend {display:flex;gap:12px;flex-wrap:wrap;font:11px Arial,sans-serif;}
+#dnd-hub .legend-item {display:flex;align-items:center;gap:6px;}
+#dnd-hub .legend-dot {width:10px;height:10px;border-radius:50%;}
+#dnd-hub .character-grid {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;
+}
+#dnd-hub .character-card {
+  background:var(--panel);border:1px solid var(--line);
+  padding:17px;border-radius:8px;min-width:0;
+}
+#dnd-hub .character-card h3 {font-size:17px;color:#fff;margin:0 0 6px;}
+#dnd-hub .card-subtitle {font:10px Arial,sans-serif;color:var(--gold);letter-spacing:1px;}
+#dnd-hub .hp-line {display:flex;justify-content:space-between;margin:15px 0 7px;font:11px Arial,sans-serif;}
+#dnd-hub .hp-bar {height:9px;border-radius:10px;background:#444451;overflow:hidden;}
+#dnd-hub .hp-fill {height:100%;border-radius:10px;transition:width .2s;}
+#dnd-hub .card-actions {display:flex;gap:7px;flex-wrap:wrap;margin-top:14px;}
+#dnd-hub .card-actions button {
+  padding:7px 9px;background:#343949;color:var(--text);
+  border:1px solid var(--line);border-radius:4px;font:10px Arial,sans-serif;
+}
+#dnd-hub .spell-slots {display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;}
+#dnd-hub .spell-level {
+  background:#343949;border:1px solid var(--line);
+  border-radius:5px;padding:7px;text-align:center;min-width:38px;
+}
+#dnd-hub .spell-level strong {display:block;color:var(--gold);font-size:12px;}
+#dnd-hub .spell-level span {font:9px Arial,sans-serif;color:var(--muted);}
+#dnd-hub .hub-list {display:grid;gap:12px;}
+#dnd-hub .list-card {
+  background:var(--panel);border:1px solid var(--line);
+  border-radius:7px;padding:17px;
+}
+#dnd-hub .list-card h3 {margin:0 0 7px;color:#fff;font-size:17px;}
+#dnd-hub .list-meta {color:var(--gold);font:10px Arial,sans-serif;letter-spacing:1px;margin-bottom:8px;}
+#dnd-hub .list-card p {white-space:pre-wrap;}
+#dnd-hub .tag {
+  display:inline-block;padding:5px 8px;border-radius:3px;
+  background:#37384a;color:var(--gold);font:9px Arial,sans-serif;
+  margin:3px 3px 3px 0;
+}
+#dnd-hub .empty-state {
+  color:var(--muted);text-align:center;padding:35px 10px;
+  background:var(--panel);border:1px dashed var(--line);
+  border-radius:7px;font:12px Arial,sans-serif;
+}
+#dnd-hub .notice-feature {
+  background:#303348;border-left:3px solid var(--gold);
+  padding:15px;border-radius:4px;
+}
+#dnd-hub .hub-footer {
+  border-top:1px solid var(--line);margin-top:30px;padding-top:17px;
+  display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  color:var(--muted);font:9px Arial,sans-serif;letter-spacing:1px;
+}
+#dnd-hub .hub-loading {padding:20px;text-align:center;color:var(--gold);font:11px Arial,sans-serif;letter-spacing:2px;}
+#dnd-hub .upload-button {cursor:pointer;display:inline-block;}
+@media(max-width:650px) {
+  #dnd-hub .hub-header {padding:20px 15px;align-items:flex-start;}
+  #dnd-hub .hub-status {font-size:8px;}
+  #dnd-hub h1 {font-size:19px;}
+  #dnd-hub .hub-subtitle {font-size:10px;}
+  #dnd-hub .hub-emblem {width:42px;height:42px;font-size:21px;}
+  #dnd-hub .hub-main {padding:14px;}
+  #dnd-hub .hub-stats {grid-template-columns:1fr 1fr;}
+  #dnd-hub .hub-grid {grid-template-columns:1fr;}
+  #dnd-hub .character-grid {grid-template-columns:1fr;}
+  #dnd-hub .page-heading {align-items:flex-start;flex-direction:column;}
+  #dnd-hub h2 {font-size:23px;}
+  #dnd-hub .welcome-panel {padding:20px;}
+  #dnd-hub .welcome-icon {font-size:38px;}
+  #dnd-hub .map-frame {min-height:260px;}
+  #dnd-hub .map-placeholder {min-height:260px;}
+}
