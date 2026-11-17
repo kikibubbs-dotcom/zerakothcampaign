@@ -178,27 +178,49 @@
   function editSession(id){if(!isDM())return;const s=state.sessions?.find(x=>x.id===id);if(!s)return;openForm("Edit session "+s.number,sessionFields(s),v=>{if(!v.title.trim())return alert("Please enter a session title.");mutate(()=>Object.assign(s,{number:Math.max(1,safeNumber(v.number,1)),date:v.date,title:v.title.trim(),summary:v.summary,decisions:v.decisions,discoveries:v.discoveries,npcEncounters:v.npcEncounters,openHooks:v.openHooks}));});}
   function removeSession(id){if(!isDM()||!confirm("Delete this session record?"))return;mutate(()=>state.sessions=(state.sessions||[]).filter(s=>s.id!==id));}
 
-  function exportCampaign(){
-    if(!isDM())return alert("Only the DM can export a campaign.");
-    const payload={format:"adventurers-chronicle-campaign",version:1,exportedAt:new Date().toISOString(),data:state};
-    const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
-    const url=URL.createObjectURL(blob),a=document.createElement("a");
-    a.href=url;a.download=(state.title||"campaign").toLowerCase().replace(/[^a-z0-9]+/g,"-")+"-backup.json";a.click();URL.revokeObjectURL(url);
+  async function blobToDataURL(blob){
+    return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||""));reader.onerror=()=>reject(new Error("The map image could not be read for export."));reader.readAsDataURL(blob);});
   }
-  function importCampaign(file){
+  async function exportCampaign(){
+    if(!isDM())return alert("Only the DM can export a campaign.");
+    try{
+      let mapImage="";
+      if(state.mapUrl){
+        const response=await fetch(state.mapUrl);if(!response.ok)throw new Error("The campaign map could not be fetched. Check the map URL and try again.");
+        mapImage=await blobToDataURL(await response.blob());
+      }
+      const payload={format:"adventurers-chronicle-campaign",version:1,exportedAt:new Date().toISOString(),data:state,mapImage};
+      const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+      const url=URL.createObjectURL(blob),a=document.createElement("a");
+      a.href=url;a.download=(state.title||"campaign").toLowerCase().replace(/[^a-z0-9]+/g,"-")+"-backup.json";a.click();URL.revokeObjectURL(url);
+    }catch(err){alert(err.message||"Campaign export failed.");}
+  }
+  async function importCampaign(file){
     if(!isDM()||!file)return;
-    if(file.size>5*1024*1024)return alert("Please choose a campaign backup smaller than 5MB.");
+    if(file.size>16*1024*1024)return alert("Please choose a campaign backup smaller than 16MB.");
     const reader=new FileReader();
-    reader.onload=()=>{
+    reader.onload=async()=>{
       try{
         const parsed=JSON.parse(String(reader.result||""));
         const incoming=parsed.format==="adventurers-chronicle-campaign"?parsed.data:parsed;
         if(!incoming||typeof incoming!=="object"||Array.isArray(incoming)||!Array.isArray(incoming.characters)||!Array.isArray(incoming.quests)||!Array.isArray(incoming.npcs))throw new Error("This doesn't look like a valid campaign backup.");
         if(!confirm("Import this campaign and replace the current campaign content? This cannot be undone. Player accounts and access codes will stay unchanged."))return;
-        const fresh={...blank(),...incoming};
+        let mapUrl=incoming.mapUrl||"";
+        if(parsed.mapImage){
+          const parts=String(parsed.mapImage).match(/^data:([^;]+);base64,(.+)$/);
+          if(!parts)throw new Error("The backup's map image is invalid.");
+          const bytes=Uint8Array.from(atob(parts[2]),ch=>ch.charCodeAt(0));
+          const fileType=parts[1]||"image/png",mapFile=new File([bytes],"campaign-map."+((fileType.split("/")[1]||"png").replace("jpeg","jpg")),{type:fileType});
+          const {data:upload,error:signError}=await client.functions.invoke("campaign-data",{body:{action:"create-map-upload",filename:mapFile.name,content_type:fileType}});
+          if(signError)throw signError;
+          const {error:uploadError}=await client.storage.from("campaign-maps").uploadToSignedUrl(upload.path,upload.token,mapFile,{contentType:fileType,upsert:false});
+          if(uploadError)throw uploadError;
+          mapUrl=upload.publicUrl;
+        }
+        const fresh={...blank(),...incoming,mapUrl};
         ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions","homebrew"].forEach(k=>{if(!Array.isArray(fresh[k]))fresh[k]=[];});
         mutate(()=>state=fresh);
-        alert("Campaign imported. Player accounts and access codes were not changed.");
+        alert("Campaign imported. The map image and campaign content were restored; player accounts and access codes were not changed.");
       }catch(err){alert(err.message||"The campaign backup could not be imported.");}
     };
     reader.onerror=()=>alert("The selected backup file could not be read.");
