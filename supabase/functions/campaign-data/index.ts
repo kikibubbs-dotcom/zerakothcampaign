@@ -36,7 +36,7 @@ const asArray = (value: unknown) => Array.isArray(value) ? value : null;
 
 function validatePlayerChange(before: any, after: any, memberId: string) {
   if (!after || typeof after !== "object" || Array.isArray(after)) return "Campaign data is invalid.";
-  const allowed = new Set(["characters", "journal", "events", "sharedInventory", "partyGold"]);
+  const allowed = new Set(["characters", "journal", "events", "sharedInventory", "partyGold", "sessions"]);
   const keys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
   for (const key of keys) {
     if (!allowed.has(key) && !same(before?.[key], after?.[key])) {
@@ -44,10 +44,10 @@ function validatePlayerChange(before: any, after: any, memberId: string) {
     }
   }
 
-  for (const key of ["sharedInventory", "partyGold"]) {
+  for (const key of ["sharedInventory", "partyGold", "sessions"]) {
     if (!same(before?.[key], after?.[key])) {
-      const initialDefault = before?.[key] === undefined && (key === "sharedInventory" ? Array.isArray(after?.[key]) && after[key].length === 0 : Number(after?.[key]) === 0);
-      if (!initialDefault) return "Only the DM can change the shared party stash or party funds.";
+      const initialDefault = before?.[key] === undefined && ((key === "sharedInventory" || key === "sessions") ? Array.isArray(after?.[key]) && after[key].length === 0 : Number(after?.[key]) === 0);
+      if (!initialDefault) return "Only the DM can change shared party loot, party funds or session history.";
     }
   }
 
@@ -143,7 +143,8 @@ Deno.serve(async (req) => {
         elapsedDays: [],
         notices: [],
         sharedInventory: [],
-        partyGold: 0
+        partyGold: 0,
+        sessions: []
       };
       const { data: saved, error: saveError } = await admin.schema("private").rpc("save_campaign_data", {
         p_expected: before,

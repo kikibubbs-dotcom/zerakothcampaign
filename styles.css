@@ -381,3 +381,18 @@
 #dnd-hub .inventory-add-button{margin-top:12px}
 @media(max-width:850px){#dnd-hub .inventory-character-grid{grid-template-columns:1fr}}
 @media(max-width:650px){#dnd-hub .inventory-item{flex-direction:column}#dnd-hub .inventory-character-heading{align-items:flex-start;flex-direction:column}#dnd-hub .inventory-gold{justify-content:flex-start}}
+/* Session history and campaign-wide search */
+#dnd-hub .session-card h3{margin:7px 0 16px;color:#f4dfb5}
+#dnd-hub .session-detail{padding:12px 14px;margin:10px 0 0;background:#191d29;border:1px solid var(--line);border-radius:6px}
+#dnd-hub .session-detail strong{font:10px Arial,sans-serif;letter-spacing:1px;color:var(--gold)}
+#dnd-hub .session-detail p{margin:7px 0 0;white-space:pre-wrap}
+#dnd-hub .session-hooks{border-color:#9b7542}
+#dnd-hub .search-panel>label{display:block;color:var(--gold);font:10px Arial,sans-serif;letter-spacing:1px;margin-bottom:9px}
+#dnd-hub #campaign-search-input{display:block;width:100%;box-sizing:border-box;background:#141823;color:#f4f0e8;border:1px solid var(--line);border-radius:6px;padding:14px 15px;font:14px Arial,sans-serif;outline:none}
+#dnd-hub #campaign-search-input:focus{border-color:var(--gold)}
+#dnd-hub .search-panel>.list-meta{margin:12px 0}
+#dnd-hub .search-results{display:grid;gap:9px}
+#dnd-hub .search-result{display:grid;grid-template-columns:auto 1fr;gap:7px 10px;text-align:left;width:100%;padding:13px;background:#191d29;color:#e9e3d6;border:1px solid var(--line);border-radius:6px;cursor:pointer}
+#dnd-hub .search-result strong{align-self:center}
+#dnd-hub .search-result>span:last-child{grid-column:1/-1;color:var(--muted);font-size:12px;line-height:1.5}
+#dnd-hub .search-result:hover{border-color:var(--gold);background:#222838}
