@@ -321,3 +321,8 @@
 @keyframes calendarStamp {0%{opacity:0;transform:scale(2.4) rotate(-22deg)}45%{opacity:1;transform:scale(.92) rotate(8deg)}65%{transform:scale(1.05) rotate(-4deg)}100%{opacity:0;transform:scale(1) rotate(0)}}
 @keyframes eventDayGlow {from{box-shadow:0 0 0 #d6b87900}to{box-shadow:0 0 22px #d6b87999;border-color:var(--gold)}}
 @media(max-width:850px){#dnd-hub .adventure-board-grid{grid-template-columns:1fr;}}
+
+#dnd-hub .calendar-workspace > * + * {margin-top:24px;}
+#dnd-hub .calendar-event-chip.event-missed {background:#090a0e;color:#666;opacity:.5;text-decoration:none;}
+#dnd-hub .calendar-event-chip.event-attended {background:#263b31;color:#b8d8c0;text-decoration:line-through;}
+#dnd-hub .archive-section > .character-grid {gap:16px;}
