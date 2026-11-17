@@ -36,7 +36,7 @@ const asArray = (value: unknown) => Array.isArray(value) ? value : null;
 
 function validatePlayerChange(before: any, after: any, memberId: string) {
   if (!after || typeof after !== "object" || Array.isArray(after)) return "Campaign data is invalid.";
-  const allowed = new Set(["characters", "journal", "events", "sharedInventory", "partyGold", "sessions"]);
+  const allowed = new Set(["characters", "journal", "events", "sharedInventory", "partyGold", "sessions", "homebrew"]);
   const keys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
   for (const key of keys) {
     if (!allowed.has(key) && !same(before?.[key], after?.[key])) {
