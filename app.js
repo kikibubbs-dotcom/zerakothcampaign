@@ -206,25 +206,46 @@
   }
   function takeRest(id,type){
     const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;
-    const title=type==="long"?"Long Rest":"Short Rest";
-    if(!confirm(type==="long"?"Finish a long rest for "+c.name+"? This restores HP, spell slots and long-rest resources.":"Finish a short rest for "+c.name+"? This restores short-rest resources and Warlock Pact Magic slots."))return;
-    mutate(()=>{
-      if(!Array.isArray(c.resources))c.resources=[];
-      if(type==="short"){
-        c.resources.forEach(r=>{if(r.recovery==="short"||r.recovery==="short or long")r.used=0;});
-        if(String(c.className||"").toLowerCase().includes("warlock")&&Array.isArray(c.spellSlots))c.spellSlots.forEach(slot=>{if(slot.total>0)slot.used=0;});
-      }else{
-        c.hp=Math.max(0,safeNumber(c.maxHp));
-        if(c.rulesEdition==="2024")c.exhaustion=Math.max(0,safeNumber(c.exhaustion)-1);
-        if(Array.isArray(c.spellSlots))c.spellSlots.forEach(slot=>slot.used=0);
-        c.resources.forEach(r=>{if(r.recovery!=="manual")r.used=0;});
-        const spent=Math.max(0,safeNumber(c.hitDiceUsed)),level=Math.max(1,safeNumber(c.level,1));
-        c.hitDiceUsed=Math.max(0,spent-Math.max(1,Math.floor(level/2)));
+    const level=Math.max(1,safeNumber(c.level,1)),spent=Math.max(0,safeNumber(c.hitDiceUsed)),available=Math.max(0,level-spent);
+    if(type==="long"&&safeNumber(c.hp)<1)return alert("A character must have at least 1 HP to benefit from a long rest.");
+    if(type==="short"&&c.rulesEdition==="2024"&&safeNumber(c.hp)<1)return alert("A character must have at least 1 HP to benefit from a short rest under the 2024 rules.");
+    const finish=hitDiceToSpend=>{
+      mutate(()=>{
+        if(!Array.isArray(c.resources))c.resources=[];
+        if(type==="short"){
+          c.resources.forEach(r=>{if(r.recovery==="short"||r.recovery==="short or long")r.used=0;});
+          if(String(c.className||"").toLowerCase().includes("warlock")&&Array.isArray(c.spellSlots))c.spellSlots.forEach(slot=>{if(slot.total>0)slot.used=0;});
+          const dieMatch=String(c.hitDice||"").match(/d(\d+)/i),dieSize=dieMatch?Math.max(2,Number(dieMatch[1])):8;
+          const con=Math.floor((safeNumber(c.constitution,10)-10)/2);
+          let healing=0;
+          for(let i=0;i<hitDiceToSpend;i++){const rolled=Math.floor(Math.random()*dieSize)+1+con;healing+=c.rulesEdition==="2024"?Math.max(1,rolled):Math.max(0,rolled);}
+          c.hitDiceUsed=Math.min(level,spent+hitDiceToSpend);
+          c.hp=Math.min(safeNumber(c.maxHp),safeNumber(c.hp)+healing);
+        }else{
+          c.hp=Math.max(0,safeNumber(c.maxHp));
+          if(Array.isArray(c.spellSlots))c.spellSlots.forEach(slot=>slot.used=0);
+          c.resources.forEach(r=>{if(r.recovery!=="manual")r.used=0;});
+          c.hitDiceUsed=c.rulesEdition==="2024"?0:Math.max(0,spent-Math.max(1,Math.floor(level/2)));
+          if(c.rulesEdition==="2024"||c._foodAndDrinkForRest)c.exhaustion=Math.max(0,safeNumber(c.exhaustion)-1);
+        }
+        c.lastRest={type,at:new Date().toISOString()};
+      });
+      status((type==="long"?"Long Rest":"Short Rest")+" completed for "+c.name+".");
+    };
+    if(type==="short"){
+      openForm("Short rest — "+c.name,[
+        {name:"dice",label:"Hit Dice to spend (maximum "+available+")",type:"number",min:0,max:available,value:0}
+      ],v=>finish(Math.max(0,Math.min(available,safeNumber(v.dice)))));
+    }else{
+      if(c.rulesEdition!=="2024"&&safeNumber(c.exhaustion)>0){
+        const fed=confirm("Has "+c.name+" had food and drink during this long rest? If yes, 2014 rules reduce Exhaustion by 1.");
+        c._foodAndDrinkForRest=fed;
       }
-      c.lastRest={type,at:new Date().toISOString()};
-    });
-    status(title+" completed for "+c.name+".");
+      if(!confirm("Finish a long rest for "+c.name+"? This restores HP, spell slots and long-rest resources.")){delete c._foodAndDrinkForRest;return;}
+      finish(0);delete c._foodAndDrinkForRest;
+    }
   }
+
   function editResources(id){
     const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;
     const resources=Array.isArray(c.resources)?c.resources:[];
