@@ -51,7 +51,7 @@ function validatePlayerChange(before: any, after: any, memberId: string) {
     }
   }
 
-  const oldHomebrew = asArray(before?.homebrew) || [];
+  if (after?.homebrew !== undefined && !Array.isArray(after.homebrew)) return "Homebrew collection is invalid.";\n  const oldHomebrew = asArray(before?.homebrew) || [];
   const newHomebrew = asArray(after?.homebrew) || [];
   const oldHomebrewById = new Map<string, any>(oldHomebrew.map((item: any) => [String(item?.id), item] as [string, any]));
   const newHomebrewById = new Map<string, any>(newHomebrew.map((item: any) => [String(item?.id), item] as [string, any]));
