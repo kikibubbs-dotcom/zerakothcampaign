@@ -326,3 +326,7 @@
 #dnd-hub .calendar-event-chip.event-missed {background:#090a0e;color:#666;opacity:.5;text-decoration:none;}
 #dnd-hub .calendar-event-chip.event-attended {background:#263b31;color:#b8d8c0;text-decoration:line-through;}
 #dnd-hub .archive-section > .character-grid {gap:16px;}
+
+#dnd-hub .quest-card.quest-completed .list-meta {color:#a8e0b8;}
+#dnd-hub .quest-card.quest-completed {color:#b7e4c4;}
+#dnd-hub .quest-card.quest-failed .list-meta {color:#e5aeb4;text-decoration:line-through;}
