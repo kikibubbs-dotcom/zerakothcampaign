@@ -84,7 +84,14 @@ Deno.serve(async (req) => {
     }
 
     if (action === "reset-dm-code") {
-      if (body.setup_secret !== setupSecret) return json({ error: "Invalid setup secret." }, 403);
+      const suppliedSetupSecret = String(body.setup_secret || "").trim();
+      const configuredSetupSecret = String(setupSecret || "").trim();
+      console.log("reset-dm-code setup check", {
+        suppliedLength: suppliedSetupSecret.length,
+        configuredLength: configuredSetupSecret.length,
+        matches: suppliedSetupSecret === configuredSetupSecret
+      });
+      if (!suppliedSetupSecret || suppliedSetupSecret !== configuredSetupSecret) return json({ error: "Invalid setup secret." }, 403);
       const { data: dm, error: dmError } = await admin.schema("private").from("campaign_members")
         .select("id").eq("role", "dm").eq("active", true).single();
       if (dmError || !dm) return json({ error: "No active DM account was found." }, 404);
