@@ -44,7 +44,14 @@ function validatePlayerChange(before: any, after: any, memberId: string) {
     }
   }
 
-  for (const key of ["sharedInventory", "partyGold"]) {\n    if (!same(before?.[key], after?.[key])) {\n      const initialDefault = before?.[key] === undefined && (key === "sharedInventory" ? Array.isArray(after?.[key]) && after[key].length === 0 : Number(after?.[key]) === 0);\n      if (!initialDefault) return "Only the DM can change the shared party stash or party funds.";\n    }\n  }\n\n  for (const collection of ["characters", "journal", "events"]) {
+  for (const key of ["sharedInventory", "partyGold"]) {
+    if (!same(before?.[key], after?.[key])) {
+      const initialDefault = before?.[key] === undefined && (key === "sharedInventory" ? Array.isArray(after?.[key]) && after[key].length === 0 : Number(after?.[key]) === 0);
+      if (!initialDefault) return "Only the DM can change the shared party stash or party funds.";
+    }
+  }
+
+  for (const collection of ["characters", "journal", "events"]) {
     const oldItems = asArray(before?.[collection]);
     const newItems = asArray(after?.[collection]);
     if (!oldItems || !newItems) return "Campaign collection is invalid: " + collection + ".";
@@ -134,7 +141,9 @@ Deno.serve(async (req) => {
         events: [],
         calendarConfig: null,
         elapsedDays: [],
-        notices: []
+        notices: [],
+        sharedInventory: [],
+        partyGold: 0
       };
       const { data: saved, error: saveError } = await admin.schema("private").rpc("save_campaign_data", {
         p_expected: before,
