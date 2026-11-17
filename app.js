@@ -281,7 +281,7 @@
   }
 
 
-  let referenceCategory="spells", referenceResults=[], referenceEdition="both", referencePage=1, referenceHasNext=false;
+  let referenceCategory="spells", referenceResults=[], referenceEdition="both", referencePage=1, referenceHasNext=false, referenceLastQuery="";
   const referenceTypes={spells:"spells",species:"species",classes:"classes",backgrounds:"backgrounds",feats:"feats",items:"items",creatures:"creatures",languages:"languages",conditions:"conditions"};
   function sourceEdition(entry){
     const key=String(entry.document?.key||"").toLowerCase();
@@ -289,7 +289,7 @@
   }
   async function loadReference(){
     const list=$("reference-results");if(!list)return;
-    const q=$("reference-search").value.trim();list.innerHTML=empty("Searching the open rules library...");
+    const q=$("reference-search").value.trim();if(q!==referenceLastQuery){referencePage=1;referenceLastQuery=q;}list.innerHTML=empty("Searching the open rules library...");
     try{
       const params=new URLSearchParams({limit:"30",ordering:"name",page:String(referencePage),document__key__in:"srd-2014,srd-2024"});
       if(q)params.set("name__icontains",q);
