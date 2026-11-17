@@ -204,8 +204,8 @@
               const code = document.createElement("div");
               code.className = "code-result";
               code.textContent = player.display_name + "'s new code: " + result.code;
-              list.prepend(code);
               await loadPlayers();
+              list.prepend(code);
             } catch (err) { alert(err.message); }
           });
           const revoke = document.createElement("button");
