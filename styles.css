@@ -268,7 +268,7 @@
 #dnd-hub .map-frame.is-drawing .map-marker{pointer-events:none}
 #dnd-hub .map-legend .legend-item{background:#191d29;border:1px solid var(--line);padding:6px 9px;border-radius:5px}
 #dnd-hub .calendar-day.is-past{background:#26332e;border-color:#587864}
-#dnd-hub .calendar-day.is-past .calendar-day-number:after{content:" ✓";color:#79bd91}
+#dnd-hub .calendar-day.is-past .calendar-day-number:after{content:"✦";display:inline-grid;place-items:center;width:19px;height:19px;margin-left:5px;border:1px solid #d7b76f;border-radius:50%;background:#6d2028;color:#f7dfaa;font-size:12px;line-height:1;vertical-align:middle}
 @media(max-width:650px){#dnd-hub .modal-fields{grid-template-columns:1fr}#dnd-hub .modal-field.full{grid-column:auto}#dnd-hub .hub-modal{padding:8px}#dnd-hub .modal-card{padding:15px;max-height:94vh}}
 
 #dnd-hub .modal-field textarea{min-height:145px;resize:vertical}
@@ -285,8 +285,8 @@
 
 
 /* Archive, spacing and quest/calendar polish */
-#dnd-hub .hub-page > * + * {margin-top:26px;}
-#dnd-hub .adventure-board-grid {display:none;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start;}
+#dnd-hub .hub-page > * + * {margin-top:36px;}
+#dnd-hub .adventure-board-grid {display:none;grid-template-columns:repeat(2,minmax(0,1fr));gap:30px;align-items:start;margin-bottom:36px;}
 #dnd-hub .adventure-board-grid.adventure-visible {display:grid;}
 #dnd-hub .adventure-board-grid > .hub-page {min-width:0;}
 #dnd-hub .archive-section {margin-top:24px;padding:18px;background:#1d202c;border:1px solid var(--line);border-radius:9px;}
@@ -322,7 +322,7 @@
 @keyframes eventDayGlow {from{box-shadow:0 0 0 #d6b87900}to{box-shadow:0 0 22px #d6b87999;border-color:var(--gold)}}
 @media(max-width:850px){#dnd-hub .adventure-board-grid{grid-template-columns:1fr;}}
 
-#dnd-hub #calendar-workspace > * + * {margin-top:24px;}
+#dnd-hub #calendar-workspace > * + * {margin-top:32px;}
 #dnd-hub .calendar-event-chip.event-missed {background:#090a0e;color:#666;opacity:.5;text-decoration:none;}
 #dnd-hub .calendar-event-chip.event-attended {background:#263b31;color:#b8d8c0;text-decoration:line-through;}
 #dnd-hub .archive-section > .character-grid {gap:16px;}
