@@ -1062,7 +1062,8 @@
         if (!Array.isArray(state[k])) state[k]=[];
       });
 
-      state.partyGold=safeNumber(state.partyGold);\n      ready=true;
+      state.partyGold=safeNumber(state.partyGold);
+      ready=true;
       $("hub-loading").style.display="none";
       applyPermissions();
       refresh();
