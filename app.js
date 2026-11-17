@@ -28,7 +28,8 @@
     elapsedDays:[],
     notices:[],
     sharedInventory:[],
-    partyGold:0
+    partyGold:0,
+    sessions:[]
   });
 
   let state = blank();
@@ -115,6 +116,7 @@
     renderParty();
     renderCombat();
     renderInventory();
+    renderSessions();
     renderCharacters();
     renderQuests();
     renderNPCs();
@@ -151,6 +153,47 @@
   function editSharedItem(id){if(!isDM())return;const item=state.sharedInventory?.find(x=>x.id===id);if(!item)return;openForm("Edit party loot",inventoryItemFields(item),v=>{if(!v.name.trim())return alert("Please enter an item name.");mutate(()=>Object.assign(item,{name:v.name.trim(),category:v.category,rarity:v.rarity,quantity:Math.max(1,safeNumber(v.quantity,1)),weight:v.weight,value:v.value,notes:v.notes}));});}
   function removeSharedItem(id){if(!isDM()||!confirm("Remove this item from the shared party stash?"))return;mutate(()=>state.sharedInventory=(state.sharedInventory||[]).filter(x=>x.id!==id));}
   function editPartyGold(){if(!isDM())return;openForm("Update shared party funds",[{name:"gold",label:"Party gold pieces (GP)",type:"number",min:0,value:safeNumber(state.partyGold)}],v=>mutate(()=>state.partyGold=Math.max(0,safeNumber(v.gold))));}
+  function renderSessions(){
+    const list=$("session-list"),sessions=Array.isArray(state.sessions)?state.sessions:[];
+    list.innerHTML=sessions.length?sessions.slice().sort((a,b)=>safeNumber(b.number)-safeNumber(a.number)).map(s=>{
+      let out='<article class="list-card session-card"><div class="list-meta">SESSION '+safeNumber(s.number)+' · '+escapeHTML(s.date||"Date not recorded")+'</div><h3>'+escapeHTML(s.title||"Untitled session")+'</h3>';
+      const sections=[["SUMMARY",s.summary],["IMPORTANT DECISIONS",s.decisions],["DISCOVERIES",s.discoveries],["NPC ENCOUNTERS",s.npcEncounters],["UNRESOLVED HOOKS",s.openHooks]];
+      sections.forEach(([label,value])=>{if(value)out+='<div class="session-detail"><strong>'+label+'</strong><p>'+escapeHTML(value)+'</p></div>';});
+      if(isDM())out+='<div class="card-actions"><button onclick="Hub.editSession(\''+s.id+'\')">EDIT</button><button onclick="Hub.removeSession(\''+s.id+'\')">DELETE</button></div>';
+      return out+'</article>';
+    }).join(""):empty("No sessions have been recorded yet.");
+  }
+  function sessionFields(s={}){return [
+    {name:"number",label:"Session number",type:"number",min:1,value:s.number??(Math.max(0,...(state.sessions||[]).map(x=>safeNumber(x.number)))+1)},
+    {name:"date",label:"Date played",value:s.date||"",placeholder:"e.g. 17 November 2026"},
+    {name:"title",label:"Session title",value:s.title||"",required:true,full:true},
+    {name:"summary",label:"Session summary",type:"textarea",rows:5,value:s.summary||"",full:true},
+    {name:"decisions",label:"Important decisions",type:"textarea",rows:3,value:s.decisions||"",full:true},
+    {name:"discoveries",label:"Discoveries & clues",type:"textarea",rows:3,value:s.discoveries||"",full:true},
+    {name:"npcEncounters",label:"NPCs encountered",type:"textarea",rows:3,value:s.npcEncounters||"",full:true},
+    {name:"openHooks",label:"Unresolved hooks & future leads",type:"textarea",rows:3,value:s.openHooks||"",full:true}
+  ];}
+  function addSession(){if(!isDM())return;openForm("Log a session",sessionFields(),v=>{if(!v.title.trim())return alert("Please enter a session title.");mutate(()=>{if(!Array.isArray(state.sessions))state.sessions=[];state.sessions.push({id:makeId(),number:Math.max(1,safeNumber(v.number,1)),date:v.date,title:v.title.trim(),summary:v.summary,decisions:v.decisions,discoveries:v.discoveries,npcEncounters:v.npcEncounters,openHooks:v.openHooks});});});}
+  function editSession(id){if(!isDM())return;const s=state.sessions?.find(x=>x.id===id);if(!s)return;openForm("Edit session "+s.number,sessionFields(s),v=>{if(!v.title.trim())return alert("Please enter a session title.");mutate(()=>Object.assign(s,{number:Math.max(1,safeNumber(v.number,1)),date:v.date,title:v.title.trim(),summary:v.summary,decisions:v.decisions,discoveries:v.discoveries,npcEncounters:v.npcEncounters,openHooks:v.openHooks}));});}
+  function removeSession(id){if(!isDM()||!confirm("Delete this session record?"))return;mutate(()=>state.sessions=(state.sessions||[]).filter(s=>s.id!==id));}
+  function searchCampaign(){
+    const q=$("campaign-search-input").value.trim().toLowerCase(),results=$("campaign-search-results"),count=$("campaign-search-count");
+    if(!q){count.textContent="Enter a search term to explore your campaign.";results.innerHTML="";return;}
+    const entries=[],add=(type,id,title,body,page)=>{const text=[title,body].filter(Boolean).join(" ");if(text.toLowerCase().includes(q))entries.push({type,id,title,body,page});};
+    (state.characters||[]).forEach(x=>add(x.isNPC?"Companion":"Character",x.id,x.name,[x.player,x.race,x.className,x.backstory,x.notes,x.gear].join(" "),"characters"));
+    (state.npcs||[]).forEach(x=>add("NPC",x.id,x.name,[x.role,x.description,x.location,x.relationship].join(" "),"characters"));
+    (state.quests||[]).forEach(x=>add("Quest",x.id,x.title,[x.description,x.reward,x.status].join(" "),"adventure"));
+    (state.journal||[]).forEach(x=>add("Journal",x.id,x.title,[x.date,x.author,x.body].join(" "),"journal"));
+    (state.events||[]).forEach(x=>add("Calendar event",x.id,x.title,[x.date,x.description,x.fantasyDate?JSON.stringify(x.fantasyDate):""].join(" "),"adventure"));
+    (state.markers||[]).forEach(x=>add("Map location",x.id,x.label,x.description||"","adventure"));
+    (state.sharedInventory||[]).forEach(x=>add("Party loot",x.id,x.name,[x.category,x.rarity,x.notes,x.value].join(" "),"inventory"));
+    (state.characters||[]).forEach(c=>(c.inventoryItems||[]).forEach(x=>add("Character item",x.id,x.name,[c.name,x.category,x.rarity,x.notes,x.value].join(" "),"inventory")));
+    (state.sessions||[]).forEach(x=>add("Session "+safeNumber(x.number),x.id,x.title,[x.date,x.summary,x.decisions,x.discoveries,x.npcEncounters,x.openHooks].join(" "),"sessions"));
+    count.textContent=entries.length+" result"+(entries.length===1?"":"s")+" found";
+    results.innerHTML=entries.length?entries.map(x=>'<button class="search-result" onclick="Hub.openSearchResult(\''+x.page+'\')"><span class="tag">'+escapeHTML(x.type)+'</span><strong>'+escapeHTML(x.title||"Untitled")+'</strong><span>'+escapeHTML((x.body||"").slice(0,180))+'</span></button>').join(""):empty("No matching campaign records found.");
+  }
+  function openSearchResult(page){go(page);}
+
   function renderDashboard() {
     $("stat-party").textContent = state.characters.filter(c=>!c.isNPC).length;
     $("stat-quests").textContent = state.quests.filter(q=>q.status==="Active").length;
@@ -895,6 +938,7 @@
     else{const page=$("page-"+tab);if(page)page.classList.add("active");}
   }
 
+  $("campaign-search-input").addEventListener("input",searchCampaign);
   root.querySelectorAll(".hub-nav button").forEach(b=>{
     b.addEventListener("click",()=>go(b.dataset.tab));
   });
@@ -1005,6 +1049,10 @@
     removeCharacterItem,
     editCharacterGold,
     addSharedItem,
+    addSession,
+    editSession,
+    removeSession,
+    openSearchResult,
     editSharedItem,
     removeSharedItem,
     editPartyGold,
@@ -1058,7 +1106,7 @@
       if (error) throw error;
 
       state={...blank(),...(data.data||{})};
-      ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory"].forEach(k=>{
+      ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions"].forEach(k=>{
         if (!Array.isArray(state[k])) state[k]=[];
       });
 
