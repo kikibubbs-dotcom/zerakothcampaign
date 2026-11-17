@@ -284,6 +284,22 @@
       : empty("Your campaign story starts here.");
   }
 
+  function calendarOrdinal(date,config){
+    if(!date||!config)return 0;
+    const yearDays=config.months.reduce((sum,m)=>sum+safeNumber(m.days),0);
+    const epochYear=config.epochYear??1;
+    const beforeMonths=config.months.slice(0,Math.max(0,safeNumber(date.month))).reduce((sum,m)=>sum+safeNumber(m.days),0);
+    return (safeNumber(date.year)-epochYear)*yearDays+beforeMonths+safeNumber(date.day)-1;
+  }
+  function eventDistance(event,config){
+    if(!event.fantasyDate||!config)return null;
+    return calendarOrdinal(event.fantasyDate,config)-calendarOrdinal(config.currentDate,config);
+  }
+  function toggleEventAttendance(id){
+    if(!isDM())return;const event=state.events.find(x=>x.id===id);if(!event)return;
+    mutate(()=>event.attended=!event.attended);
+  }
+
   function renderCalendar() {
     const setup=$("calendar-setup"), workspace=$("calendar-workspace");
     const config=state.calendarConfig;
@@ -326,13 +342,27 @@
       const day=i+1, isCurrent=calendarView.year===date.year&&calendarView.month===date.month&&day===date.day;
       const isPast=(state.elapsedDays||[]).includes(`${calendarView.year}-${calendarView.month}-${day}`);
       const dayEvents=state.events.filter(e=>e.fantasyDate&&e.fantasyDate.year===calendarView.year&&e.fantasyDate.month===calendarView.month&&e.fantasyDate.day===day);
-      return `<div class="calendar-day ${isCurrent?"is-current":""} ${isPast?"is-past":""}"><span class="calendar-day-number">${day}</span>${isDM()?`<button class="calendar-day-check" title="Toggle elapsed day" onclick="Hub.toggleCalendarDay(${calendarView.year},${calendarView.month},${day})">${isPast?"✓":"○"}</button>`:""}${dayEvents.map(e=>`<div class="calendar-event-chip" title="${escapeHTML(e.title)}">${escapeHTML(e.title)}</div>`).join("")}</div>`;
+      return `<div class="calendar-day ${isCurrent?"is-current":""} ${isPast?"is-past":""}"><span class="calendar-day-number">${day}</span>${isDM()?`<button class="calendar-day-check" title="Toggle elapsed day" onclick="Hub.toggleCalendarDay(${calendarView.year},${calendarView.month},${day})">${isPast?"✓":"○"}</button>`:""}${dayEvents.map(e=>{const distance=eventDistance(e,config),missed=distance!==null&&distance<0&&!e.attended;return `<div class="calendar-event-chip ${e.attended?"event-attended":missed?"event-missed":""}" title="${escapeHTML(e.title)}">${escapeHTML(e.title)}</div>`;}).join("")}</div>`;
     }).join("");
     $("calendar-grid").innerHTML=weekdayHeaders+blanks+cells;
-    const upcoming=[...state.events].filter(e=>e.fantasyDate&&(e.fantasyDate.year>date.year||(e.fantasyDate.year===date.year&&(e.fantasyDate.month>date.month||(e.fantasyDate.month===date.month&&e.fantasyDate.day>=date.day))))).sort((a,b)=>a.fantasyDate.year-b.fantasyDate.year||a.fantasyDate.month-b.fantasyDate.month||a.fantasyDate.day-b.fantasyDate.day);
-    $("calendar-list").innerHTML=upcoming.length?upcoming.map(e=>{
-      const m=config.months[e.fantasyDate.month];
-      return `<article class="list-card"><div class="list-meta">${escapeHTML(m?.name||"Unknown month")} ${safeNumber(e.fantasyDate.day)}, ${escapeHTML(config.yearLabel||"Year")} ${safeNumber(e.fantasyDate.year)}</div><h3>${escapeHTML(e.title)}</h3><p>${escapeHTML(e.description)}</p>${(isDM()||e.ownerId===member?.id)?'<div class="card-actions"><button onclick="Hub.editEvent(\''+e.id+'\')">EDIT EVENT</button><button onclick="Hub.removeItem(\'events\',\''+e.id+'\')">DELETE EVENT</button></div>':""}</article>`;
+    const allEvents=[...state.events].sort((a,b)=>{
+      const da=eventDistance(a,config),db=eventDistance(b,config);
+      if(da===null&&db===null)return String(a.date||"").localeCompare(String(b.date||""));
+      if(da===null)return 1;if(db===null)return -1;return da-db;
+    });
+    $("calendar-list").innerHTML=allEvents.length?allEvents.map(e=>{
+      const distance=eventDistance(e,config),missed=distance!==null&&distance<0&&!e.attended,today=distance===0&&!e.attended;
+      const m=e.fantasyDate?config.months[e.fantasyDate.month]:null;
+      const dateLabel=e.fantasyDate?`${m?.name||"Unknown month"} ${safeNumber(e.fantasyDate.day)}, ${escapeHTML(config.yearLabel||"Year")} ${safeNumber(e.fantasyDate.year)}`:escapeHTML(e.date||"Date not set");
+      const glow=distance===null||distance>30?0.025:distance>14?0.06:distance>7?0.10:distance>3?0.15:distance>1?0.21:distance===1?0.27:0.31;
+      const countdown=distance===null?"":distance<0?"MISSED":distance===0?"TODAY":distance===1?"1 DAY TO GO":distance+" DAYS TO GO";
+      const classes="calendar-event-card"+(missed?" event-missed":e.attended?" event-attended":today?" event-today":"");
+      const background=missed||e.attended?"":`background:linear-gradient(110deg,rgba(214,184,121,${glow}),#222633 78%)`;
+      return `<article class="list-card ${classes}" style="${background}">
+        <div class="list-meta">${dateLabel}</div><div class="event-date-countdown">${e.attended?"ATTENDED":countdown}</div>
+        <h3>${escapeHTML(e.title)}</h3><p>${escapeHTML(e.description||"")}</p>
+        ${isDM()? `<div class="card-actions"><button onclick="Hub.toggleEventAttendance('${e.id}')">${e.attended?"MARK NOT ATTENDED":"MARK ATTENDED"}</button><button onclick="Hub.editEvent('${e.id}')">EDIT EVENT</button><button onclick="Hub.removeItem('events','${e.id}')">DELETE EVENT</button></div>`:(e.ownerId===member?.id?'<div class="card-actions"><button onclick="Hub.editEvent(\''+e.id+'\')">EDIT EVENT</button></div>':"")}
+      </article>`;
     }).join(""):empty("No events have been added to the calendar yet.");
   }
 
@@ -382,8 +412,15 @@
     if(!isDM()||!state.calendarConfig)return;const c=state.calendarConfig,d=c.currentDate,month=c.months[d.month];
     if(!Array.isArray(state.elapsedDays))state.elapsedDays=[];const passed=`${d.year}-${d.month}-${d.day}`;if(!state.elapsedDays.includes(passed))state.elapsedDays.push(passed);
     if(d.day<month.days)d.day++;else if(d.month<c.months.length-1){d.month++;d.day=1;}else{d.month=0;d.year++;d.day=1;}
-    calendarView={year:d.year,month:d.month};refresh();persist();
-  }  function renderNotices(){
+    calendarView={year:d.year,month:d.month};refresh();persist();showCalendarStamp();
+  }
+  function showCalendarStamp(){
+    const old=root.querySelector(".calendar-stamp-layer");if(old)old.remove();
+    const layer=document.createElement("div");layer.className="calendar-stamp-layer";
+    layer.innerHTML='<div class="calendar-stamp"><strong>DAY ADVANCED</strong><span class="stamp-star">✦</span><strong>✧ CHRONICLE ✧</strong></div>';
+    root.appendChild(layer);setTimeout(()=>layer.remove(),1050);
+  }
+  function renderNotices(){
     const unread=state.notices.filter(n=>n.createdAt&&!(n.readBy||[]).includes(member?.id)).length,bar=$("notice-alert");
     bar.hidden=!unread;bar.textContent=unread?`✉ ${unread} new notice${unread===1?"":"s"} — click to read`:"";
     $("notice-list").innerHTML=state.notices.length?state.notices.map(n=>{const fresh=!!n.createdAt&&!(n.readBy||[]).includes(member?.id);return `<article class="list-card notice-card" onclick="Hub.markNoticeRead('${n.id}')"><div class="list-meta">${escapeHTML(n.date)} ${fresh?'<span class="tag">NEW!</span>':""}</div><h3>${escapeHTML(n.title)}</h3><p>${escapeHTML(n.body)}</p>${isDM()? `<div class="card-actions"><button onclick="event.stopPropagation();Hub.removeItem('notices','${n.id}')">DELETE NOTICE</button></div>`:""}</article>`;}).join(""):empty("The notice board is empty.");
@@ -691,6 +728,8 @@
     const adventureTabs=["map","party","quests","calendar"];
     root.querySelectorAll(".hub-page").forEach(p=>p.classList.remove("active"));
     root.querySelectorAll(".hub-nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
+    const adventureGrid=root.querySelector(".adventure-board-grid");
+    if(adventureGrid)adventureGrid.classList.toggle("adventure-visible",tab==="adventure");
     if(tab==="adventure")adventureTabs.forEach(name=>$("page-"+name).classList.add("active"));
     else{const page=$("page-"+tab);if(page)page.classList.add("active");}
   }
@@ -784,7 +823,7 @@
   const Hub = {configureSlots,
     resetCampaign,
     go,
-    addCharacter:()=>addCharacter(false),
+    addCharacter:()=>addCharacter(),
     addNPC:()=>addNPC(),
     addQuest,
     editQuest,
@@ -809,6 +848,9 @@
     changeHP,
     slot,
     cycleQuest,
+    openQuestDetails,
+    setQuestStatus,
+    toggleEventAttendance,
     removeItem,
     removeCharacter,
     clearMarkers,
