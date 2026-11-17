@@ -303,6 +303,7 @@
     const totalBeforeYear=(calendarView.year-date.year)*config.months.reduce((sum,m)=>sum+m.days,0);
     const totalBeforeMonth=config.months.slice(0,calendarView.month).reduce((sum,m)=>sum+m.days,0);
     const weekdayOffset=((totalBeforeYear+totalBeforeMonth)%config.weekdays.length+config.weekdays.length)%config.weekdays.length;
+    $("calendar-grid").style.gridTemplateColumns=`repeat(${config.weekdays.length},minmax(0,1fr))`;
     const weekdayHeaders=config.weekdays.map(day=>`<div class="calendar-weekday">${escapeHTML(day)}</div>`).join("");
     const blanks=Array.from({length:weekdayOffset},()=>'<div class="calendar-blank"></div>').join("");
     const cells=Array.from({length:month.days},(_,i)=>{
@@ -537,9 +538,23 @@ function configureSlots(id) {
   function addEvent() {
     const title=ask("Event title:");
     if (!title) return;
-    const date=ask("Date (YYYY-MM-DD or your fantasy calendar):")||"";
+    const config=state.calendarConfig;
+    let fantasyDate=null;
+    if (config) {
+      const month=ask("Month number (1-"+config.months.length+"):");
+      if (month===null) return;
+      const monthIndex=safeNumber(month,0)-1;
+      if (monthIndex<0||monthIndex>=config.months.length) return alert("That month number isn't valid.");
+      const day=ask("Day of "+config.months[monthIndex].name+" (1-"+config.months[monthIndex].days+"):");
+      if (day===null) return;
+      const dayNumber=safeNumber(day,0);
+      if (dayNumber<1||dayNumber>config.months[monthIndex].days) return alert("That day isn't valid for this month.");
+      const year=ask("Year:",String(config.currentDate.year));
+      if (year===null) return;
+      fantasyDate={year:Math.max(0,safeNumber(year,config.currentDate.year)),month:monthIndex,day:dayNumber};
+    }
     const description=ask("Event description:")||"";
-    mutate(()=>state.events.push({id:makeId(),title,date,description,...(!isDM()?{ownerId:member.id}:{})}));
+    mutate(()=>state.events.push({id:makeId(),title,date:fantasyDate?null:"",fantasyDate,description,...(!isDM()?{ownerId:member.id}:{})}));
   }
 
   function editEvent(id) {
@@ -547,11 +562,24 @@ function configureSlots(id) {
     if (!event) return;
     const title=ask("Event title:",event.title||"");
     if (title===null || !title) return;
-    const date=ask("Date (YYYY-MM-DD or your fantasy calendar):",event.date||"");
-    if (date===null) return;
+    let fantasyDate=event.fantasyDate||null;
+    if (state.calendarConfig) {
+      const c=state.calendarConfig, current=fantasyDate||c.currentDate;
+      const month=ask("Month number (1-"+c.months.length+"):",String(current.month+1));
+      if (month===null) return;
+      const monthIndex=safeNumber(month,0)-1;
+      if (monthIndex<0||monthIndex>=c.months.length) return alert("That month number isn't valid.");
+      const day=ask("Day of "+c.months[monthIndex].name+" (1-"+c.months[monthIndex].days+"):",String(current.day));
+      if (day===null) return;
+      const dayNumber=safeNumber(day,0);
+      if (dayNumber<1||dayNumber>c.months[monthIndex].days) return alert("That day isn't valid for this month.");
+      const year=ask("Year:",String(current.year));
+      if (year===null) return;
+      fantasyDate={year:Math.max(0,safeNumber(year,current.year)),month:monthIndex,day:dayNumber};
+    }
     const description=ask("Event description:",event.description||"");
     if (description===null) return;
-    mutate(()=>Object.assign(event,{title,date,description}));
+    mutate(()=>Object.assign(event,{title,fantasyDate,description}));
   }
 
   function addNotice() {
