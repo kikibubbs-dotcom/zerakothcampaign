@@ -114,6 +114,57 @@ Deno.serve(async (req) => {
       return json({ path, token: signed.token, publicUrl: publicData.publicUrl });
     }
 
+
+    if (action === "reset-campaign") {
+      if (member.role !== "dm") return json({ error: "Only the Dungeon Master can reset the campaign." }, 403);
+      const { data: current, error: readError } = await admin.from("campaign_hub")
+        .select("data").eq("id", "main").single();
+      if (readError) throw readError;
+      const before = current.data || {};
+      const fresh = {
+        title: "THE CAMPAIGN",
+        mapUrl: "",
+        markers: [],
+        mapDrawings: [],
+        markerLegend: {},
+        characters: [],
+        quests: [],
+        npcs: [],
+        journal: [],
+        events: [],
+        calendarConfig: null,
+        elapsedDays: [],
+        notices: []
+      };
+      const { data: saved, error: saveError } = await admin.schema("private").rpc("save_campaign_data", {
+        p_expected: before,
+        p_next: fresh
+      });
+      if (saveError) throw saveError;
+      if (!saved) return json({ error: "The campaign changed while the reset was running. Reload and try again.", conflict: true }, 409);
+
+      let mapFilesRemoved = 0;
+      let storageCleanupWarning = false;
+      try {
+        for (;;) {
+          const { data: files, error: listError } = await admin.storage.from("campaign-maps")
+            .list("maps", { limit: 1000, offset: 0 });
+          if (listError) throw listError;
+          const paths = (files || []).filter((file: any) => file.id && file.name)
+            .map((file: any) => "maps/" + file.name);
+          if (!paths.length) break;
+          const { data: removed, error: removeError } = await admin.storage.from("campaign-maps").remove(paths);
+          if (removeError) throw removeError;
+          mapFilesRemoved += (removed || []).length;
+          if (!files || files.length < 1000) break;
+        }
+      } catch (storageError) {
+        console.error("Campaign reset storage cleanup warning", storageError);
+        storageCleanupWarning = true;
+      }
+      return json({ success: true, map_files_removed: mapFilesRemoved, storage_cleanup_warning: storageCleanupWarning });
+    }
+
     if (action === "save-state") {
       const next = body.data;
       if (!next || typeof next !== "object" || Array.isArray(next)) return json({ error: "Campaign data is invalid." }, 400);

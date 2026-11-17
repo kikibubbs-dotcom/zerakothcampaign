@@ -510,6 +510,40 @@
     mutate(()=>state.characters=state.characters.filter(x=>x.id!==id));
   }
 
+
+  function resetCampaign(){
+    if(!isDM())return;
+    openForm("Permanently reset campaign",[
+      {name:"confirmation",label:"This permanently deletes the map, drawings, characters, quests, NPCs, journal entries, calendar, events and notices. Player accounts, access codes and memberships will stay. Type RESET to continue.",required:true,full:true,placeholder:"Type RESET"}
+    ],v=>{
+      if(v.confirmation.trim()!=="RESET"){alert("The confirmation did not match. Nothing was deleted.");return;}
+      performCampaignReset();
+    });
+  }
+  async function performCampaignReset(){
+    if(!isDM()||saving)return;
+    clearTimeout(saveTimer);
+    pending=false;
+    status("Resetting campaign...");
+    saving=true;
+    try{
+      const {data,error}=await client.functions.invoke("campaign-data",{body:{action:"reset-campaign"}});
+      if(error)throw error;
+      state=blank();
+      calendarView=null;
+      mapDrawing=false;
+      $("map-drawing-canvas").classList.remove("is-drawing");
+      $("map-frame").classList.remove("is-drawing");
+      refresh();
+      status(data?.storage_cleanup_warning?"✓ Campaign reset · map file cleanup needs attention":"✓ Campaign reset · "+(data?.map_files_removed||0)+" map file(s) removed");
+    }catch(err){
+      status("Campaign reset failed");
+      alert("The campaign could not be reset. "+(err.message||""));
+    }finally{
+      saving=false;
+    }
+  }
+
   function clearMarkers() {
     if (!isDM()) return;
     if (!confirm("Remove all map markers?")) return;
@@ -611,6 +645,7 @@
   });
 
   const Hub = {configureSlots,
+    resetCampaign,
     go,
     addCharacter:()=>addCharacter(false),
     addNPC:()=>addNPC(),
@@ -646,7 +681,7 @@
 
   function applyPermissions() {
     if (isDM()) return;
-    root.querySelectorAll(".upload-button,.map-toolbar,[onclick*='Hub.addQuest'],[onclick*='Hub.addNPC'],[onclick*='Hub.addNotice']").forEach(el=>el.style.display="none");
+    root.querySelectorAll(".dm-only,.upload-button,.map-toolbar,[onclick*='Hub.addQuest'],[onclick*='Hub.addNPC'],[onclick*='Hub.addNotice']").forEach(el=>el.style.display="none");
     root.querySelectorAll(".map-instructions").forEach(el=>el.textContent="Explore the world map and view its locations.");
   }
 
