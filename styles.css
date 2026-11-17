@@ -282,3 +282,41 @@
 /* Keep DM account controls grouped together in the header */
 #dnd-hub .hub-header {justify-content:flex-start;}
 #dnd-hub .hub-header .hub-status {margin-left:auto;}
+
+
+/* Archive, spacing and quest/calendar polish */
+#dnd-hub .hub-page > * + * {margin-top:26px;}
+#dnd-hub .adventure-board-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start;}
+#dnd-hub .adventure-board-grid > .hub-page {min-width:0;}
+#dnd-hub .archive-section {margin-top:24px;padding:18px;background:#1d202c;border:1px solid var(--line);border-radius:9px;}
+#dnd-hub .archive-section .panel-heading {margin-bottom:14px;}
+#dnd-hub .archive-section .panel-heading h3 {margin:0;}
+#dnd-hub .quest-card {cursor:pointer;transition:background .2s,border-color .2s,transform .2s;}
+#dnd-hub .quest-card:hover {border-color:var(--gold2);transform:translateY(-1px);}
+#dnd-hub .quest-card.quest-completed {background:#20372d;border-color:#4e9369;}
+#dnd-hub .quest-card.quest-completed h3,#dnd-hub .quest-card.quest-completed p {color:#b7e4c4;}
+#dnd-hub .quest-card.quest-failed {background:#3b2228;border-color:#a64e59;}
+#dnd-hub .quest-card.quest-failed h3,#dnd-hub .quest-card.quest-failed p {color:#e5aeb4;text-decoration:line-through;}
+#dnd-hub .quest-status-actions {display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+#dnd-hub .quest-status-actions button {border:1px solid var(--line);border-radius:4px;padding:7px 10px;background:#303747;color:var(--text);font:10px Arial,sans-serif;}
+#dnd-hub .quest-status-actions .complete-quest {border-color:#4e9369;color:#a8e0b8;}
+#dnd-hub .quest-status-actions .fail-quest {border-color:#a64e59;color:#e9aab1;}
+#dnd-hub .quest-status-actions button.selected {box-shadow:0 0 0 2px currentColor inset;}
+#dnd-hub .modal-card.modal-wide {width:min(900px,100%);}
+#dnd-hub .modal-section-title {grid-column:1/-1;color:var(--gold);font:bold 11px Arial,sans-serif;letter-spacing:1.5px;padding:10px 0 3px;border-bottom:1px solid var(--line);}
+#dnd-hub .modal-field[hidden] {display:none;}
+#dnd-hub .modal-field input[type=file] {padding:7px;font:11px Arial,sans-serif;}
+#dnd-hub .portrait-preview {width:94px;height:94px;object-fit:cover;border-radius:7px;border:1px solid var(--gold2);background:#191d29;margin-top:8px;}
+#dnd-hub .calendar-event-card {transition:background .4s,border-color .4s,opacity .4s;}
+#dnd-hub .calendar-event-card.event-missed {background:#090a0e;border-color:#222;opacity:.48;filter:grayscale(1);}
+#dnd-hub .calendar-event-card.event-attended {background:#202c29;border-color:#587864;}
+#dnd-hub .calendar-event-card.event-attended h3,#dnd-hub .calendar-event-card.event-attended p {text-decoration:line-through;color:#a9c6b2;}
+#dnd-hub .calendar-event-card.event-today {animation:eventDayGlow 1.7s ease-in-out infinite alternate;}
+#dnd-hub .calendar-event-card .event-date-countdown {font:10px Arial,sans-serif;color:var(--gold);margin-bottom:8px;}
+#dnd-hub .calendar-stamp-layer {position:fixed;inset:0;z-index:100000;display:grid;place-items:center;pointer-events:none;}
+#dnd-hub .calendar-stamp {width:220px;height:220px;border:8px double #d7b76f;border-radius:50%;background:#6d2028ed;color:#f7dfaa;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 8px 35px #000b;transform:scale(2.4) rotate(-22deg);opacity:0;animation:calendarStamp .95s cubic-bezier(.2,.8,.2,1) forwards;}
+#dnd-hub .calendar-stamp strong {font: bold 15px Arial,sans-serif;letter-spacing:2px;}
+#dnd-hub .calendar-stamp .stamp-star {font-size:74px;line-height:1;margin:3px 0;}
+@keyframes calendarStamp {0%{opacity:0;transform:scale(2.4) rotate(-22deg)}45%{opacity:1;transform:scale(.92) rotate(8deg)}65%{transform:scale(1.05) rotate(-4deg)}100%{opacity:0;transform:scale(1) rotate(0)}}
+@keyframes eventDayGlow {from{box-shadow:0 0 0 #d6b87900}to{box-shadow:0 0 22px #d6b87999;border-color:var(--gold)}}
+@media(max-width:850px){#dnd-hub .adventure-board-grid{grid-template-columns:1fr;}}
