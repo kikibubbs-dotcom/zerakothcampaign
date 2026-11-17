@@ -34,6 +34,8 @@
     <button data-tab="adventure">✥ Adventure</button>
     <button data-tab="characters">▤ Character & NPC Archive</button>
     <button data-tab="inventory">♜ Inventory & Loot</button>
+    <button data-tab="sessions">▣ Session History</button>
+    <button data-tab="search">⌕ Search</button>
     <button data-tab="journal">✎ Journal</button>
     <button data-tab="announcements">✉ Notices</button>
   </nav>
@@ -230,6 +232,18 @@
         <div id="shared-inventory-list" class="inventory-item-list"></div>
       </div>
       <div class="hub-panel"><div class="panel-heading"><div><h3>♙ CHARACTER INVENTORIES</h3><p>Players can manage their own character; the DM can manage everyone.</p></div></div><div id="character-inventory-list" class="inventory-character-grid"></div></div>
+    </section>
+
+    <!-- SESSION HISTORY -->
+    <section class="hub-page" id="page-sessions">
+      <div class="page-heading"><div><div class="hub-kicker">THE STORY SO FAR</div><h2>Session History</h2><p>Keep a record of every adventure, discovery and unresolved thread.</p></div><button class="hub-button dm-only" onclick="Hub.addSession()">+ LOG SESSION</button></div>
+      <div id="session-list" class="hub-list"></div>
+    </section>
+
+    <!-- CAMPAIGN SEARCH -->
+    <section class="hub-page" id="page-search">
+      <div class="page-heading"><div><div class="hub-kicker">FIND YOUR WAY</div><h2>Campaign Search</h2><p>Search characters, NPCs, quests, journal entries, events, locations, inventory and session notes.</p></div></div>
+      <div class="hub-panel search-panel"><label for="campaign-search-input">SEARCH THE CAMPAIGN</label><input id="campaign-search-input" type="search" placeholder="Try a character, place, item, quest or keyword..." autocomplete="off"><div id="campaign-search-count" class="list-meta">Enter a search term to explore your campaign.</div><div id="campaign-search-results" class="search-results"></div></div>
     </section>
 
     <!-- JOURNAL -->
