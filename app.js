@@ -263,7 +263,7 @@
           <div class="list-meta">${escapeHTML(j.date)} · ${escapeHTML(j.author||"Campaign")}</div>
           <h3>${escapeHTML(j.title)}</h3>
           <p>${escapeHTML(j.body)}</p>
-          ${(isDM() || j.ownerId===member?.id)?`${(isDM() || j.ownerId===member?.id)?`<div class="card-actions"><button onclick="Hub.editJournal('${j.id}')">EDIT ENTRY</button><button onclick="Hub.removeItem('journal','${j.id}')">DELETE ENTRY</button></div>`:""}`:""}
+          ${(isDM() || j.ownerId===member?.id)?`${(isDM() || member?.role==="player")?`<div class="card-actions"><button onclick="Hub.editJournal('${j.id}')">EDIT ENTRY</button><button onclick="Hub.removeItem('journal','${j.id}')">DELETE ENTRY</button></div>`:""}`:""}
         </article>`).join("")
       : empty("Your campaign story starts here.");
   }
@@ -276,7 +276,7 @@
           <div class="list-meta">${escapeHTML(e.date)}</div>
           <h3>${escapeHTML(e.title)}</h3>
           <p>${escapeHTML(e.description)}</p>
-          ${(isDM() || e.ownerId===member?.id)?`${(isDM() || e.ownerId===member?.id)?`<div class="card-actions"><button onclick="Hub.editEvent('${e.id}')">EDIT EVENT</button><button onclick="Hub.removeItem('events','${e.id}')">DELETE EVENT</button></div>`:""}`:""}
+          ${(isDM() || e.ownerId===member?.id)?`${(isDM() || member?.role==="player")?`<div class="card-actions"><button onclick="Hub.editEvent('${e.id}')">EDIT EVENT</button><button onclick="Hub.removeItem('events','${e.id}')">DELETE EVENT</button></div>`:""}`:""}
         </article>`).join("")
       : empty("No events scheduled.");
   }
@@ -433,7 +433,7 @@ function configureSlots(id) {
 
   function editJournal(id) {
     const entry=state.journal.find(x=>x.id===id);
-    if (!entry || (!isDM() && entry.ownerId!==member?.id)) return;
+    if (!entry) return;
     const title=ask("Journal entry title:",entry.title||"");
     if (title===null || !title) return;
     const date=ask("In-world date or session number:",entry.date||"");
@@ -455,7 +455,7 @@ function configureSlots(id) {
 
   function editEvent(id) {
     const event=state.events.find(x=>x.id===id);
-    if (!event || (!isDM() && event.ownerId!==member?.id)) return;
+    if (!event) return;
     const title=ask("Event title:",event.title||"");
     if (title===null || !title) return;
     const date=ask("Date (YYYY-MM-DD or your fantasy calendar):",event.date||"");
@@ -476,7 +476,7 @@ function configureSlots(id) {
   function removeItem(collection,id) {
     const item = state[collection]?.find(x=>x.id===id);
     if (!item) return;
-    if (!isDM() && !(["journal","events"].includes(collection) && item.ownerId===member?.id)) return;
+    if (!isDM() && !(["journal","events"].includes(collection) && member?.role==="player")) return;
     if (!confirm("Are you sure you want to delete this?")) return;
     mutate(()=>state[collection]=state[collection].filter(x=>x.id!==id));
   }
