@@ -385,11 +385,6 @@
     persist();
   }
 
-  function ask(label,initial="") {
-    const value = prompt(label,initial);
-    return value === null ? null : value.trim();
-  }
-
 
   let modalSaveHandler = null;
   function closeModal(){const modal=$("hub-modal");modal.hidden=true;modal.innerHTML="";modalSaveHandler=null;}
@@ -585,7 +580,7 @@
     e.stopPropagation();
     const m=state.markers.find(x=>x.id===marker.dataset.marker);
     if (!m || !isDM()) return;
-    openForm("Edit map location",[{name:"label",label:"Location name",value:m.label,required:true}],v=>{if(!v.label.trim())return alert("Please enter a location name.");mutate(()=>m.label=v.label.trim());});
+    openForm("Edit map location",[{name:"label",label:"Location name",value:m.label,required:true},{name:"action",label:"Location action",type:"select",value:"keep",options:[{value:"keep",label:"Keep this location"},{value:"delete",label:"Delete this location"}]}],v=>{if(v.action==="delete"){if(confirm("Delete this map location?"))mutate(()=>state.markers=state.markers.filter(x=>x.id!==m.id));return;}if(!v.label.trim())return alert("Please enter a location name.");mutate(()=>m.label=v.label.trim());});
   });
 
   $("map-upload").addEventListener("change",async e=>{
