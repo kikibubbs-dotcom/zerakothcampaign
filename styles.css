@@ -417,3 +417,5 @@
 #dnd-hub .reference-attribution p{overflow-wrap:anywhere;font-size:11px}
 #dnd-hub .reference-attribution a{color:var(--gold)}
 @media(max-width:650px){#dnd-hub .reference-toolbar{grid-template-columns:1fr 1fr}#dnd-hub .reference-toolbar input{grid-column:1/-1}#dnd-hub .reference-results{grid-template-columns:1fr}}
+
+#dnd-hub .reference-pagination{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
