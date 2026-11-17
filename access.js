@@ -60,7 +60,7 @@
           const { data, error } = await client.functions.invoke("campaign-access", { body: { action: "redeem-code", code } });
           if (error) throw await readableError(error);
           const { error: authError } = await client.auth.verifyOtp({
-            email: data.email, token_hash: data.token_hash, type: data.type || "magiclink"
+            token_hash: data.token_hash, type: data.type || "magiclink"
           });
           if (authError) throw authError;
           await completeAccess();
