@@ -484,11 +484,11 @@
     const typeSelector=form.elements.namedItem("recordType");
     if(typeSelector){typeSelector.addEventListener("change",updateArchiveGroups);updateArchiveGroups();}
     form.addEventListener("submit",async e=>{
-      e.preventDefault();const values={};
+      e.preventDefault();const values={},submittedForm=e.currentTarget;
       try{
         for(const field of fields){
           if(["drawing","section"].includes(field.type))continue;
-          const el=e.currentTarget.elements.namedItem(field.name);
+          const el=submittedForm.elements.namedItem(field.name);
           values[field.name]=field.type==="file"?(el?.files?.[0]?await imageFileToDataURL(el.files[0]):""):(el?el.value:"");
         }
         if(modalSaveHandler)modalSaveHandler(values);
@@ -847,7 +847,6 @@
     editNPC,
     changeHP,
     slot,
-    cycleQuest,
     openQuestDetails,
     setQuestStatus,
     toggleEventAttendance,
