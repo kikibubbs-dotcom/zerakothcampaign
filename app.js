@@ -239,17 +239,20 @@
 
   function renderQuests() {
     $("quest-list").innerHTML = state.quests.length
-      ? state.quests.map(q=>`
-        <article class="list-card">
-          <div class="list-meta">${escapeHTML(q.status)} · ${escapeHTML(q.reward||"No reward specified")}</div>
+      ? state.quests.map(q=>{
+        const status=(q.status||"Active").toLowerCase();
+        return `<article class="list-card quest-card ${status==="completed"?"quest-completed":status==="failed"?"quest-failed":""}" onclick="Hub.openQuestDetails('${q.id}')">
+          <div class="list-meta">${escapeHTML(q.status||"Active")} · ${escapeHTML(q.reward||"No reward specified")}</div>
           <h3>${escapeHTML(q.title)}</h3>
-          <p>${escapeHTML(q.description)}</p>
-          ${isDM()?`<div class="card-actions">
-            <button onclick="Hub.editQuest('${q.id}')">EDIT QUEST</button>
-            <button onclick="Hub.cycleQuest('${q.id}')">CHANGE STATUS</button>
+          <p>${escapeHTML(q.description||"No description provided.")}</p>
+          ${isDM()? `<div class="quest-status-actions" onclick="event.stopPropagation()">
+            <button class="complete-quest ${status==="completed"?"selected":""}" onclick="Hub.setQuestStatus('${q.id}','Completed')">✓ COMPLETED</button>
+            <button class="fail-quest ${status==="failed"?"selected":""}" onclick="Hub.setQuestStatus('${q.id}','Failed')">✕ FAILED</button>
+            <button onclick="Hub.editQuest('${q.id}')">EDIT</button>
             <button onclick="Hub.removeItem('quests','${q.id}')">DELETE</button>
           </div>`:""}
-        </article>`).join("")
+        </article>`;
+      }).join("")
       : empty("No quests have been added.");
   }
 
@@ -257,12 +260,13 @@
     $("npc-list").innerHTML = state.npcs.length
       ? state.npcs.map(n=>`
         <article class="character-card">
+          ${n.portrait?`<img src="${escapeHTML(n.portrait)}" alt="" class="portrait-preview">`:""}
           <div class="card-subtitle">${escapeHTML(n.role||"UNKNOWN ROLE")}</div>
           <h3>${escapeHTML(n.name)}</h3>
-          <p>${escapeHTML(n.description)}</p>
+          <p>${escapeHTML(n.description||"")}</p>
           <p><strong>Location:</strong> ${escapeHTML(n.location||"Unknown")}</p>
           <p><strong>Relationship:</strong> ${escapeHTML(n.relationship||"Unknown")}</p>
-          ${isDM()?`<div class="card-actions"><button onclick="Hub.editNPC('${n.id}')">EDIT</button><button onclick="Hub.removeItem('npcs','${n.id}')">DELETE</button></div>`:""}
+          ${isDM()? `<div class="card-actions"><button onclick="Hub.editNPC('${n.id}')">EDIT</button><button onclick="Hub.removeItem('npcs','${n.id}')">DELETE</button></div>`:""}
         </article>`).join("")
       : empty("No NPCs discovered yet.");
   }
@@ -392,20 +396,68 @@
 
   let modalSaveHandler = null;
   function closeModal(){const modal=$("hub-modal");modal.hidden=true;modal.innerHTML="";modalSaveHandler=null;}
+  function imageFileToDataURL(file){
+    return new Promise((resolve,reject)=>{
+      if(!file)return resolve("");
+      if(!file.type.startsWith("image/"))return reject(new Error("Please choose an image file."));
+      if(file.size>5*1024*1024)return reject(new Error("Please use an image smaller than 5MB."));
+      const reader=new FileReader();
+      reader.onerror=()=>reject(new Error("The image could not be read."));
+      reader.onload=()=>{
+        const img=new Image();
+        img.onerror=()=>reject(new Error("The selected image could not be opened."));
+        img.onload=()=>{
+          const scale=Math.min(1,640/Math.max(img.width,img.height));
+          const canvas=document.createElement("canvas");
+          canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));
+          canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
+          resolve(canvas.toDataURL("image/jpeg",0.78));
+        };
+        img.src=reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
   function openForm(title,fields,onSave){
     const modal=$("hub-modal");modalSaveHandler=onSave;
+    const isArchive=fields.some(x=>x.group);
     const controls=fields.map((field,i)=>{
       const id="modal-field-"+i, value=field.value??"", full=field.full?" full":"";
+      const group=field.group?` data-archive-group="${escapeHTML(field.group)}"`:"";
+      if(field.type==="section")return `<div class="modal-section-title"${group}>${escapeHTML(field.label)}</div>`;
       let control="";
       if(field.type==="textarea")control=`<textarea id="${id}" name="${escapeHTML(field.name)}" rows="${field.rows||4}" ${field.required?"required":""} placeholder="${escapeHTML(field.placeholder||"")}">${escapeHTML(value)}</textarea>`;
       else if(field.type==="select")control=`<select id="${id}" name="${escapeHTML(field.name)}" ${field.required?"required":""}>${(field.options||[]).map(o=>`<option value="${escapeHTML(o.value)}" ${String(o.value)===String(value)?"selected":""}>${escapeHTML(o.label)}</option>`).join("")}</select>`;
       else if(field.type==="drawing")control=`<canvas id="journal-drawing-canvas" class="journal-editor-canvas" width="900" height="260"></canvas><div class="card-actions"><label class="small-button" style="cursor:pointer">UPLOAD IMAGE<input id="journal-image-upload" type="file" accept="image/*" hidden></label><button type="button" class="small-button" id="journal-clear-drawing">CLEAR DRAWING</button></div><p>Draw with your mouse or finger, or upload an image to attach it to this entry.</p>`;
+      else if(field.type==="file")control=`<input id="${id}" name="${escapeHTML(field.name)}" type="file" accept="image/*"><span class="list-meta">Optional image upload · max 5MB</span>${field.preview?`<img class="portrait-preview" src="${escapeHTML(field.preview)}" alt="Current portrait">`:""}`;
       else control=`<input id="${id}" name="${escapeHTML(field.name)}" type="${field.type||"text"}" value="${escapeHTML(value)}" ${field.required?"required":""} placeholder="${escapeHTML(field.placeholder||"")}" ${field.min!==undefined?`min="${field.min}"`:""} ${field.max!==undefined?`max="${field.max}"`:""}>`;
-      return `<label class="modal-field${full}" for="${id}">${escapeHTML(field.label)}${control}</label>`;
+      return `<label class="modal-field${full}" for="${id}"${group}>${escapeHTML(field.label)}${control}</label>`;
     }).join("");
-    modal.innerHTML=`<div class="modal-card"><div class="modal-top"><h3>${escapeHTML(title)}</h3><button type="button" class="modal-close" id="modal-close">✕</button></div><form id="hub-modal-form"><div class="modal-fields">${controls}</div><div class="modal-actions"><button type="button" class="small-button" id="modal-cancel">CANCEL</button><button type="submit" class="hub-button">SAVE</button></div></form></div>`;
+    modal.innerHTML=`<div class="modal-card ${isArchive?"modal-wide":""}"><div class="modal-top"><h3>${escapeHTML(title)}</h3><button type="button" class="modal-close" id="modal-close">✕</button></div><form id="hub-modal-form"><div class="modal-fields">${controls}</div><div class="modal-actions"><button type="button" class="small-button" id="modal-cancel">CANCEL</button><button type="submit" class="hub-button">SAVE</button></div></form></div>`;
     modal.hidden=false;$("modal-close").onclick=closeModal;$("modal-cancel").onclick=closeModal;modal.onclick=e=>{if(e.target===modal)closeModal();};
-    $("hub-modal-form").addEventListener("submit",e=>{e.preventDefault();const values={};fields.forEach(field=>{if(field.type==="drawing")return;const el=e.currentTarget.elements.namedItem(field.name);values[field.name]=el?el.value:"";});if(modalSaveHandler)modalSaveHandler(values);closeModal();});
+    const form=$("hub-modal-form");
+    const updateArchiveGroups=()=>{
+      const selector=form.elements.namedItem("recordType");if(!selector)return;
+      const selected=selector.value;
+      form.querySelectorAll("[data-archive-group]").forEach(el=>{
+        const groups=el.dataset.archiveGroup.split(" ");
+        el.hidden=!groups.includes(selected);
+      });
+    };
+    const typeSelector=form.elements.namedItem("recordType");
+    if(typeSelector){typeSelector.addEventListener("change",updateArchiveGroups);updateArchiveGroups();}
+    form.addEventListener("submit",async e=>{
+      e.preventDefault();const values={};
+      try{
+        for(const field of fields){
+          if(["drawing","section"].includes(field.type))continue;
+          const el=e.currentTarget.elements.namedItem(field.name);
+          values[field.name]=field.type==="file"?(el?.files?.[0]?await imageFileToDataURL(el.files[0]):""):(el?el.value:"");
+        }
+        if(modalSaveHandler)modalSaveHandler(values);
+        closeModal();
+      }catch(err){alert(err.message||"The form could not be saved.");}
+    });
     if(fields.some(x=>x.type==="drawing"))setupJournalCanvas(fields.find(x=>x.type==="drawing").value||"");
   }
   function setupJournalCanvas(existingImage){
@@ -429,33 +481,95 @@
     ],v=>{const imageData=journalCanvasDirty?$("journal-drawing-canvas")?.toDataURL("image/jpeg",0.78):(data.imageData||"");const updated={title:v.title.trim(),date:v.date,author:v.author,body:v.body,imageData};if(!updated.title)return alert("Please enter a title.");if(editing)mutate(()=>Object.assign(entry,updated));else mutate(()=>state.journal.unshift({id:makeId(),...updated,...(!isDM()?{ownerId:member.id}:{})}));});
   }
 
-  function addCharacter(isNPC=false){
-    if(!isDM()&&isNPC)return;const c=defaultsCharacter();
-    const fields=[
-      {name:"name",label:"Character name",required:true},{name:"player",label:"Player name",value:isDM()?"":member.display_name},{name:"portrait",label:"Portrait image URL",type:"url",placeholder:"https://…"},
-      {name:"race",label:"Race / species"},{name:"className",label:"Class"},
-      {name:"level",label:"Level",type:"number",value:1,min:1},{name:"hp",label:"Current HP",type:"number",value:10,min:0},
-      {name:"maxHp",label:"Maximum HP",type:"number",value:10,min:1},{name:"ac",label:"Armour Class",type:"number",value:10},
-      {name:"initiative",label:"Initiative",type:"number",value:0},{name:"speed",label:"Movement speed (ft)",type:"number",value:30},
-      ...(isDM()?[{name:"isNPC",label:"Is this an NPC companion?",type:"select",value:"no",options:[{value:"no",label:"No — player character"},{value:"yes",label:"Yes — NPC companion"}]}]:[]),
-      {name:"gear",label:"Equipment & inventory",type:"textarea",full:true},{name:"loveInterest",label:"Relationships / love interest",type:"textarea",full:true},
-      {name:"backstory",label:"Backstory",type:"textarea",full:true},{name:"notes",label:"Personal notes",type:"textarea",full:true}
+  function archiveFields(data={},type="player"){
+    const options=isDM()
+      ?[{value:"player",label:"Player character"},{value:"npc",label:"NPC"},{value:"companion",label:"NPC companion"}]
+      :[{value:"player",label:"Player character"}];
+    return [
+      {name:"recordType",label:"Is this a player character, NPC or NPC companion?",type:"select",value:type,options,required:true,full:true},
+      {type:"section",label:"IDENTITY & APPEARANCE",group:"player companion npc"},
+      {name:"name",label:"Name",value:data.name||"",required:true,group:"player companion npc"},
+      {name:"player",label:"Player / owner",value:data.player||(isDM()?"":member?.display_name),group:"player"},
+      {name:"role",label:"Role / occupation",value:data.role||"",group:"npc"},
+      {name:"race",label:"Race / species",value:data.race||"",group:"player companion npc"},
+      {name:"className",label:"Class",value:data.className||"",group:"player companion"},
+      {name:"background",label:"Background",value:data.background||"",group:"player companion"},
+      {name:"alignment",label:"Alignment",value:data.alignment||"",group:"player companion npc"},
+      {name:"portrait",label:"Portrait image URL",type:"url",value:data.portrait?.startsWith("data:")?"":(data.portrait||""),placeholder:"https://…",group:"player companion npc"},
+      {name:"portraitFile",label:"Or upload a portrait image",type:"file",preview:data.portrait||"",group:"player companion npc"},
+      {type:"section",label:"ADVENTURER DETAILS",group:"player companion"},
+      {name:"level",label:"Level",type:"number",value:data.level??1,min:1,group:"player companion"},
+      {name:"experience",label:"Experience points",type:"number",value:data.experience??0,min:0,group:"player companion"},
+      {name:"hp",label:"Current hit points",type:"number",value:data.hp??10,min:0,group:"player companion"},
+      {name:"maxHp",label:"Maximum hit points",type:"number",value:data.maxHp??10,min:1,group:"player companion"},
+      {name:"ac",label:"Armour class",type:"number",value:data.ac??10,min:0,group:"player companion"},
+      {name:"initiative",label:"Initiative",type:"number",value:data.initiative??0,group:"player companion"},
+      {name:"speed",label:"Speed (ft)",type:"number",value:data.speed??30,min:0,group:"player companion"},
+      {name:"hitDice",label:"Hit dice",value:data.hitDice||"",group:"player companion"},
+      {name:"proficiency",label:"Proficiency bonus",type:"number",value:data.proficiency??2,min:0,group:"player companion"},
+      {type:"section",label:"ABILITY SCORES",group:"player companion"},
+      {name:"strength",label:"Strength (STR)",type:"number",value:data.strength??10,group:"player companion"},
+      {name:"dexterity",label:"Dexterity (DEX)",type:"number",value:data.dexterity??10,group:"player companion"},
+      {name:"constitution",label:"Constitution (CON)",type:"number",value:data.constitution??10,group:"player companion"},
+      {name:"intelligence",label:"Intelligence (INT)",type:"number",value:data.intelligence??10,group:"player companion"},
+      {name:"wisdom",label:"Wisdom (WIS)",type:"number",value:data.wisdom??10,group:"player companion"},
+      {name:"charisma",label:"Charisma (CHA)",type:"number",value:data.charisma??10,group:"player companion"},
+      {type:"section",label:"PROFICIENCIES & FEATURES",group:"player companion"},
+      {name:"savingThrows",label:"Saving throw proficiencies",type:"textarea",rows:2,value:data.savingThrows||"",group:"player companion",full:true},
+      {name:"skills",label:"Skills & proficiencies",type:"textarea",rows:3,value:data.skills||"",group:"player companion",full:true},
+      {name:"features",label:"Class features, racial traits & feats",type:"textarea",rows:4,value:data.features||"",group:"player companion",full:true},
+      {name:"spells",label:"Spells & magical abilities",type:"textarea",rows:4,value:data.spells||"",group:"player companion",full:true},
+      {type:"section",label:"INVENTORY & STORY",group:"player companion"},
+      {name:"gear",label:"Equipment, inventory & currency",type:"textarea",rows:4,value:data.gear||"",group:"player companion",full:true},
+      {name:"personality",label:"Personality traits",type:"textarea",rows:2,value:data.personality||"",group:"player companion npc",full:true},
+      {name:"ideals",label:"Ideals",type:"textarea",rows:2,value:data.ideals||"",group:"player companion npc",full:true},
+      {name:"bonds",label:"Bonds",type:"textarea",rows:2,value:data.bonds||"",group:"player companion npc",full:true},
+      {name:"flaws",label:"Flaws",type:"textarea",rows:2,value:data.flaws||"",group:"player companion npc",full:true},
+      {name:"backstory",label:"Backstory",type:"textarea",rows:5,value:data.backstory||"",group:"player companion npc",full:true},
+      {name:"loveInterest",label:"Relationships / connections",type:"textarea",rows:3,value:data.loveInterest||"",group:"player companion npc",full:true},
+      {type:"section",label:"NPC DETAILS",group:"npc"},
+      {name:"location",label:"Usual location",value:data.location||"",group:"npc"},
+      {name:"relationship",label:"Relationship to the party",value:data.relationship||"",group:"npc"},
+      {name:"description",label:"Description & known details",type:"textarea",rows:5,value:data.description||"",group:"npc",full:true},
+      {name:"goals",label:"Goals & motivations",type:"textarea",rows:3,value:data.goals||"",group:"npc",full:true},
+      {name:"secrets",label:"Secrets / information",type:"textarea",rows:3,value:data.secrets||"",group:"npc",full:true},
+      {name:"notes",label:"Additional notes",type:"textarea",rows:4,value:data.notes||"",group:"player companion npc",full:true}
     ];
-    openForm("Add character",fields,v=>{if(!v.name.trim())return alert("Please enter a character name.");Object.assign(c,{name:v.name.trim(),player:isDM()?v.player:member.display_name,portrait:v.portrait,race:v.race,className:v.className,level:Math.max(1,safeNumber(v.level,1)),hp:Math.max(0,safeNumber(v.hp,10)),maxHp:Math.max(1,safeNumber(v.maxHp,10)),ac:safeNumber(v.ac,10),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed,30),gear:v.gear,loveInterest:v.loveInterest,backstory:v.backstory,notes:v.notes,isNPC:isDM()&&v.isNPC==="yes"});c.hp=Math.min(c.hp,c.maxHp);if(!isDM())c.ownerId=member.id;mutate(()=>state.characters.push(c));});
-  }  function editCharacter(id){
-    const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;
-    const fields=[
-      {name:"name",label:"Character name",value:c.name,required:true},{name:"player",label:"Player name",value:c.player||""},{name:"portrait",label:"Portrait image URL",type:"url",value:c.portrait||"",placeholder:"https://…"},
-      {name:"race",label:"Race / species",value:c.race||""},{name:"className",label:"Class",value:c.className||""},
-      {name:"level",label:"Level",type:"number",value:c.level||1,min:1},{name:"hp",label:"Current HP",type:"number",value:c.hp||0,min:0},
-      {name:"maxHp",label:"Maximum HP",type:"number",value:c.maxHp||1,min:1},{name:"ac",label:"Armour Class",type:"number",value:c.ac||0},
-      {name:"initiative",label:"Initiative",type:"number",value:c.initiative||0},{name:"speed",label:"Movement speed (ft)",type:"number",value:c.speed||0},
-      ...(isDM()?[{name:"isNPC",label:"Is this an NPC companion?",type:"select",value:c.isNPC?"yes":"no",options:[{value:"no",label:"No — player character"},{value:"yes",label:"Yes — NPC companion"}]}]:[]),
-      {name:"gear",label:"Equipment & inventory",type:"textarea",value:c.gear||"",full:true},{name:"loveInterest",label:"Relationships / love interest",type:"textarea",value:c.loveInterest||"",full:true},
-      {name:"backstory",label:"Backstory",type:"textarea",value:c.backstory||"",full:true},{name:"notes",label:"Personal notes",type:"textarea",value:c.notes||"",full:true}
-    ];
-    openForm("Edit character",fields,v=>{const u={name:v.name.trim(),player:v.player,portrait:v.portrait,race:v.race,className:v.className,level:Math.max(1,safeNumber(v.level,1)),hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),gear:v.gear,loveInterest:v.loveInterest,backstory:v.backstory,notes:v.notes};u.hp=Math.min(u.hp,u.maxHp);if(isDM())u.isNPC=v.isNPC==="yes";mutate(()=>Object.assign(c,u));});
-  }  function changeHP(id,amount) {
+  }
+  function openArchiveEditor(data=null,collection="characters"){
+    if(collection==="npcs"&&!isDM())return;
+    if(data&&collection==="characters"&&!canEditCharacter(data))return;
+    const editing=!!data;
+    const initialType=collection==="npcs"?"npc":data?.isNPC?"companion":"player";
+    openForm(editing?"Edit archive entry":"Add to character & NPC archive",archiveFields(data||{},initialType),v=>{
+      if(!v.name.trim())return alert("Please enter a name.");
+      const type=v.recordType,portrait=v.portraitFile||v.portrait||data?.portrait||"";
+      const common={id:data?.id||makeId(),name:v.name.trim(),race:v.race,className:v.className,alignment:v.alignment,portrait,personality:v.personality,ideals:v.ideals,bonds:v.bonds,flaws:v.flaws,backstory:v.backstory,loveInterest:v.loveInterest,notes:v.notes};
+      if(type==="npc"){
+        const npc={...common,role:v.role,location:v.location,relationship:v.relationship,description:v.description,goals:v.goals,secrets:v.secrets};
+        if(!isDM())return;
+        mutate(()=>{
+          if(collection==="characters")state.characters=state.characters.filter(x=>x.id!==data?.id);
+          if(collection==="npcs"&&data)Object.assign(data,npc);
+          else state.npcs.unshift(npc);
+        });
+      }else{
+        const c={...common,player:type==="player"?(isDM()?v.player:member.display_name):"",background:v.background,level:Math.max(1,safeNumber(v.level,1)),experience:Math.max(0,safeNumber(v.experience)),hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),hitDice:v.hitDice,proficiency:safeNumber(v.proficiency),strength:safeNumber(v.strength,10),dexterity:safeNumber(v.dexterity,10),constitution:safeNumber(v.constitution,10),intelligence:safeNumber(v.intelligence,10),wisdom:safeNumber(v.wisdom,10),charisma:safeNumber(v.charisma,10),savingThrows:v.savingThrows,skills:v.skills,features:v.features,spells:v.spells,gear:v.gear,isNPC:type==="companion"};
+        c.hp=Math.min(c.hp,c.maxHp);
+        if(!isDM())c.ownerId=member.id;else if(data?.ownerId)c.ownerId=data.ownerId;
+        mutate(()=>{
+          if(collection==="npcs")state.npcs=state.npcs.filter(x=>x.id!==data?.id);
+          if(data&&collection==="characters")Object.assign(data,c);
+          else state.characters.push(c);
+        });
+      }
+    });
+  }
+  function addCharacter(){openArchiveEditor(null,"characters");}
+  function editCharacter(id){const c=state.characters.find(x=>x.id===id);if(c)openArchiveEditor(c,"characters");}
+  function addNPC(){if(isDM())openArchiveEditor(null,"npcs");}
+  function editNPC(id){const n=state.npcs.find(x=>x.id===id);if(n)openArchiveEditor(n,"npcs");}
+  function changeHP(id,amount) {
     const c = state.characters.find(x=>x.id===id);
     if (!c || !canEditCharacter(c)) return;
     mutate(()=>c.hp=Math.max(0,Math.min(safeNumber(c.maxHp),safeNumber(c.hp)+amount)));
@@ -476,14 +590,37 @@
       const updated=slots.map((slot,i)=>{const total=Math.max(0,safeNumber(v["level"+i]));return{total,used:Math.min(safeNumber(slot.used),total)};});
       mutate(()=>c.spellSlots=updated);
     });
-  }  function addQuest(){if(!isDM())return;openForm("Add quest",[{name:"title",label:"Quest title",required:true,full:true},{name:"description",label:"Quest description",type:"textarea",rows:5,full:true},{name:"reward",label:"Reward",type:"textarea",rows:2,full:true}],v=>{if(!v.title.trim())return alert("Please enter a quest title.");mutate(()=>state.quests.unshift({id:makeId(),title:v.title.trim(),description:v.description,reward:v.reward,status:"Active"}));});}  function cycleQuest(id){
-    if(!isDM())return;const q=state.quests.find(x=>x.id===id);if(!q)return;
-    const states=["Active","Completed","Failed"];mutate(()=>q.status=states[(states.indexOf(q.status)+1)%states.length]);
+  }  function addQuest(){
+    if(!isDM())return;
+    openForm("Add quest",[{name:"title",label:"Quest title",required:true,full:true},{name:"description",label:"Quest description",type:"textarea",rows:5,full:true},{name:"reward",label:"Reward",type:"textarea",rows:2,full:true}],v=>{
+      if(!v.title.trim())return alert("Please enter a quest title.");
+      mutate(()=>state.quests.unshift({id:makeId(),title:v.title.trim(),description:v.description,reward:v.reward,status:"Active"}));
+    });
+  }
+  function setQuestStatus(id,status){
+    if(!isDM()||!["Active","Completed","Failed"].includes(status))return;
+    const q=state.quests.find(x=>x.id===id);if(!q)return;
+    mutate(()=>q.status=status);
+  }
+  function openQuestDetails(id){
+    const q=state.quests.find(x=>x.id===id);if(!q)return;
+    const modal=$("hub-modal");
+    modal.innerHTML=`<div class="modal-card"><div class="modal-top"><h3>${escapeHTML(q.title)}</h3><button class="modal-close" onclick="Hub.closeModal()">✕</button></div>
+      <div class="list-meta">${escapeHTML(q.status||"Active")}</div>
+      <p style="white-space:pre-wrap;margin:15px 0">${escapeHTML(q.description||"No description provided.")}</p>
+      <h3>REWARD</h3><p style="white-space:pre-wrap">${escapeHTML(q.reward||"No reward specified.")}</p>
+      ${isDM()?'<div class="modal-actions"><button class="small-button" onclick="Hub.editQuest(\''+q.id+'\')">EDIT QUEST</button><button class="hub-button" onclick="Hub.closeModal()">CLOSE</button></div>':""}
+    </div>`;
+    modal.hidden=false;modal.onclick=e=>{if(e.target===modal)closeModal();};
   }
   function editQuest(id){
     if(!isDM())return;const q=state.quests.find(x=>x.id===id);if(!q)return;
-    openForm("Edit quest",[{name:"title",label:"Quest title",value:q.title,required:true,full:true},{name:"description",label:"Quest description",type:"textarea",rows:5,value:q.description||"",full:true},{name:"reward",label:"Reward",type:"textarea",rows:2,value:q.reward||"",full:true},{name:"status",label:"Status",type:"select",value:q.status||"Active",options:["Active","Completed","Failed"].map(x=>({value:x,label:x}))}],v=>{if(!v.title.trim())return alert("Please enter a quest title.");mutate(()=>Object.assign(q,{title:v.title.trim(),description:v.description,reward:v.reward,status:v.status}));});
-  }  function addNPC(){if(!isDM())return;openForm("Add NPC",[{name:"name",label:"NPC name",required:true},{name:"role",label:"Role / occupation"},{name:"location",label:"Location"},{name:"relationship",label:"Relationship to the party"},{name:"description",label:"Description",type:"textarea",rows:6,full:true}],v=>{if(!v.name.trim())return alert("Please enter an NPC name.");mutate(()=>state.npcs.unshift({id:makeId(),name:v.name.trim(),role:v.role,description:v.description,location:v.location,relationship:v.relationship}));});}  function editNPC(id){if(!isDM())return;const n=state.npcs.find(x=>x.id===id);if(!n)return;openForm("Edit NPC",[{name:"name",label:"NPC name",value:n.name,required:true},{name:"role",label:"Role / occupation",value:n.role||""},{name:"location",label:"Location",value:n.location||""},{name:"relationship",label:"Relationship to the party",value:n.relationship||""},{name:"description",label:"Description",type:"textarea",rows:6,value:n.description||"",full:true}],v=>{if(!v.name.trim())return alert("Please enter an NPC name.");mutate(()=>Object.assign(n,{name:v.name.trim(),role:v.role,location:v.location,relationship:v.relationship,description:v.description}));});}  function addJournal(){openJournalEditor(null);}  function editJournal(id){const entry=state.journal.find(x=>x.id===id);if(!entry||(!isDM()&&entry.ownerId!==member?.id))return;openJournalEditor(entry);}  function addEvent(){
+    openForm("Edit quest",[{name:"title",label:"Quest title",value:q.title,required:true,full:true},{name:"description",label:"Quest description",type:"textarea",rows:5,value:q.description||"",full:true},{name:"reward",label:"Reward",type:"textarea",rows:2,value:q.reward||"",full:true},{name:"status",label:"Status",type:"select",value:q.status||"Active",options:["Active","Completed","Failed"].map(x=>({value:x,label:x}))}],v=>{
+      if(!v.title.trim())return alert("Please enter a quest title.");
+      mutate(()=>Object.assign(q,{title:v.title.trim(),description:v.description,reward:v.reward,status:v.status}));
+    });
+  }
+  function addJournal(){openJournalEditor(null);}  function editJournal(id){const entry=state.journal.find(x=>x.id===id);if(!entry||(!isDM()&&entry.ownerId!==member?.id))return;openJournalEditor(entry);}  function addEvent(){
     const c=state.calendarConfig,fields=[{name:"title",label:"Event title",required:true,full:true}];
     if(c)fields.push({name:"month",label:"Month",type:"select",value:String(c.currentDate.month),options:c.months.map((m,i)=>({value:String(i),label:m.name}))},{name:"day",label:"Day",type:"number",value:c.currentDate.day,min:1,max:c.months[c.currentDate.month].days},{name:"year",label:"Year",type:"number",value:c.currentDate.year,min:0});
     else fields.push({name:"date",label:"Date or session"});
