@@ -33,6 +33,7 @@
     <button class="active" data-tab="dashboard">⌂ Overview</button>
     <button data-tab="adventure">✥ Adventure</button>
     <button data-tab="characters">▤ Character & NPC Archive</button>
+    <button data-tab="inventory">♜ Inventory & Loot</button>
     <button data-tab="journal">✎ Journal</button>
     <button data-tab="announcements">✉ Notices</button>
   </nav>
@@ -218,6 +219,17 @@
         <div class="panel-heading"><h3>♟ NPC DIRECTORY</h3></div>
         <div id="npc-list" class="character-grid"></div>
       </div>
+    </section>
+
+    <!-- INVENTORY & LOOT -->
+    <section class="hub-page" id="page-inventory">
+      <div class="page-heading"><div><div class="hub-kicker">TREASURES & PROVISIONS</div><h2>Inventory & Loot</h2><p>Manage the party stash, individual equipment and gold.</p></div></div>
+      <div class="hub-panel inventory-shared-panel">
+        <div class="panel-heading"><div><h3>✦ SHARED PARTY STASH</h3><p>Loot and supplies available to the whole party.</p></div><button class="hub-button dm-only" onclick="Hub.addSharedItem()">+ ADD LOOT</button></div>
+        <div class="inventory-funds"><span>PARTY FUNDS</span><strong id="party-gold">0 GP</strong><button class="small-button dm-only" onclick="Hub.editPartyGold()">EDIT FUNDS</button></div>
+        <div id="shared-inventory-list" class="inventory-item-list"></div>
+      </div>
+      <div class="hub-panel"><div class="panel-heading"><div><h3>♙ CHARACTER INVENTORIES</h3><p>Players can manage their own character; the DM can manage everyone.</p></div></div><div id="character-inventory-list" class="inventory-character-grid"></div></div>
     </section>
 
     <!-- JOURNAL -->
