@@ -709,7 +709,7 @@
     const abilities=[["STR","strength"],["DEX","dexterity"],["CON","constitution"],["INT","intelligence"],["WIS","wisdom"],["CHA","charisma"]];
     const slots=Array.isArray(c.spellSlots)?c.spellSlots:Array.from({length:9},()=>({used:0,total:0}));
     const spells=Array.isArray(c.spellbook)?c.spellbook:[],items=Array.isArray(c.inventoryItems)?c.inventoryItems:[];
-    const section=(id,title,body)=>'<div class="beyond-tab-panel" data-sheet-panel="'+id+'"><section class="beyond-section" id="sheet-'+id+'"><div class="beyond-section-heading"><h3>'+title+'</h3></div>'+body+'</section></div>';
+    const section=(id,title,body)=>'<div class="beyond-tab-panel'+(id==="core"?" active":"")+'" data-sheet-panel="'+id+'"><section class="beyond-section" id="sheet-'+id+'"><div class="beyond-section-heading"><h3>'+title+'</h3></div>'+body+'</section></div>';
     const skillText=String(c.skills||"").split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean).map(x=>{const name=x.replace(/\s*\(.*\)$/ ,"").trim(),key=skillAbility[name]||"dexterity",expertise=/expertise/i.test(x),bonus=Math.floor((safeNumber(c[key],10)-10)/2)+proficiencyBonus+(expertise?proficiencyBonus:0);return name+" "+signed(bonus)+(expertise?" EXP":"");});
     const saveText=String(c.savingThrows||"").split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean).map(x=>{const name=x.replace(/\s*\(.*\)$/ ,"").trim(),key=abilityForSave[name.toLowerCase()]||name.toLowerCase(),bonus=Math.floor((safeNumber(c[key],10)-10)/2)+proficiencyBonus;return name+" "+signed(bonus);});
     const hp=safeNumber(c.hp),maxHp=Math.max(1,safeNumber(c.maxHp,1));
