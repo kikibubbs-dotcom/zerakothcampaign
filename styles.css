@@ -767,3 +767,16 @@
 #dnd-hub .empty-state{padding:16px;border:1px dashed rgba(255,255,255,.12);border-radius:6px;text-align:center;color:var(--muted);font-size:12px}
 @media(max-width:900px){#dnd-hub .reference-results{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){#dnd-hub .prep-fields{grid-template-columns:1fr}#dnd-hub .prep-wide{grid-column:auto}#dnd-hub .reference-results{grid-template-columns:1fr}#dnd-hub .reference-card p{min-height:0}}
+
+#dnd-hub .beyond-condition-summary{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+#dnd-hub .beyond-condition-chip{display:inline-flex;padding:5px 8px;border:1px solid rgba(218,151,111,.45);border-radius:20px;background:rgba(145,73,62,.15);color:#e7b49e;font-size:9px;font-weight:700;letter-spacing:.04em}
+#dnd-hub .beyond-zero-hp-alert{margin:12px 0;padding:12px 15px;border:1px solid #b66c62;border-radius:7px;background:rgba(150,57,49,.18);color:#f0b6aa;font-size:12px;font-weight:800;letter-spacing:.04em}
+#dnd-hub .dashboard-party-row{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+#dnd-hub .dashboard-party-row .hp-line strong{font-size:12px;color:#eee}
+#dnd-hub .dashboard-condition-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+#dnd-hub .dashboard-condition-tags .tag{font-size:9px}
+#dnd-hub #dashboard-pulse{display:grid;gap:8px}
+#dnd-hub #dashboard-pulse>span{padding:9px 11px;border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--muted)}
+#dnd-hub #dashboard-pulse b{color:var(--gold);font-size:15px;margin-right:4px}
+#dnd-hub #dashboard-pulse .pulse-alert{border-color:#a86b60;color:#e9b3a8}
+#dnd-hub #dashboard-pulse .pulse-live{border-color:#649879;color:#a7d8b5}
