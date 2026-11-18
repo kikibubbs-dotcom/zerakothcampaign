@@ -673,3 +673,15 @@
 #dnd-hub .adventure-quest-panel{margin:18px 0;}
 #dnd-hub .adventure-quest-panel .page-heading{margin-bottom:14px;}
 @media(max-width:600px){#dnd-hub .beyond-tab-nav{gap:5px;}#dnd-hub .beyond-tab-nav button{padding:9px 11px;font-size:9px;}}
+
+#dnd-hub .ddb-builder-tabs{display:flex;gap:7px;overflow-x:auto;padding:11px 0 14px;margin:0 0 15px;border-bottom:1px solid var(--line)}
+#dnd-hub .ddb-builder-tabs button{flex:0 0 auto;padding:10px 15px;border:1px solid var(--line);border-radius:6px;background:#202431;color:#d9c99f;font:700 10px Arial,sans-serif;letter-spacing:.7px;cursor:pointer}
+#dnd-hub .ddb-builder-tabs button:hover,#dnd-hub .ddb-builder-tabs button.active{background:var(--gold);border-color:var(--gold);color:#202431}
+#dnd-hub .ddb-builder-tab-panel{display:none}
+#dnd-hub .ddb-builder-tab-panel.active{display:block}
+#dnd-hub .ddb-builder-tab-panel>.beyond-section:first-child{margin-top:0}
+#dnd-hub .ddb-sheet-editor .ddb-edit-main-grid{grid-template-columns:minmax(0,1fr) 230px}
+#dnd-hub .ddb-sheet-editor .ddb-edit-section{padding:15px;margin-bottom:12px}
+#dnd-hub .ddb-sheet-editor .ddb-edit-identity-fields{gap:10px}
+#dnd-hub .spellbook-embedded{margin-top:18px}
+@media(max-width:760px){#dnd-hub .ddb-sheet-editor .ddb-edit-main-grid{grid-template-columns:1fr}}
