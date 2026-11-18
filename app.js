@@ -211,7 +211,7 @@
   function startSessionMode(){
     if(!isDM()||state.sessionMode?.active)return;
     const next=Math.max(0,...(state.sessions||[]).map(s=>safeNumber(s.number)))+1;
-    openForm("Start a session",[{name:"title",label:"Session title",value:"Session "+next,required:true,full:true}],v=>{mutate(()=>state.sessionMode={active:true,title:v.title.trim()||"Untitled session",startedAt:new Date().toISOString(),notes:""});});
+    openForm("Start a session",[{name:"title",label:"Session title",value:state.sessionPrep?.title||"Session "+next,required:true,full:true}],v=>{const prep=state.sessionPrep||{};const notes=[prep.objectives?"SESSION OBJECTIVES\n"+prep.objectives:"",prep.encounters?"PLANNED ENCOUNTERS & NPCS\n"+prep.encounters:"",prep.notes?"DM PREPARATION NOTES\n"+prep.notes:""].filter(Boolean).join("\n\n");mutate(()=>state.sessionMode={active:true,title:v.title.trim()||"Untitled session",startedAt:new Date().toISOString(),notes});});
   }
   function finishSessionMode(){
     if(!isDM()||!state.sessionMode?.active)return;
