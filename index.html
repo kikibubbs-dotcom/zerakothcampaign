@@ -36,7 +36,6 @@
     <button data-tab="characters">▤ Character & NPC Archive</button>
     <button data-tab="inventory">♜ Inventory & Loot</button>
     <button data-tab="spellbook">✦ Spellbooks</button>
-    <button data-tab="bestiary">♞ Bestiary & Encounters</button>
     <button data-tab="world">✧ World Encyclopedia</button>
     <button data-tab="journal">✎ Journal</button>
     <button data-tab="announcements">✉ Notices</button>
@@ -216,7 +215,12 @@
           <h2>Character & NPC Archive</h2>
           <p>Full character sheets, companions, notable NPCs and the people behind your story.</p>
         </div>
-        <button class="hub-button" onclick="Hub.addCharacter()">+ Add character or NPC</button>
+        <div class="archive-add-actions">
+          <button class="hub-button" onclick="Hub.addCharacter()">+ ADD CHARACTER</button>
+          <button class="small-button" onclick="Hub.randomizeCharacter()">✧ RANDOMIZE CHARACTER</button>
+          <button class="hub-button dm-only" onclick="Hub.addNPC()">+ ADD NPC</button>
+          <button class="small-button dm-only" onclick="Hub.randomizeNPC()">✧ RANDOMIZE NPC</button>
+        </div>
       </div>
       <div class="archive-section">
         <div class="panel-heading"><h3>✦ PLAYER CHARACTERS & COMPANIONS</h3></div>
@@ -262,6 +266,16 @@
           <details><summary>Short rests & long rests</summary><p><b>2014:</b> a short rest is at least 1 hour; spend Hit Dice to regain HP. A long rest is at least 8 hours and restores all HP, spell slots and up to half your total Hit Dice (minimum one). <b>2024:</b> a short rest is at least 1 hour; a long rest is at least 8 hours and restores all HP, all spent Hit Dice and one exhaustion level. Your campaign hub applies the edition selected on each character.</p></details>
           <details><summary>Conditions overview</summary><p>Blinded, Charmed, Deafened, Exhaustion, Frightened, Grappled, Incapacitated, Invisible, Paralyzed, Petrified, Poisoned, Prone, Restrained, Stunned and Unconscious have specific effects. Use the Conditions category above for individual descriptions and the correct edition's wording.</p></details>
           <details><summary>Languages & communication</summary><p>Languages determine spoken, signed or written communication where specified. A creature may understand a language without being able to speak it. Some features grant additional languages; telepathy and magical communication may bypass ordinary language barriers. Use the Languages category above to browse SRD language entries and record known languages on each character.</p></details>
+          <details><summary>Ability scores & modifiers</summary><p>Ability modifiers are added to relevant checks, saves and attacks: 8–9 = −1, 10–11 = +0, 12–13 = +1, 14–15 = +2, 16–17 = +3 and 18–19 = +4. A natural 20 or 1 is not automatically a success or failure on an ability check or saving throw unless a specific rule says so.</p></details>
+          <details><summary>Skills & passive checks</summary><p>Skills use an associated ability: Acrobatics (Dex), Animal Handling (Wis), Arcana (Int), Athletics (Str), Deception (Cha), History (Int), Insight (Wis), Intimidation (Cha), Investigation (Int), Medicine (Wis), Nature (Int), Perception (Wis), Performance (Cha), Persuasion (Cha), Religion (Int), Sleight of Hand (Dex), Stealth (Dex) and Survival (Wis). A passive check is usually 10 + applicable modifiers; advantage adds 5 and disadvantage subtracts 5.</p></details>
+          <details><summary>Initiative, surprise & rounds</summary><p>Initiative determines turn order, normally using Dexterity. A round represents about 6 seconds. Surprise is determined when combat begins if a creature is unaware of a threat; apply the selected edition's procedure rather than assuming a separate surprise round.</p></details>
+          <details><summary>Attacks, AC & damage</summary><p>An attack roll is a d20 + the relevant ability modifier + proficiency bonus when proficient. It hits if it equals or exceeds AC. A natural 20 on an attack is a critical hit; a natural 1 misses. Resistance halves relevant damage, vulnerability doubles it and immunity prevents it.</p></details>
+          <details><summary>Spell attacks & saving throws</summary><p>Spell save DC is usually 8 + proficiency bonus + spellcasting ability modifier. Spell attack bonus is proficiency bonus + spellcasting ability modifier. The target makes the saving throw named by the spell; compare the result with the caster's spell save DC. The spell text controls range, targets, components, duration and effects.</p></details>
+          <details><summary>Grappling & shoving</summary><p>In 2014, grappling and shoving are special melee attacks resolved with contested checks. In 2024, they are options within an Unarmed Strike and use a saving throw. A grapple normally sets the target's Speed to 0; escaping and shove effects follow the selected edition's rules.</p></details>
+          <details><summary>Falling & environmental hazards</summary><p>Falling, extreme temperatures, suffocation, drowning, starvation, thirst and other hazards use specific rules or DM adjudication. Check the chosen rules edition and campaign house rules, and make ongoing hazards clear so players understand how to avoid or end them.</p></details>
+          <details><summary>Conditions: common effects</summary><p><b>Blinded:</b> can't see; attacks against you have advantage and your attacks have disadvantage. <b>Charmed:</b> can't attack or harm the charmer; the charmer has advantage on social checks. <b>Deafened:</b> can't hear. <b>Frightened:</b> disadvantage on checks and attacks while the source is in sight; can't willingly move closer. <b>Grappled:</b> Speed 0. <b>Incapacitated:</b> can't take actions or reactions. <b>Invisible:</b> unseen; attacks against you have disadvantage and your attacks have advantage. <b>Prone:</b> crawling costs extra movement; standing costs half Speed; nearby melee attacks have advantage and ranged attacks disadvantage. <b>Restrained:</b> Speed 0; attacks against you have advantage, your attacks and Dexterity saves have disadvantage. <b>Stunned:</b> incapacitated, can't move and automatically fails Strength and Dexterity saves. <b>Unconscious:</b> incapacitated, prone and unaware; drops held items.</p></details>
+          <details><summary>Conditions: other effects</summary><p><b>Paralyzed:</b> incapacitated, can't move or speak, automatically fails Strength and Dexterity saves; attacks from within 5 feet that hit are critical hits. <b>Petrified:</b> transformed into a solid inanimate substance and incapacitated, with additional effects specified by the condition. <b>Poisoned:</b> disadvantage on attack rolls and ability checks. <b>Exhaustion:</b> penalties differ between editions (see above). Conditions can overlap; each ends only when its stated duration or ending requirement is met.</p></details>
+          <details><summary>Languages: standard & exotic</summary><p>Common standard languages include Common, Dwarvish, Elvish, Giant, Gnomish, Goblin, Halfling and Orc. Exotic languages can include Abyssal, Celestial, Draconic, Deep Speech, Infernal, Primordial, Sylvan and Undercommon. The available list depends on the setting and source. A language's script, spoken form and any dialects are distinct from telepathy or magical communication.</p></details>
         </div>
       </div>
       <div class="hub-panel reference-attribution"><h3>CONTENT SOURCES</h3><p>Open rules reference content is retrieved from Open5e and limited to applicable SRD 5.1 (2014) and SRD 5.2 (2024) sources. Campaign homebrew is stored separately. Some official D&D material is not included in the SRD.</p><p>This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.</p><p>This work includes material from the System Reference Document 5.2 (“SRD 5.2”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.</p><p>Reference data provided via <a href="https://open5e.com/api-docs" target="_blank" rel="noopener">Open5e API</a>.</p></div>
@@ -273,16 +287,9 @@
       <div class="hub-panel"><div class="reference-toolbar"><label for="spellbook-character">CHARACTER</label><select id="spellbook-character" onchange="Hub.selectSpellbookCharacter(this.value)"></select></div><div id="spellbook-summary" class="list-meta"></div><div id="spellbook-list" class="reference-results"></div></div>
     </section>
 
-    <!-- BESTIARY & ENCOUNTERS -->
-    <section class="hub-page" id="page-bestiary">
-      <div class="page-heading"><div><div class="hub-kicker">CREATURES OF THE REALM</div><h2>Bestiary & Encounter Builder</h2><p>Browse creatures, keep custom monster records and prepare encounters.</p></div><div class="card-actions"><button class="hub-button dm-only" onclick="Hub.addBestiaryCreature()">+ ADD CREATURE</button><button class="hub-button dm-only" onclick="Hub.addEncounter()">+ BUILD ENCOUNTER</button></div></div>
-      <div class="hub-panel"><div class="panel-heading"><h3>CREATURE ARCHIVE</h3></div><div class="reference-toolbar"><input id="bestiary-search" type="search" placeholder="Search creature name..." onkeydown="if(event.key==='Enter')Hub.searchBestiary()"><button class="small-button" onclick="Hub.searchBestiary()">SEARCH SRD</button></div><div id="bestiary-results" class="reference-results"></div></div>
-      <div class="hub-panel"><div class="panel-heading"><h3>PREPARED ENCOUNTERS</h3></div><div id="encounter-list" class="reference-results"></div></div>
-    </section>
-
     <!-- WORLD ENCYCLOPEDIA -->
     <section class="hub-page" id="page-world">
-      <div class="page-heading"><div><div class="hub-kicker">ATLAS, ARCHIVES & SECRETS</div><h2>World Encyclopedia</h2><p>A shared guide to places, factions, cultures, history and lore.</p></div><button class="hub-button dm-only" onclick="Hub.addWorldEntry()">+ ADD ENTRY</button></div>
+      <div class="page-heading"><div><div class="hub-kicker">ATLAS, ARCHIVES & SECRETS</div><h2>World Encyclopedia</h2><p>A shared guide to places, factions, cultures, history and lore.</p></div><button class="hub-button" onclick="Hub.addWorldEntry()">+ ADD ENTRY</button></div>
       <div class="hub-panel"><div class="reference-toolbar"><input id="world-search" type="search" placeholder="Search your world..." oninput="Hub.renderWorld()"><select id="world-filter" onchange="Hub.renderWorld()"><option value="all">All entries</option><option>Places</option><option>Regions</option><option>Factions</option><option>People</option><option>Deities</option><option>History</option><option>Culture</option><option>Other lore</option></select></div><div id="world-list" class="reference-results"></div></div>
     </section>
 
