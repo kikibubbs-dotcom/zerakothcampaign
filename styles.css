@@ -429,3 +429,9 @@
 .reference-card .dm-secret{border:1px dashed rgba(214,173,93,.45);padding:10px;border-radius:7px}
 #page-spellbook .reference-toolbar,#page-bestiary .reference-toolbar,#page-world .reference-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
 #page-spellbook select,#page-bestiary input,#page-world input,#page-world select{min-width:180px;flex:1}
+
+.mechanics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.mechanics-grid details{padding:14px 16px;border:1px solid rgba(255,255,255,.09);border-radius:9px;background:rgba(255,255,255,.025)}
+.mechanics-grid summary{cursor:pointer;font-weight:700;color:var(--gold,#d6ad5d);letter-spacing:.025em}
+.mechanics-grid details p{font-size:.9rem;line-height:1.65;color:var(--text,#e7e4ee);margin:12px 0 0}
+.reference-mechanics{margin-top:20px}
