@@ -687,3 +687,22 @@
 @media(max-width:760px){#dnd-hub .ddb-sheet-editor .ddb-edit-main-grid{grid-template-columns:1fr}}
 
 #dnd-hub .adventure-journal-panel{grid-column:1/-1;margin:18px 0}
+
+/* Session Mode and spellbook usability */
+#dnd-hub .session-mode-panel{margin:0 0 20px;border:1px solid var(--gold);background:linear-gradient(135deg,rgba(185,154,92,.12),rgba(32,36,49,.94));}
+#dnd-hub .session-mode-idle,#dnd-hub .session-mode-heading,#dnd-hub .session-mode-footer{display:flex;align-items:center;justify-content:space-between;gap:18px;}
+#dnd-hub .session-mode-idle h3,#dnd-hub .session-mode-heading h3{margin:4px 0 6px;}
+#dnd-hub .session-mode-idle p,#dnd-hub .session-mode-heading p{margin:0;color:var(--muted,#999);}
+#dnd-hub .session-mode-active{display:grid;gap:16px;}
+#dnd-hub .session-live-pill{color:#8bd4a1;font-size:11px;font-weight:800;letter-spacing:.12em;white-space:nowrap;}
+#dnd-hub .session-mode-tools{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:12px;background:rgba(0,0,0,.16);border-radius:9px;}
+#dnd-hub .session-mode-stat{display:grid;gap:2px;min-width:80px;padding:3px 12px;border-right:1px solid var(--line);}
+#dnd-hub .session-mode-stat b{font-size:20px;color:var(--gold);}
+#dnd-hub .session-mode-stat span{font-size:9px;letter-spacing:.1em;color:var(--muted,#999);}
+#dnd-hub .session-notes-label{display:grid;gap:8px;font-size:11px;font-weight:800;letter-spacing:.1em;}
+#dnd-hub .session-notes-label textarea{width:100%;min-height:150px;padding:13px;border:1px solid var(--line);border-radius:8px;background:#171b25;color:var(--text,#eee);font:14px/1.55 inherit;resize:vertical;}
+#dnd-hub .session-mode-footer{padding-top:10px;border-top:1px solid var(--line);}
+#dnd-hub .spellbook-filter-toolbar{display:grid;grid-template-columns:minmax(160px,2fr) repeat(4,minmax(120px,1fr));gap:8px;margin:12px 0;}
+#dnd-hub .spellbook-filter-toolbar input,#dnd-hub .spellbook-filter-toolbar select{min-width:0;width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:#202431;color:var(--text,#eee);}
+#dnd-hub .spell-extra-meta{margin:7px 0 0;color:var(--gold);font-size:11px;}
+@media(max-width:760px){#dnd-hub .spellbook-filter-toolbar{grid-template-columns:1fr 1fr;}#dnd-hub .session-mode-idle,#dnd-hub .session-mode-heading,#dnd-hub .session-mode-footer{align-items:flex-start;flex-direction:column;}}
