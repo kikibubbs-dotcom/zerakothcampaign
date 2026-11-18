@@ -1451,7 +1451,7 @@
       if (error) throw error;
 
       state={...blank(),...(data.data||{})};
-      ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions","homebrew"].forEach(k=>{
+      ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions","homebrew","encounters","worldEntries"].forEach(k=>{
         if (!Array.isArray(state[k])) state[k]=[];
       });
 
