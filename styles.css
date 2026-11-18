@@ -419,3 +419,13 @@
 @media(max-width:650px){#dnd-hub .reference-toolbar{grid-template-columns:1fr 1fr}#dnd-hub .reference-toolbar input{grid-column:1/-1}#dnd-hub .reference-results{grid-template-columns:1fr}}
 
 #dnd-hub .reference-pagination{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+
+/* Campaign compendium expansion */
+.spell-meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin:14px 0;padding:12px;background:rgba(255,255,255,.035);border-radius:8px}
+.spell-meta-grid span{font-size:.82rem;color:var(--muted,#b8b5c4)}.spell-meta-grid b{display:block;font-size:.68rem;letter-spacing:.08em;color:var(--gold,#d6ad5d);margin-bottom:3px}
+.reference-card details{margin:12px 0;padding:10px;border-top:1px solid rgba(255,255,255,.1);white-space:pre-wrap}
+.reference-card details summary{cursor:pointer;color:var(--gold,#d6ad5d);font-size:.75rem;letter-spacing:.08em}
+.reference-card details p{white-space:pre-wrap;line-height:1.6}
+.reference-card .dm-secret{border:1px dashed rgba(214,173,93,.45);padding:10px;border-radius:7px}
+#page-spellbook .reference-toolbar,#page-bestiary .reference-toolbar,#page-world .reference-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+#page-spellbook select,#page-bestiary input,#page-world input,#page-world select{min-width:180px;flex:1}
