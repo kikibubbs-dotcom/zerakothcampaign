@@ -1190,13 +1190,44 @@
       {name:"notes",label:"Additional notes",type:"textarea",rows:4,value:data.notes||"",group:"player companion npc",full:true}
     ];
   }
+  function openCharacterTemplateForm(title,fields,onSave,data=null){
+    activeCharacterSheetId=data?.id||"";
+    const host=$("character-sheet-content");
+    const controls=fields.filter(f=>!f.group||f.group.split(" ").includes("player")).map((field,i)=>{
+      const id="character-template-"+i,value=field.value??"",full=field.full?" full":"";
+      if(field.type==="section")return '<div class="character-template-section"><h3>'+escapeHTML(field.label)+'</h3></div>';
+      let control="";
+      if(field.type==="textarea")control='<textarea id="'+id+'" name="'+escapeHTML(field.name)+'" rows="'+(field.rows||3)+'" '+(field.required?"required":"")+' placeholder="'+escapeHTML(field.placeholder||"")+'">'+escapeHTML(value)+'</textarea>';
+      else if(field.type==="select")control='<select id="'+id+'" name="'+escapeHTML(field.name)+'">'+(field.options||[]).map(o=>'<option value="'+escapeHTML(o.value)+'" '+(String(o.value)===String(value)?"selected":"")+'>'+escapeHTML(o.label)+'</option>').join("")+'</select>';
+      else if(field.type==="file")control='<input id="'+id+'" name="'+escapeHTML(field.name)+'" type="file" accept="image/*"><small class="list-meta">Optional portrait upload · max 5MB</small>'+(field.preview?'<img class="portrait-preview" src="'+escapeHTML(field.preview)+'" alt="Current portrait">':"");
+      else control='<input id="'+id+'" name="'+escapeHTML(field.name)+'" type="'+(field.type||"text")+'" value="'+escapeHTML(value)+'" '+(field.required?"required":"")+' '+(field.min!==undefined?'min="'+field.min+'"':"")+' '+(field.max!==undefined?'max="'+field.max+'"':"")+' placeholder="'+escapeHTML(field.placeholder||"")+'">';
+      return '<label class="character-template-field'+full+'" for="'+id+'"><span>'+escapeHTML(field.label)+(field.required?' <i>*</i>':"")+'</span>'+control+'</label>';
+    }).join("");
+    go("character-sheet");
+    host.innerHTML='<div class="character-template"><div class="beyond-topline"><button type="button" class="small-button" onclick="Hub.go(\\'characters\\')">← CHARACTER ARCHIVE</button><span class="beyond-edition">CHARACTER BUILDER · '+escapeHTML(data?.rulesEdition||"2014")+'</span></div><header class="character-template-heading"><div class="hub-kicker">NEW ADVENTURER</div><h2>'+escapeHTML(title)+'</h2><p>Fill in the sections below. You can leave fields blank and return to the sheet later.</p></header><form id="character-template-form"><div class="character-template-grid">'+controls+'</div><div class="character-template-actions"><button type="button" class="small-button" onclick="Hub.go(\\'characters\\')">CANCEL</button><button type="submit" class="hub-button">'+(data?"SAVE CHARACTER":"CREATE CHARACTER")+'</button></div></form></div>';
+    $("character-template-form").addEventListener("submit",async e=>{
+      e.preventDefault();const form=e.currentTarget,values={};
+      try{
+        for(const field of fields){
+          if(field.type==="section"||(field.group&&!field.group.split(" ").includes("player")))continue;
+          const el=form.elements.namedItem(field.name);
+          values[field.name]=field.type==="file"?(el?.files?.[0]?await imageFileToDataURL(el.files[0]):""):(el?el.value:"");
+        }
+        if(!String(values.name||"").trim()){alert("Please enter a character name.");return;}
+        onSave(values);
+        if(activeCharacterSheetId){go("character-sheet");}
+        else go("characters");
+      }catch(err){alert(err.message||"The character sheet could not be saved.");}
+    });
+  }
+
   function openArchiveEditor(data=null,collection="characters"){
     if(collection==="npcs"&&!isDM())return;
     if(data&&collection==="characters"&&!canEditCharacter(data))return;
     const editing=!!data;
     const initialType=collection==="npcs"?"npc":data?.isNPC?"companion":"player";
     const fields=archiveFields(data||{},initialType);
-    openForm(editing?"Edit archive entry":"Add to character & NPC archive",fields,v=>{
+    const saveArchiveEntry=v=>{
       if(!v.name.trim())return alert("Please enter a name.");
       const type=collection==="npcs"?"npc":initialType,portrait=v.portraitFile||v.portrait||data?.portrait||"";
       const common={id:data?.id||makeId(),name:v.name.trim(),race:v.race,className:v.className,alignment:v.alignment,portrait,personality:v.personality,ideals:v.ideals,bonds:v.bonds,flaws:v.flaws,backstory:v.backstory,loveInterest:v.loveInterest,notes:v.notes,rulesEdition:v.rulesEdition||"2014",exhaustion:Math.max(0,Math.min(6,safeNumber(v.exhaustion))),hitDiceUsed:Math.max(0,safeNumber(v.hitDiceUsed)),resources:Array.isArray(data?.resources)?data.resources:[],armorProficiencies:v.armorProficiencies,weaponProficiencies:v.weaponProficiencies,toolProficiencies:v.toolProficiencies,languagesKnown:v.languagesKnown,senses:v.senses,damageResistances:v.damageResistances,conditions:v.conditions,deathSuccesses:Math.max(0,Math.min(3,safeNumber(v.deathSuccesses))),deathFailures:Math.max(0,Math.min(3,safeNumber(v.deathFailures))),inspiration:v.inspiration==="Yes",attacks:v.attacks,spellcastingAbility:v.spellcastingAbility,spellSaveDC:safeNumber(v.spellSaveDC),spellAttackBonus:safeNumber(v.spellAttackBonus),spellbook:Array.isArray(data?.spellbook)?data.spellbook:[]};
@@ -1222,7 +1253,10 @@
           else state.characters.push(c);
         });
       }
-    });
+      if(collection==="characters")activeCharacterSheetId=data?.id||state.characters[state.characters.length-1]?.id||"";
+    };
+    if(collection==="characters")openCharacterTemplateForm(editing?"Edit character sheet":"Blank character sheet",fields,saveArchiveEntry,data);
+    else openForm(editing?"Edit archive entry":"Add to character & NPC archive",fields,saveArchiveEntry);
   }
   function addCharacter(){if(!isDM())openArchiveEditor(null,"characters");}
   function editCharacter(id){const c=state.characters.find(x=>x.id===id);if(c)openArchiveEditor(c,"characters");}
