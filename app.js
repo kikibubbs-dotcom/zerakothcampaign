@@ -672,6 +672,29 @@
       </article>`;
   }
 
+
+  function openCharacterSheet(id) {
+    const c=state.characters.find(x=>x.id===id); if(!c)return;
+    const can=canEditCharacter(c), abilities=[["STR","strength"],["DEX","dexterity"],["CON","constitution"],["INT","intelligence"],["WIS","wisdom"],["CHA","charisma"]];
+    const spells=Array.isArray(c.spellbook)?c.spellbook:[], slots=c.spellSlots||Array.from({length:9},()=>({used:0,total:0}));
+    const items=Array.isArray(c.inventoryItems)?c.inventoryItems:[];
+    const mod=v=>{const n=Math.floor((safeNumber(v,10)-10)/2);return n>=0?"+"+n:String(n);};
+    const sec=(title,body)=>'<section class="sheet-section"><h4>'+title+'</h4>'+body+'</section>';
+    const spellHtml=spells.map(s=>'<article class="sheet-spell"><div><b>'+escapeHTML(s.name)+'</b><p>'+escapeHTML(s.description||s.notes||"No description recorded.")+'</p><small>'+escapeHTML(s.castingTime||"—")+' · '+escapeHTML(s.range||"—")+' · '+escapeHTML(s.duration||"—")+'</small></div><label><input type="checkbox" '+(s.prepared?"checked":"")+' '+(can?"":"disabled")+' onchange="Hub.togglePreparedSpell(\"'+c.id+'\",\"'+s.id+'\')"> Prepared</label></article>').join("")||empty("No spells added yet.");
+    const modal=$("hub-modal");
+    modal.innerHTML='<div class="modal-card character-sheet-modal"><div class="modal-top"><div><div class="hub-kicker">DIGITAL CHARACTER SHEET · '+escapeHTML(c.rulesEdition||"2014")+'</div><h3>'+escapeHTML(c.name)+'</h3><p>'+escapeHTML(c.race||"Species not set")+' · '+escapeHTML(c.className||"Class not set")+' · Level '+safeNumber(c.level,1)+'</p></div><button class="modal-close" onclick="Hub.closeModal()">✕</button></div>'+
+    '<div class="sheet-toolbar">'+(can?'<button class="hub-button" onclick="Hub.editCharacter(\"'+c.id+'\")">EDIT DETAILS</button><button class="small-button" onclick="Hub.takeRest(\"'+c.id+'\",\"short\")">SHORT REST</button><button class="small-button" onclick="Hub.takeRest(\"'+c.id+'\",\"long\")">LONG REST</button>':'<span class="list-meta">VIEW ONLY</span>')+'</div>'+
+    sec("COMBAT & VITALS",'<div class="sheet-vitals"><div><b>HP</b><strong>'+safeNumber(c.hp)+' / '+safeNumber(c.maxHp)+'</strong>'+(can?'<button onclick="Hub.changeHP(\"'+c.id+'\",1)">+1</button><button onclick="Hub.changeHP(\"'+c.id+'\",-1)">−1</button>':'')+'</div><div><b>ARMOUR CLASS</b><strong>'+safeNumber(c.ac)+'</strong></div><div><b>INITIATIVE</b><strong>'+mod(c.dexterity)+'</strong></div><div><b>SPEED</b><strong>'+safeNumber(c.speed)+' ft</strong></div><div><b>PROFICIENCY</b><strong>+'+safeNumber(c.proficiency,2)+'</strong></div></div>')+
+    sec("ABILITY SCORES",'<div class="sheet-abilities">'+abilities.map(([label,key])=>'<div><b>'+label+'</b><strong>'+safeNumber(c[key],10)+'</strong><span>'+mod(c[key])+'</span></div>').join("")+'</div>')+
+    sec("PROFICIENCIES & FEATURES",'<p><b>Saving throws:</b> '+escapeHTML(c.savingThrows||"—")+'</p><p><b>Skills:</b> '+escapeHTML(c.skills||"—")+'</p><p><b>Features:</b> '+escapeHTML(c.features||"—")+'</p><p><b>Languages:</b> '+escapeHTML(c.languagesKnown||"—")+'</p><p><b>Senses:</b> '+escapeHTML(c.senses||"—")+'</p>')+
+    sec("SPELL SLOTS",'<div class="sheet-slots">'+slots.map((s,i)=>'<div><b>LEVEL '+(i+1)+'</b><strong>'+safeNumber(s.used)+' / '+safeNumber(s.total)+'</strong>'+(can?'<button onclick="Hub.slot(\"'+c.id+'\",'+i+',-1)">−</button><button onclick="Hub.slot(\"'+c.id+'\",'+i+',1)">+</button>':'')+'</div>').join("")+'</div>'+(can?'<button class="small-button" onclick="Hub.configureSlots(\"'+c.id+'\")">CONFIGURE SLOTS</button>':'') )+
+    sec("SPELLBOOK & PREPARED SPELLS",'<div class="sheet-toolbar">'+(can?'<button class="hub-button" onclick="Hub.addSpellToBookFor(\"'+c.id+'\")">+ ADD SPELL</button>':'')+'<span class="list-meta">'+spells.filter(s=>s.prepared).length+' prepared · '+spells.length+' known</span></div>'+spellHtml)+
+    sec("INVENTORY & GOLD",'<div class="sheet-toolbar"><b>'+safeNumber(c.gold)+' GP</b>'+(can?'<button class="small-button" onclick="Hub.addCharacterItem(\"'+c.id+'\")">+ ADD ITEM</button><button class="small-button" onclick="Hub.editCharacterGold(\"'+c.id+'\")">EDIT GOLD</button>':'')+'</div>'+(items.map(x=>'<p>'+escapeHTML(x.name)+' × '+safeNumber(x.quantity,1)+' · '+escapeHTML(x.category||"Item")+'</p>').join("")||empty("No equipment recorded.")))+
+    sec("PERSONAL DETAILS",'<p><b>Background:</b> '+escapeHTML(c.background||"—")+' · <b>Alignment:</b> '+escapeHTML(c.alignment||"—")+'</p><p><b>Personality:</b> '+escapeHTML(c.personality||"—")+'</p><p><b>Ideals:</b> '+escapeHTML(c.ideals||"—")+'</p><p><b>Bonds:</b> '+escapeHTML(c.bonds||"—")+'</p><p><b>Flaws:</b> '+escapeHTML(c.flaws||"—")+'</p><p><b>Backstory:</b> '+escapeHTML(c.backstory||"—")+'</p>')+'</div>';
+    modal.hidden=false; modal.onclick=e=>{if(e.target===modal)closeModal();};
+  }
+  function addSpellToBookFor(id){activeSpellbookId=id;addSpellToBook();}
+
   function renderCharacters() {
     const actions=root.querySelector(".archive-add-actions");
     if(actions){
@@ -714,6 +737,7 @@
     {name:"notes",label:"Character-specific notes",type:"textarea",rows:3,value:s.notes||"",full:true}
   ];}
   function addSpellToBook(){const c=state.characters.find(x=>x.id===activeSpellbookId);if(!c||!canEditCharacter(c))return alert("Choose a character you can edit.");openForm("Add spell to "+c.name,spellFields(),v=>{if(!v.name.trim())return;mutate(()=>{if(!Array.isArray(c.spellbook))c.spellbook=[];c.spellbook.push({id:makeId(),...v,level:Math.max(0,Math.min(9,safeNumber(v.level))),concentration:/^(yes|true)$/i.test(v.concentration),ritual:/^(yes|true)$/i.test(v.ritual),prepared:true});});renderSpellbook();});}
+  function addSpellToBookFor(id){activeSpellbookId=id;addSpellToBook();}
   function editSpell(cid,sid){const c=state.characters.find(x=>x.id===cid),s=c?.spellbook?.find(x=>x.id===sid);if(!c||!s||!canEditCharacter(c))return;openForm("Edit "+s.name,spellFields(s),v=>mutate(()=>Object.assign(s,{...v,level:Math.max(0,Math.min(9,safeNumber(v.level))),concentration:/^(yes|true)$/i.test(v.concentration),ritual:/^(yes|true)$/i.test(v.ritual)})));}
   function togglePreparedSpell(cid,sid){const c=state.characters.find(x=>x.id===cid),s=c?.spellbook?.find(x=>x.id===sid);if(!c||!s||!canEditCharacter(c))return;mutate(()=>s.prepared=!s.prepared);renderSpellbook();}
   function removeSpell(cid,sid){const c=state.characters.find(x=>x.id===cid);if(!c||!canEditCharacter(c)||!confirm("Remove this spell from the spellbook?"))return;mutate(()=>c.spellbook=(c.spellbook||[]).filter(s=>s.id!==sid));renderSpellbook();}
@@ -1435,7 +1459,7 @@
     selectReferenceCategory,
     changeReferencePage,
     loadReference,
-    renderSpellbook,selectSpellbookCharacter,addSpellToBook,editSpell,togglePreparedSpell,removeSpell,
+    renderSpellbook,selectSpellbookCharacter,addSpellToBook,addSpellToBookFor,editSpell,togglePreparedSpell,removeSpell,openCharacterSheet,
     searchBestiary,viewBestiary,saveBestiaryCreature,addBestiaryCreature,addEncounter,editEncounter,removeEncounter,
     renderWorld,addWorldEntry,editWorldEntry,removeWorldEntry,
     takeRest,
