@@ -24,7 +24,6 @@
     <div class="hub-status">
       <span class="live-dot"></span> LIVE CAMPAIGN
     </div>
-    <button class="small-button dm-only" id="reset-campaign-button" onclick="Hub.resetCampaign()">RESET CAMPAIGN</button>
   </header>
 
   <div id="notice-alert" class="notice-alert" hidden onclick="Hub.go('announcements')"></div>
@@ -33,13 +32,16 @@
     <button class="active" data-tab="dashboard">⌂ Overview</button>
     <button data-tab="reference">✧ Rules Library</button>
     <button data-tab="adventure">✥ Adventure</button>
-    <button data-tab="characters">▤ Character & NPC Archive</button>
+    <button data-tab="quests">⚑ Quests</button>
+    <button data-tab="calendar">▦ Calendar</button>
+    <button data-tab="characters">▤ Characters</button>
     <button data-tab="character-sheet" hidden>♙ Character Sheet</button>
     <button data-tab="inventory">♜ Inventory & Loot</button>
     <button data-tab="spellbook">✦ Spellbooks</button>
     <button data-tab="world">✧ World Encyclopedia</button>
     <button data-tab="journal">✎ Journal</button>
     <button data-tab="announcements">✉ Notices</button>
+    <button class="dm-only" data-tab="dm-controls">⚙ DM Controls</button>
   </nav>
 
   <main class="hub-main">
@@ -47,7 +49,6 @@
     <!-- DASHBOARD -->
     <section class="hub-page active" id="page-dashboard">
       <div class="hub-panel overview-search search-panel"><label for="campaign-search-input">⌕ SEARCH YOUR CAMPAIGN</label><input id="campaign-search-input" type="search" placeholder="Find a character, place, item, quest or clue..." autocomplete="off"><div id="campaign-search-count" class="list-meta">Search your campaign.</div><div id="campaign-search-results" class="search-results"></div></div>
-      <div class="overview-backup-actions dm-only"><button class="small-button" onclick="Hub.exportCampaign()">↓ EXPORT CAMPAIGN</button><label class="small-button import-campaign-label">↑ IMPORT CAMPAIGN<input id="campaign-import-file" type="file" accept="application/json,.json" hidden></label></div>
       <div class="welcome-panel">
         <div>
           <div class="hub-kicker">WELCOME, ADVENTURERS</div>
@@ -87,7 +88,7 @@
         <div class="hub-panel">
           <div class="panel-heading">
             <h3>⚑ ACTIVE QUESTS</h3>
-            <button class="small-button" onclick="Hub.go('adventure')">VIEW ALL →</button>
+            <button class="small-button" onclick="Hub.go('quests')">VIEW ALL →</button>
           </div>
           <div id="dashboard-quests"></div>
         </div>
@@ -106,8 +107,10 @@
       <section class="overview-sessions hub-panel"><div class="panel-heading"><div><h3>▣ SESSION HISTORY</h3><p>The story so far, from your latest adventure.</p></div><button class="hub-button dm-only" onclick="Hub.addSession()">+ LOG SESSION</button></div><div id="session-list" class="hub-list"></div></section>
     </section>
 
-    <!-- MAP -->
-    <section class="hub-page" id="page-map">
+    <!-- ADVENTURE: MAP, PARTY AND COMBAT -->
+    <section class="hub-page" id="page-adventure">
+      <div class="adventure-board-grid">
+    <section id="page-map">
       <div class="page-heading">
         <div>
           <div class="hub-kicker">EXPLORE THE WORLD</div>
@@ -159,9 +162,8 @@
       </div>
     </section>
 
-    <!-- PARTY + QUEST BOARD -->
-    <div class="adventure-board-grid">
-      <section class="hub-page" id="page-party">
+    <!-- PARTY TRACKER -->
+      <section id="page-party">
         <div class="page-heading">
           <div>
             <div class="hub-kicker">THE FELLOWSHIP</div>
@@ -171,18 +173,6 @@
           <button class="hub-button" onclick="Hub.addCharacter()">+ Add member</button>
         </div>
         <div id="party-list" class="character-grid"></div>
-      </section>
-
-      <section class="hub-page" id="page-quests">
-        <div class="page-heading">
-          <div>
-            <div class="hub-kicker">ADVENTURE AWAITS</div>
-            <h2>Quest Board</h2>
-            <p>Keep track of your party's current objectives.</p>
-          </div>
-          <button class="hub-button" onclick="Hub.addQuest()">+ New quest</button>
-        </div>
-        <div id="quest-list" class="hub-list"></div>
       </section>
 
       <section class="combat-tracker-panel hub-panel" id="combat-tracker">
@@ -206,7 +196,20 @@
         <div id="combat-list" class="combat-list"></div>
         <p class="combat-view-note" id="combat-view-note">The DM controls this encounter. Changes appear live for everyone.</p>
       </section>
-    </div>
+      </div>
+    </section>
+
+      <section class="hub-page" id="page-quests">
+        <div class="page-heading">
+          <div>
+            <div class="hub-kicker">ADVENTURE AWAITS</div>
+            <h2>Quest Board</h2>
+            <p>Keep track of your party's current objectives.</p>
+          </div>
+          <button class="hub-button" onclick="Hub.addQuest()">+ New quest</button>
+        </div>
+        <div id="quest-list" class="hub-list"></div>
+      </section>
 
     <!-- CHARACTER & NPC ARCHIVE -->
     <section class="hub-page" id="page-characters">
@@ -218,9 +221,6 @@
         </div>
         <div class="archive-add-actions">
           <button class="hub-button player-only" onclick="Hub.addCharacter()">+ ADD CHARACTER</button>
-          <button class="hub-button dm-only" onclick="Hub.addNPC()">+ ADD NPC</button>
-          <button class="small-button dm-only" onclick="Hub.randomizeNPC()">✧ RANDOMIZE NPC</button>
-          <button class="small-button dm-only" onclick="Hub.randomizeCharacter()">✧ RANDOMIZE CHARACTER</button>
         </div>
       </div>
       <div class="archive-section">
@@ -364,6 +364,16 @@
         <button class="hub-button" onclick="Hub.addNotice()">+ New notice</button>
       </div>
       <div id="notice-list" class="hub-list"></div>
+    </section>
+
+    <!-- DM-ONLY ADMINISTRATION -->
+    <section class="hub-page" id="page-dm-controls">
+      <div class="page-heading"><div><div class="hub-kicker">CAMPAIGN ADMINISTRATION</div><h2>DM Controls</h2><p>Administrative tools are kept here so the everyday campaign pages stay focused.</p></div></div>
+      <div class="dm-controls-grid">
+        <div class="hub-panel"><h3>♟ CHARACTER & NPC TOOLS</h3><p>Create campaign characters and manage the NPC directory.</p><div class="dm-control-actions"><button class="hub-button" onclick="Hub.addNPC()">+ ADD NPC</button><button class="small-button" onclick="Hub.randomizeNPC()">✧ RANDOMIZE NPC</button><button class="small-button" onclick="Hub.randomizeCharacter()">✧ RANDOMIZE CHARACTER</button><button class="small-button" onclick="Hub.go('characters')">OPEN CHARACTER ARCHIVE →</button></div></div>
+        <div class="hub-panel"><h3>▣ CAMPAIGN BACKUPS</h3><p>Export a complete backup or restore campaign content from a previous backup file.</p><div class="dm-control-actions"><button class="small-button" onclick="Hub.exportCampaign()">↓ EXPORT CAMPAIGN</button><label class="small-button import-campaign-label">↑ IMPORT CAMPAIGN<input id="campaign-import-file" type="file" accept="application/json,.json" hidden></label></div><p class="dm-control-warning">Importing a backup replaces the current campaign content. Player accounts and access codes remain unchanged.</p></div>
+        <div class="hub-panel dm-danger-panel"><h3>⚠ RESET CAMPAIGN</h3><p>Start the campaign again by clearing its content. Player accounts, access codes and memberships are preserved.</p><button class="small-button" onclick="Hub.resetCampaign()">RESET CAMPAIGN</button></div>
+      </div>
     </section>
 
     <div id="hub-modal" class="hub-modal" hidden></div>
