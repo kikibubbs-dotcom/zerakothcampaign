@@ -648,3 +648,9 @@
 .beyond-death-saves strong{font-size:1.35rem}
 .beyond-condition-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
 @media(max-width:650px){.beyond-attack-row{align-items:flex-start}.beyond-attack-row .beyond-row-actions{width:100%}.beyond-death-saves{grid-template-columns:1fr}}
+
+/* Equipment manager and equipped-state feedback */
+#dnd-hub .beyond-item-equipped{border-color:#b99a5c;background:linear-gradient(110deg,rgba(185,154,92,.13),transparent 75%)}
+#dnd-hub .beyond-item-equipped .beyond-row-main>strong:after{content:" · EQUIPPED";font-size:10px;letter-spacing:.08em;color:#d9b978}
+#dnd-hub #sheet-inventory .beyond-row-main small{display:block;line-height:1.55;margin-top:5px}
+#dnd-hub #sheet-inventory .beyond-subheading>div:first-child>small{display:block;max-width:650px;margin-top:7px;color:var(--muted,#888);line-height:1.5}
