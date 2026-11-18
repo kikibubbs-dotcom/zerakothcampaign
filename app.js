@@ -33,7 +33,8 @@
     sessionMode:null,
     homebrew:[],
     encounters:[],
-    worldEntries:[]
+    worldEntries:[],
+    sessionPrep:{title:"",date:"",objectives:"",encounters:"",notes:"",checklist:""}
   });
 
   let state = blank();
@@ -123,6 +124,7 @@
     renderInventory();
     renderSessions();
     renderSessionMode();
+    renderSessionPrep();
     renderReferenceLibrary();
     renderCharacters();
     if(activeCharacterSheetId)renderCharacterSheet();
@@ -190,6 +192,13 @@
       return out+'</article>';
     }).join(""):empty("No sessions have been recorded yet.");
   }
+  function renderSessionPrep(){
+    const host=$("session-prep-panel");if(!host)return;
+    if(!isDM()){host.hidden=true;return;}host.hidden=false;
+    if(!state.sessionPrep||typeof state.sessionPrep!=="object")state.sessionPrep={title:"",date:"",objectives:"",encounters:"",notes:"",checklist:""};
+    ["title","date","objectives","encounters","notes","checklist"].forEach(key=>{const el=$("prep-"+key);if(!el)return;el.value=state.sessionPrep[key]||"";el.oninput=()=>{state.sessionPrep[key]=el.value;persist();};});
+  }
+
   function renderSessionMode(){
     const host=$("session-mode-panel");if(!host)return;
     if(!isDM()){host.hidden=true;return;}host.hidden=false;
@@ -361,13 +370,13 @@
     const list=$("reference-results");if(!list)return;
     const q=$("reference-search").value.trim();if(q!==referenceLastQuery){referencePage=1;referenceLastQuery=q;}list.innerHTML=empty("Searching the open rules library...");
     try{
-      const params=new URLSearchParams({limit:"30",ordering:"name",page:String(referencePage),document__key__in:"srd-2014,srd-2024"});
+      const params=new URLSearchParams({limit:"12",ordering:"name",page:String(referencePage),document__key__in:"srd-2014,srd-2024"});
       if(q)params.set("name__icontains",q);
       if(referenceEdition==="2014")params.set("document__key__iexact","srd-2014");
       if(referenceEdition==="2024")params.set("document__key__iexact","srd-2024");
       const response=await fetch("https://api.open5e.com/v2/"+referenceTypes[referenceCategory]+"/?"+params.toString());
       if(!response.ok)throw new Error("The open reference source is temporarily unavailable.");
-      const payload=await response.json();referenceResults=Array.isArray(payload.results)?payload.results:[];referenceHasNext=!!payload.next;referenceTotalPages=Math.max(1,Math.ceil(safeNumber(payload.count,referenceResults.length)/30));
+      const payload=await response.json();referenceResults=Array.isArray(payload.results)?payload.results:[];referenceHasNext=!!payload.next;referenceTotalPages=Math.max(1,Math.ceil(safeNumber(payload.count,referenceResults.length)/12));
       renderReferenceLibrary();
     }catch(err){list.innerHTML=empty(err.message+" You can still create campaign homebrew.");}
   }
@@ -1732,6 +1741,7 @@
       if (error) throw error;
 
       state={...blank(),...(data.data||{})};
+      if(!state.sessionPrep||typeof state.sessionPrep!=="object")state.sessionPrep={title:"",date:"",objectives:"",encounters:"",notes:"",checklist:""};
       ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions","homebrew","encounters","worldEntries"].forEach(k=>{
         if (!Array.isArray(state[k])) state[k]=[];
       });
