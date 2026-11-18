@@ -655,14 +655,14 @@
           <div class="tag">HP ${hp}/${max}</div>
           <div class="tag">AC ${safeNumber(c.ac)}</div>
           <details class="archive-profile-details"><summary>VIEW FULL PROFILE</summary>
-            <p><b>Background:</b> \${escapeHTML(c.background||"Not recorded")} · <b>Alignment:</b> \${escapeHTML(c.alignment||"Not recorded")}</p>
-            <p><b>STR</b> \${safeNumber(c.strength,10)} · <b>DEX</b> \${safeNumber(c.dexterity,10)} · <b>CON</b> \${safeNumber(c.constitution,10)} · <b>INT</b> \${safeNumber(c.intelligence,10)} · <b>WIS</b> \${safeNumber(c.wisdom,10)} · <b>CHA</b> \${safeNumber(c.charisma,10)}</p>
-            \${c.personality?'<p><b>Personality:</b> '+escapeHTML(c.personality)+'</p>':""}
-            \${c.ideals?'<p><b>Ideals:</b> '+escapeHTML(c.ideals)+'</p>':""}
-            \${c.bonds?'<p><b>Bonds:</b> '+escapeHTML(c.bonds)+'</p>':""}
-            \${c.flaws?'<p><b>Flaws:</b> '+escapeHTML(c.flaws)+'</p>':""}
-            \${c.backstory?'<p><b>Backstory:</b> '+escapeHTML(c.backstory)+'</p>':""}
-            \${c.languagesKnown?'<p><b>Languages:</b> '+escapeHTML(c.languagesKnown)+'</p>':""}
+            <p><b>Background:</b> ${escapeHTML(c.background||"Not recorded")} · <b>Alignment:</b> ${escapeHTML(c.alignment||"Not recorded")}</p>
+            <p><b>STR</b> ${safeNumber(c.strength,10)} · <b>DEX</b> ${safeNumber(c.dexterity,10)} · <b>CON</b> ${safeNumber(c.constitution,10)} · <b>INT</b> ${safeNumber(c.intelligence,10)} · <b>WIS</b> ${safeNumber(c.wisdom,10)} · <b>CHA</b> ${safeNumber(c.charisma,10)}</p>
+            ${c.personality?'<p><b>Personality:</b> '+escapeHTML(c.personality)+'</p>':""}
+            ${c.ideals?'<p><b>Ideals:</b> '+escapeHTML(c.ideals)+'</p>':""}
+            ${c.bonds?'<p><b>Bonds:</b> '+escapeHTML(c.bonds)+'</p>':""}
+            ${c.flaws?'<p><b>Flaws:</b> '+escapeHTML(c.flaws)+'</p>':""}
+            ${c.backstory?'<p><b>Backstory:</b> '+escapeHTML(c.backstory)+'</p>':""}
+            ${c.languagesKnown?'<p><b>Languages:</b> '+escapeHTML(c.languagesKnown)+'</p>':""}
           </details>
           ${canEdit?`<div class="card-actions">
             <button onclick="Hub.editCharacter('${c.id}')">OPEN PROFILE / EDIT</button>
@@ -816,12 +816,12 @@
           <p><strong>HP / AC:</strong> ${safeNumber(n.hp)}/${safeNumber(n.maxHp)} · ${safeNumber(n.ac)} AC ${n.challengeRating?`· CR ${escapeHTML(n.challengeRating)}`:""}</p>
           <p><strong>Relationship:</strong> ${escapeHTML(n.relationship||"Unknown")}</p>
           <details class="archive-profile-details"><summary>VIEW FULL PROFILE</summary>
-            <p><b>Species:</b> \${escapeHTML(n.race||"Unknown")} · <b>Alignment:</b> \${escapeHTML(n.alignment||"Unknown")} · <b>Location:</b> \${escapeHTML(n.location||"Unknown")}</p>
-            <p><b>STR</b> \${safeNumber(n.strength,10)} · <b>DEX</b> \${safeNumber(n.dexterity,10)} · <b>CON</b> \${safeNumber(n.constitution,10)} · <b>INT</b> \${safeNumber(n.intelligence,10)} · <b>WIS</b> \${safeNumber(n.wisdom,10)} · <b>CHA</b> \${safeNumber(n.charisma,10)}</p>
-            \${n.goals?'<p><b>Goals:</b> '+escapeHTML(n.goals)+'</p>':""}
-            \${n.backstory?'<p><b>Backstory:</b> '+escapeHTML(n.backstory)+'</p>':""}
-            \${n.features?'<p><b>Skills / traits:</b> '+escapeHTML(n.features)+'</p>':""}
-            \${n.npcActions?'<p><b>Actions:</b> '+escapeHTML(n.npcActions)+'</p>':""}
+            <p><b>Species:</b> ${escapeHTML(n.race||"Unknown")} · <b>Alignment:</b> ${escapeHTML(n.alignment||"Unknown")} · <b>Location:</b> ${escapeHTML(n.location||"Unknown")}</p>
+            <p><b>STR</b> ${safeNumber(n.strength,10)} · <b>DEX</b> ${safeNumber(n.dexterity,10)} · <b>CON</b> ${safeNumber(n.constitution,10)} · <b>INT</b> ${safeNumber(n.intelligence,10)} · <b>WIS</b> ${safeNumber(n.wisdom,10)} · <b>CHA</b> ${safeNumber(n.charisma,10)}</p>
+            ${n.goals?'<p><b>Goals:</b> '+escapeHTML(n.goals)+'</p>':""}
+            ${n.backstory?'<p><b>Backstory:</b> '+escapeHTML(n.backstory)+'</p>':""}
+            ${n.features?'<p><b>Skills / traits:</b> '+escapeHTML(n.features)+'</p>':""}
+            ${n.npcActions?'<p><b>Actions:</b> '+escapeHTML(n.npcActions)+'</p>':""}
           </details>
           ${isDM()? `<div class="card-actions"><button onclick="Hub.editNPC('${n.id}')">EDIT</button><button onclick="Hub.removeItem('npcs','${n.id}')">DELETE</button></div>`:""}
         </article>`).join("")
