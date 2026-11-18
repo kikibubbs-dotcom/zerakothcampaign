@@ -665,7 +665,8 @@
             ${c.languagesKnown?'<p><b>Languages:</b> '+escapeHTML(c.languagesKnown)+'</p>':""}
           </details>
           ${canEdit?`<div class="card-actions">
-            <button onclick="Hub.editCharacter('${c.id}')">OPEN PROFILE / EDIT</button>
+            <button onclick="Hub.openCharacterSheet('${c.id}')">OPEN CHARACTER SHEET</button>
+            <button onclick="Hub.editCharacter('${c.id}')">EDIT DETAILS</button>
             <button onclick="Hub.removeCharacter('${c.id}')">REMOVE</button>
           </div>`:`<p class="list-meta">VIEW ONLY</p>`}
         `}
@@ -698,7 +699,7 @@
   function renderCharacters() {
     const actions=root.querySelector(".archive-add-actions");
     if(actions){
-      actions.querySelectorAll("[onclick*='Hub.addCharacter'],[onclick*='Hub.randomizeCharacter']").forEach(el=>el.style.display=isDM()?"none":"");
+      actions.querySelectorAll("[onclick*='Hub.addCharacter']").forEach(el=>el.style.display=isDM()?"none":"");
       actions.querySelectorAll("[onclick*='Hub.addNPC'],[onclick*='Hub.randomizeNPC']").forEach(el=>el.style.display=isDM()?"":"none");
     }
     const partyAdd=root.querySelector("#page-party .page-heading button[onclick*='Hub.addCharacter']");
