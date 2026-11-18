@@ -33,7 +33,8 @@
     sessionMode:null,
     homebrew:[],
     encounters:[],
-    worldEntries:[]
+    worldEntries:[],
+    sessionPrep:{title:"",date:"",objectives:"",encounters:"",notes:"",checklist:""}
   });
 
   let state = blank();
@@ -123,6 +124,7 @@
     renderInventory();
     renderSessions();
     renderSessionMode();
+    renderSessionPrep();
     renderReferenceLibrary();
     renderCharacters();
     if(activeCharacterSheetId)renderCharacterSheet();
@@ -190,6 +192,13 @@
       return out+'</article>';
     }).join(""):empty("No sessions have been recorded yet.");
   }
+  function renderSessionPrep(){
+    const host=$("session-prep-panel");if(!host)return;
+    if(!isDM()){host.hidden=true;return;}host.hidden=false;
+    if(!state.sessionPrep||typeof state.sessionPrep!=="object")state.sessionPrep={title:"",date:"",objectives:"",encounters:"",notes:"",checklist:""};
+    ["title","date","objectives","encounters","notes","checklist"].forEach(key=>{const el=$("prep-"+key);if(!el)return;el.value=state.sessionPrep[key]||"";el.oninput=()=>{state.sessionPrep[key]=el.value;persist();};});
+  }
+
   function renderSessionMode(){
     const host=$("session-mode-panel");if(!host)return;
     if(!isDM()){host.hidden=true;return;}host.hidden=false;
@@ -202,7 +211,7 @@
   function startSessionMode(){
     if(!isDM()||state.sessionMode?.active)return;
     const next=Math.max(0,...(state.sessions||[]).map(s=>safeNumber(s.number)))+1;
-    openForm("Start a session",[{name:"title",label:"Session title",value:"Session "+next,required:true,full:true}],v=>{mutate(()=>state.sessionMode={active:true,title:v.title.trim()||"Untitled session",startedAt:new Date().toISOString(),notes:""});});
+    openForm("Start a session",[{name:"title",label:"Session title",value:state.sessionPrep?.title||"Session "+next,required:true,full:true}],v=>{const prep=state.sessionPrep||{};const notes=[prep.objectives?"SESSION OBJECTIVES\n"+prep.objectives:"",prep.encounters?"PLANNED ENCOUNTERS & NPCS\n"+prep.encounters:"",prep.notes?"DM PREPARATION NOTES\n"+prep.notes:""].filter(Boolean).join("\n\n");mutate(()=>state.sessionMode={active:true,title:v.title.trim()||"Untitled session",startedAt:new Date().toISOString(),notes});});
   }
   function finishSessionMode(){
     if(!isDM()||!state.sessionMode?.active)return;
@@ -361,13 +370,13 @@
     const list=$("reference-results");if(!list)return;
     const q=$("reference-search").value.trim();if(q!==referenceLastQuery){referencePage=1;referenceLastQuery=q;}list.innerHTML=empty("Searching the open rules library...");
     try{
-      const params=new URLSearchParams({limit:"30",ordering:"name",page:String(referencePage),document__key__in:"srd-2014,srd-2024"});
+      const params=new URLSearchParams({limit:"12",ordering:"name",page:String(referencePage),document__key__in:"srd-2014,srd-2024"});
       if(q)params.set("name__icontains",q);
       if(referenceEdition==="2014")params.set("document__key__iexact","srd-2014");
       if(referenceEdition==="2024")params.set("document__key__iexact","srd-2024");
       const response=await fetch("https://api.open5e.com/v2/"+referenceTypes[referenceCategory]+"/?"+params.toString());
       if(!response.ok)throw new Error("The open reference source is temporarily unavailable.");
-      const payload=await response.json();referenceResults=Array.isArray(payload.results)?payload.results:[];referenceHasNext=!!payload.next;referenceTotalPages=Math.max(1,Math.ceil(safeNumber(payload.count,referenceResults.length)/30));
+      const payload=await response.json();referenceResults=Array.isArray(payload.results)?payload.results:[];referenceHasNext=!!payload.next;referenceTotalPages=Math.max(1,Math.ceil(safeNumber(payload.count,referenceResults.length)/12));
       renderReferenceLibrary();
     }catch(err){list.innerHTML=empty(err.message+" You can still create campaign homebrew.");}
   }
@@ -499,7 +508,7 @@
     $("stat-npcs").textContent = state.npcs.length;
     $("stat-journal").textContent = state.journal.length;
 
-    const party = state.characters.slice(0,5);
+    const party = state.characters.filter(c=>!c.isNPC).slice(0,5);
     $("dashboard-party").innerHTML = party.length
       ? party.map(c=>`
         <div class="hp-line">
@@ -524,6 +533,14 @@
     $("dashboard-events").innerHTML = events.length
       ? events.map(e=>`<div class="list-card"><div class="list-meta">${escapeHTML(e.date)}</div><h3>${escapeHTML(e.title)}</h3></div>`).join("")
       : empty("No upcoming events.");
+    const latest=[...(state.sessions||[])].sort((a,b)=>safeNumber(b.number)-safeNumber(a.number))[0];
+    $("dashboard-latest-session").innerHTML=latest
+      ? "<div class=\"list-meta\">SESSION "+safeNumber(latest.number)+" · "+escapeHTML(latest.date||"Date not recorded")+"</div><h3>"+escapeHTML(latest.title||"Untitled session")+"</h3><p>"+escapeHTML((latest.summary||latest.sessionNotes||"No recap recorded yet.").slice(0,360))+"</p>"
+      : empty("Your latest session recap will appear here.");
+    const activeCount=state.quests.filter(q=>(q.status||"Active").toLowerCase()==="active").length;
+    const lowHealth=state.characters.filter(c=>!c.isNPC&&safeNumber(c.hp)<=Math.max(1,safeNumber(c.maxHp,1))*.25).length;
+    const combat=getCombat();
+    $("dashboard-pulse").innerHTML="<span><b>"+party.length+"</b> adventurers</span><span><b>"+activeCount+"</b> active quests</span>"+(lowHealth?"<span class=\"pulse-alert\">"+lowHealth+" adventurer(s) below 25% HP</span>":"<span>Party health looks steady</span>")+(combat.active?"<span class=\"pulse-live\">Combat active · Round "+safeNumber(combat.round,1)+"</span>":"<span>No active combat</span>");
   }
 
   function renderMap() {
@@ -763,12 +780,14 @@
     const attackEntries=attacks.length?attacks:legacyAttacks.map(line=>{const parts=line.split("|").map(x=>x.trim());if(parts.length>=3)return{id:"legacy-"+line,name:parts[0],bonus:parts[1].replace(/[^+\-0-9]/g,""),damage:parts[2],damageType:parts[3]||"",notes:""};const match=line.match(/^(.+?):\s*([+-]?\d+)\s*to hit,\s*(.+)$/i);return{id:"legacy-"+line,name:match?match[1]:line,bonus:match?match[2]:"0",damage:match?match[3].replace(/\s+(?:slashing|piercing|bludgeoning|fire|cold|lightning|acid|poison|necrotic|radiant|psychic|force|thunder) damage.*$/i,""):"—",damageType:"",notes:match?"Legacy attack entry":"Add attack details to roll damage"};});
     const attackHtml=attackEntries.length?attackEntries.map(a=>'<article class="beyond-attack-row"><div class="beyond-attack-info"><strong>'+escapeHTML(a.name)+'</strong><span>'+escapeHTML(a.damage||"—")+' '+escapeHTML(a.damageType||"")+'</span>'+(a.notes?'<small>'+escapeHTML(a.notes)+'</small>':"")+'</div><div class="beyond-attack-bonus">'+escapeHTML((safeNumber(a.bonus)>=0?"+":"")+safeNumber(a.bonus))+'</div><div class="beyond-row-actions">'+(can?'<button class="small-button" onclick="Hub.rollAttack(\''+c.id+'\',\''+escapeHTML(a.id)+'\')">ROLL TO HIT</button><button class="small-button" onclick="Hub.rollDamage(\''+c.id+'\',\''+escapeHTML(a.id)+'\')">ROLL DAMAGE</button>':'')+(can&&!String(a.id).startsWith("legacy-")?'<button class="small-button" onclick="Hub.editAttack(\''+c.id+'\',\''+a.id+'\')">EDIT</button><button class="small-button" onclick="Hub.removeAttack(\''+c.id+'\',\''+a.id+'\')">REMOVE</button>':"")+'</div></article>').join(""):empty("No attacks added yet.");
     const conditions=Array.isArray(c.activeConditions)?c.activeConditions:[];
+    const conditionHtml=conditions.length?'<div class="beyond-condition-summary">'+conditions.map(x=>'<span class="beyond-condition-chip">'+escapeHTML(typeof x==="string"?x:x.name||x.condition||"Condition")+'</span>').join("")+'</div>':"";
+    const dangerHtml=hp<=0?'<div class="beyond-zero-hp-alert">⚠ AT 0 HIT POINTS — Death saving throws are required at the start of your turns.</div>':"";
     const spellsHtml=spells.length?spells.map(s=>'<article class="beyond-list-row"><div class="beyond-row-main"><strong>'+escapeHTML(s.name)+'</strong><p>'+escapeHTML(s.description||s.notes||"No description recorded.")+'</p><small>'+escapeHTML(s.level?"Level "+s.level:"Cantrip")+' · '+escapeHTML(s.school||"Spell")+' · '+escapeHTML(s.castingTime||"—")+' · '+escapeHTML(s.range||"—")+'</small></div><div class="beyond-row-actions"><span class="beyond-pill">'+(s.prepared?"PREPARED":"KNOWN")+'</span>'+(can?'<button class="small-button" onclick="Hub.togglePreparedSpell(\''+c.id+'\',\''+s.id+'\')">'+(s.prepared?"UNPREPARE":"PREPARE")+'</button><button class="small-button" onclick="Hub.editSpell(\''+c.id+'\',\''+s.id+'\')">EDIT</button>':"")+'</div></article>').join(""):empty("No spells recorded.");
     const itemsHtml=items.length?items.map(x=>{const type=x.equipmentType||"other",details=[x.equipped?"EQUIPPED":"Carried",x.weight?x.weight:null,x.value?x.value:null,x.damage?("Damage "+x.damage+" "+(x.damageType||"")):null,["light","medium","heavy"].includes(type)?("Armour AC "+safeNumber(x.armorBase)):type==="shield"?"Shield +2 AC":null,x.attackBonus?("Attack "+(x.attackBonus>0?"+":"")+x.attackBonus):null].filter(Boolean).join(" · ");return '<article class="beyond-list-row '+(x.equipped?"beyond-item-equipped":"")+'"><div class="beyond-row-main"><strong>'+escapeHTML(x.name)+'</strong><p>'+escapeHTML(x.category||"Equipment")+' · '+escapeHTML(x.rarity||"Common")+' · Qty '+safeNumber(x.quantity,1)+'</p><small>'+escapeHTML(details)+'</small>'+(x.notes?'<p>'+escapeHTML(x.notes)+'</p>':"")+'</div>'+(can?'<div class="beyond-row-actions">'+(["weapon","light","medium","heavy","shield"].includes(type)?'<button class="small-button" onclick="Hub.toggleEquippedItem(\''+c.id+'\',\''+x.id+'\')">'+(x.equipped?"UNEQUIP":"EQUIP")+'</button>':"")+'<button class="small-button" onclick="Hub.editCharacterItem(\''+c.id+'\',\''+x.id+'\')">EDIT</button><button class="small-button" onclick="Hub.removeCharacterItem(\''+c.id+'\',\''+x.id+'\')">REMOVE</button></div>':"")+'</article>';}).join(""):empty("No equipment recorded.");
     const slotHtml=slots.map((s,i)=>'<div class="beyond-slot"><span>LEVEL '+(i+1)+'</span><strong>'+safeNumber(s.used)+' / '+safeNumber(s.total)+'</strong><div class="beyond-slot-dots">'+Array.from({length:Math.min(10,safeNumber(s.total))},(_,n)=>'<i class="'+(n<safeNumber(s.used)?"used":"")+'"></i>').join("")+'</div>'+(can?'<div class="beyond-row-actions"><button class="small-button" onclick="Hub.slot(\''+c.id+'\','+i+',-1)">−</button><button class="small-button" onclick="Hub.slot(\''+c.id+'\','+i+',1)">+</button></div>':"")+'</div>').join("");
     host.innerHTML='<div class="beyond-sheet"><div class="beyond-topline"><button class="small-button" onclick="Hub.go(\'characters\')">← CHARACTER ARCHIVE</button><span class="beyond-edition">'+escapeHTML(c.rulesEdition||"2014")+' RULES</span></div>'+
-    '<header class="beyond-hero">'+(c.portrait?'<img class="beyond-portrait" src="'+escapeHTML(c.portrait)+'" alt="Character portrait">':'<div class="beyond-portrait placeholder">✦</div>')+'<div class="beyond-identity"><div class="hub-kicker">'+(c.isNPC?"NPC / COMPANION":"PLAYER CHARACTER")+'</div><h2>'+escapeHTML(c.name)+'</h2><p>'+escapeHTML(c.race||"Species not set")+' · '+escapeHTML(c.className||"Class not set")+' · Level '+safeNumber(c.level,1)+'</p><div class="beyond-tags"><span>'+escapeHTML(c.background||"Background not set")+'</span><span>'+escapeHTML(c.alignment||"Alignment not set")+'</span><span>'+escapeHTML(c.player||"No player assigned")+'</span></div></div><div class="beyond-hero-actions">'+(can?'<button class="hub-button" onclick="Hub.editCharacter(\''+c.id+'\')">EDIT CHARACTER</button><button class="small-button" onclick="Hub.takeRest(\''+c.id+'\',\'short\')">SHORT REST</button><button class="small-button" onclick="Hub.takeRest(\''+c.id+'\',\'long\')">LONG REST</button>':'<span class="list-meta">VIEW ONLY</span>')+'</div></header>'+
-    '<div class="beyond-combat-strip"><div class="beyond-hp"><span>HIT POINTS</span><strong>'+hp+' <small>/ '+maxHp+'</small></strong><div class="beyond-hp-track"><i style="width:'+Math.max(0,Math.min(100,hp/maxHp*100))+'%"></i></div><small>'+safeNumber(c.tempHp)+' TEMP HP</small>'+(can?'<div class="beyond-row-actions"><button class="small-button" onclick="Hub.changeHP(\''+c.id+'\',1)">+1 HP</button><button class="small-button" onclick="Hub.changeHP(\''+c.id+'\',-1)">−1 HP</button><button class="small-button" onclick="Hub.setTempHP(\''+c.id+'\')">TEMP HP</button></div>':"")+'</div>'+
+    '<header class="beyond-hero">'+(c.portrait?'<img class="beyond-portrait" src="'+escapeHTML(c.portrait)+'" alt="Character portrait">':'<div class="beyond-portrait placeholder">✦</div>')+'<div class="beyond-identity"><div class="hub-kicker">'+(c.isNPC?"NPC / COMPANION":"PLAYER CHARACTER")+'</div><h2>'+escapeHTML(c.name)+'</h2><p>'+escapeHTML(c.race||"Species not set")+' · '+escapeHTML(c.className||"Class not set")+' · Level '+safeNumber(c.level,1)+'</p><div class="beyond-tags"><span>'+escapeHTML(c.background||"Background not set")+'</span><span>'+escapeHTML(c.alignment||"Alignment not set")+'</span><span>'+escapeHTML(c.player||"No player assigned")+'</span></div>'+conditionHtml+'</div><div class="beyond-hero-actions">'+(can?'<button class="hub-button" onclick="Hub.editCharacter(\''+c.id+'\')">EDIT CHARACTER</button><button class="small-button" onclick="Hub.takeRest(\''+c.id+'\',\'short\')">SHORT REST</button><button class="small-button" onclick="Hub.takeRest(\''+c.id+'\',\'long\')">LONG REST</button>':'<span class="list-meta">VIEW ONLY</span>')+'</div></header>'+
+    dangerHtml+'<div class="beyond-combat-strip"><div class="beyond-hp"><span>HIT POINTS</span><strong>'+hp+' <small>/ '+maxHp+'</small></strong><div class="beyond-hp-track"><i style="width:'+Math.max(0,Math.min(100,hp/maxHp*100))+'%"></i></div><small>'+safeNumber(c.tempHp)+' TEMP HP</small>'+(can?'<div class="beyond-row-actions"><button class="small-button" onclick="Hub.changeHP(\''+c.id+'\',1)">+1 HP</button><button class="small-button" onclick="Hub.changeHP(\''+c.id+'\',-1)">−1 HP</button><button class="small-button" onclick="Hub.setTempHP(\''+c.id+'\')">TEMP HP</button></div>':"")+'</div>'+
     '<div class="beyond-stat"><span>ARMOUR CLASS</span><strong>'+(calculateCharacterAC(c)??safeNumber(c.ac,10))+'</strong>'+(calculateCharacterAC(c)!==null?'<small>From equipped gear</small>':"")+'</div><div class="beyond-stat"><span>INITIATIVE</span><strong>'+mod(c.dexterity)+'</strong></div><div class="beyond-stat"><span>SPEED</span><strong>'+safeNumber(c.speed,30)+' ft</strong></div><div class="beyond-stat"><span>PROFICIENCY</span><strong>+'+proficiencyBonus+'</strong></div><div class="beyond-stat"><span>HIT DICE</span><strong>'+escapeHTML(c.hitDice||"—")+'</strong><small>'+safeNumber(c.hitDiceUsed)+' spent</small></div></div>'+
     '<nav class="beyond-tab-nav" role="tablist" aria-label="Character sheet sections"><button type="button" role="tab" data-sheet-tab="core" aria-selected="true" class="active" onclick="Hub.showCharacterSection(this.dataset.sheetTab)">Core</button><button type="button" role="tab" data-sheet-tab="saves" aria-selected="false" class="" onclick="Hub.showCharacterSection(this.dataset.sheetTab)">Saves & Skills</button><button type="button" role="tab" data-sheet-tab="combat" aria-selected="false" class="" onclick="Hub.showCharacterSection(this.dataset.sheetTab)">Combat</button><button type="button" role="tab" data-sheet-tab="spells" aria-selected="false" class="" onclick="Hub.showCharacterSection(this.dataset.sheetTab)">Spells</button><button type="button" role="tab" data-sheet-tab="inventory" aria-selected="false" class="" onclick="Hub.showCharacterSection(this.dataset.sheetTab)">Inventory</button><button type="button" role="tab" data-sheet-tab="features" aria-selected="false" class="" onclick="Hub.showCharacterSection(this.dataset.sheetTab)">Features</button><button type="button" role="tab" data-sheet-tab="notes" aria-selected="false" class="" onclick="Hub.showCharacterSection(this.dataset.sheetTab)">Notes</button></nav>'+
     '<div class="beyond-main-grid"><div class="beyond-primary">'+
@@ -1732,6 +1751,7 @@
       if (error) throw error;
 
       state={...blank(),...(data.data||{})};
+      if(!state.sessionPrep||typeof state.sessionPrep!=="object")state.sessionPrep={title:"",date:"",objectives:"",encounters:"",notes:"",checklist:""};
       ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions","homebrew","encounters","worldEntries"].forEach(k=>{
         if (!Array.isArray(state[k])) state[k]=[];
       });
