@@ -1193,34 +1193,46 @@
   function openCharacterTemplateForm(title,fields,onSave,data=null){
     activeCharacterSheetId=data?.id||"";
     const host=$("character-sheet-content");
-    const controls=fields.filter(f=>!f.group||f.group.split(" ").includes("player")).map((field,i)=>{
-      const id="character-template-"+i,value=field.value??"",full=field.full?" full":"";
-      if(field.type==="section")return '<div class="character-template-section"><h3>'+escapeHTML(field.label)+'</h3></div>';
+    const fieldMap=new Map(fields.filter(f=>f.name&&(!f.group||f.group.split(" ").includes("player"))).map(f=>[f.name,f]));
+    const used=new Set();
+    const field=(name,extra="")=>{
+      const f=fieldMap.get(name);if(!f)return "";
+      used.add(name);
+      const id="ddb-builder-"+name,value=f.value??"",type=f.type||"text";
       let control="";
-      if(field.type==="textarea")control='<textarea id="'+id+'" name="'+escapeHTML(field.name)+'" rows="'+(field.rows||3)+'" '+(field.required?"required":"")+' placeholder="'+escapeHTML(field.placeholder||"")+'">'+escapeHTML(value)+'</textarea>';
-      else if(field.type==="select")control='<select id="'+id+'" name="'+escapeHTML(field.name)+'">'+(field.options||[]).map(o=>'<option value="'+escapeHTML(o.value)+'" '+(String(o.value)===String(value)?"selected":"")+'>'+escapeHTML(o.label)+'</option>').join("")+'</select>';
-      else if(field.type==="file")control='<input id="'+id+'" name="'+escapeHTML(field.name)+'" type="file" accept="image/*"><small class="list-meta">Optional portrait upload · max 5MB</small>'+(field.preview?'<img class="portrait-preview" src="'+escapeHTML(field.preview)+'" alt="Current portrait">':"");
-      else control='<input id="'+id+'" name="'+escapeHTML(field.name)+'" type="'+(field.type||"text")+'" value="'+escapeHTML(value)+'" '+(field.required?"required":"")+' '+(field.min!==undefined?'min="'+field.min+'"':"")+' '+(field.max!==undefined?'max="'+field.max+'"':"")+' placeholder="'+escapeHTML(field.placeholder||"")+'">';
-      return '<label class="character-template-field'+full+'" for="'+id+'"><span>'+escapeHTML(field.label)+(field.required?' <i>*</i>':"")+'</span>'+control+'</label>';
-    }).join("");
+      if(type==="textarea")control='<textarea id="'+id+'" name="'+escapeHTML(name)+'" rows="'+(f.rows||3)+'" placeholder="'+escapeHTML(f.placeholder||"")+'">'+escapeHTML(value)+'</textarea>';
+      else if(type==="select")control='<select id="'+id+'" name="'+escapeHTML(name)+'">'+(f.options||[]).map(o=>'<option value="'+escapeHTML(o.value)+'" '+(String(o.value)===String(value)?"selected":"")+'>'+escapeHTML(o.label)+'</option>').join("")+'</select>';
+      else if(type==="file")control='<input id="'+id+'" name="'+escapeHTML(name)+'" type="file" accept="image/*"><small class="ddb-field-hint">Choose an image · max 5MB</small>'+(f.preview?'<img class="ddb-upload-preview" src="'+escapeHTML(f.preview)+'" alt="Current character portrait">':"");
+      else control='<input id="'+id+'" name="'+escapeHTML(name)+'" type="'+type+'" value="'+escapeHTML(value)+'" '+(f.required?"required":"")+' '+(f.min!==undefined?'min="'+f.min+'"':"")+' '+(f.max!==undefined?'max="'+f.max+'"':"")+' placeholder="'+escapeHTML(f.placeholder||"")+'">';
+      return '<label class="ddb-builder-field '+(type==="textarea"?"ddb-builder-wide ":"")+extra+'" for="'+id+'"><span>'+escapeHTML(f.label)+(f.required?' <i>*</i>':"")+'</span>'+control+'</label>';
+    };
+    const panel=(eyebrow,heading,body,id="")=>'<section class="ddb-builder-panel" '+(id?'id="'+id+'"':"")+'><div class="ddb-builder-panel-head"><span>'+eyebrow+'</span><h3>'+heading+'</h3></div>'+body+'</section>';
+    const identity=panel("CHARACTER IDENTITY","Who is your adventurer?",'<div class="ddb-builder-identity-grid"><div class="ddb-builder-portrait-slot">'+(data?.portrait?'<img src="'+escapeHTML(data.portrait)+'" alt="Current portrait">':'<div class="ddb-builder-portrait-empty">✦</div>')+'<div>'+field("portraitFile")+'</div></div><div class="ddb-builder-identity-fields">'+field("name")+field("player")+field("race")+field("className")+field("background")+field("rulesEdition")+field("alignment")+field("level")+field("experience")+'</div></div>');
+    const combat=panel("COMBAT","Defences & movement",'<div class="ddb-builder-combat-grid">'+["hp","maxHp","ac","initiative","speed","proficiency","hitDice","hitDiceUsed","exhaustion"].map(n=>field(n)).join("")+'</div>');
+    const abilityNames=["strength","dexterity","constitution","intelligence","wisdom","charisma"];
+    const abilities=panel("ABILITY SCORES","Your character's abilities",'<div class="ddb-builder-abilities">'+abilityNames.map((n,i)=>{const f=fieldMap.get(n);if(!f)return "";used.add(n);const val=safeNumber(f.value,10),mod=Math.floor((val-10)/2);return '<label class="ddb-builder-ability" for="ddb-builder-'+n+'"><span>'+["STR","DEX","CON","INT","WIS","CHA"][i]+'</span><input id="ddb-builder-'+n+'" name="'+n+'" type="number" value="'+val+'"><b>'+(mod>=0?"+":"")+mod+'</b></label>';}).join("")+'</div>');
+    const saves=panel("PROFICIENCIES","Saving throws, skills & training",'<div class="ddb-builder-two-col">'+field("savingThrows")+field("skills")+field("armorProficiencies")+field("weaponProficiencies")+field("toolProficiencies")+field("languagesKnown")+field("senses")+field("damageResistances")+field("conditions")+'</div>');
+    const spell=panel("SPELLCASTING","Magic & spellcasting",'<div class="ddb-builder-two-col">'+field("spellcastingAbility")+field("spellSaveDC")+field("spellAttackBonus")+field("spells")+'</div><p class="ddb-builder-note">You can add individual spells and configure spell slots from the completed character sheet.</p>');
+    const gear=panel("EQUIPMENT","Inventory & currency",'<div class="ddb-builder-two-col">'+field("gear")+'</div><p class="ddb-builder-note">Individual inventory items and gold can be managed from the completed character sheet.</p>');
+    const traits=panel("FEATURES & TRAITS","What makes them unique",'<div class="ddb-builder-two-col">'+field("features")+field("attacks")+field("inspiration")+'</div>');
+    const story=panel("CHARACTER DETAILS","Personality & story",'<div class="ddb-builder-two-col">'+["personality","ideals","bonds","flaws","backstory","loveInterest","notes"].map(n=>field(n)).join("")+'</div>');
+    const extras=fields.filter(f=>f.name&&!used.has(f.name)&&(!f.group||f.group.split(" ").includes("player"))).map(f=>field(f.name)).join("");
     go("character-sheet");
-    host.innerHTML='<div class="character-template"><div class="beyond-topline"><button type="button" class="small-button" onclick="Hub.go(\'characters\')">← CHARACTER ARCHIVE</button><span class="beyond-edition">CHARACTER BUILDER · '+escapeHTML(data?.rulesEdition||"2014")+'</span></div><header class="character-template-heading"><div class="hub-kicker">NEW ADVENTURER</div><h2>'+escapeHTML(title)+'</h2><p>Fill in the sections below. You can leave fields blank and return to the sheet later.</p></header><form id="character-template-form"><div class="character-template-grid">'+controls+'</div><div class="character-template-actions"><button type="button" class="small-button" onclick="Hub.go(\'characters\')">CANCEL</button><button type="submit" class="hub-button">'+(data?"SAVE CHARACTER":"CREATE CHARACTER")+'</button></div></form></div>';
+    host.innerHTML='<div class="ddb-character-builder"><div class="beyond-topline"><button type="button" class="small-button" onclick="Hub.go(\\'characters\\')">← CHARACTER ARCHIVE</button><span class="beyond-edition">'+escapeHTML(data?.rulesEdition||"2014")+' RULES · CHARACTER BUILDER</span></div><header class="ddb-builder-hero"><div class="ddb-builder-kicker">D&amp;D CHARACTER BUILDER</div><h2>'+(data?"Edit your character":"Create a character")+'</h2><p>Build your adventurer using the character-sheet layout. You can leave sections unfinished and fill them in later.</p><div class="ddb-builder-progress"><span>CHARACTER DETAILS</span><span>COMBAT</span><span>ABILITIES</span><span>MAGIC &amp; GEAR</span></div></header><form id="character-template-form">'+identity+combat+abilities+saves+spell+gear+traits+story+(extras?panel("MORE DETAILS","Additional information",'<div class="ddb-builder-two-col">'+extras+'</div>'):"")+'<div class="ddb-builder-actions"><button type="button" class="small-button" onclick="Hub.go(\\'characters\\')">CANCEL</button><button type="submit" class="hub-button">'+(data?"SAVE CHARACTER":"CREATE CHARACTER")+'</button></div></form></div>';
     $("character-template-form").addEventListener("submit",async e=>{
       e.preventDefault();const form=e.currentTarget,values={};
       try{
-        for(const field of fields){
-          if(field.type==="section"||(field.group&&!field.group.split(" ").includes("player")))continue;
-          const el=form.elements.namedItem(field.name);
-          values[field.name]=field.type==="file"?(el?.files?.[0]?await imageFileToDataURL(el.files[0]):""):(el?el.value:"");
+        for(const f of fields){
+          if(!f.name|| (f.group&&!f.group.split(" ").includes("player")))continue;
+          const el=form.elements.namedItem(f.name);
+          values[f.name]=f.type==="file"?(el?.files?.[0]?await imageFileToDataURL(el.files[0]):""):(el?el.value:"");
         }
         if(!String(values.name||"").trim()){alert("Please enter a character name.");return;}
         onSave(values);
-        if(activeCharacterSheetId){go("character-sheet");}
-        else go("characters");
+        if(activeCharacterSheetId)go("character-sheet");else go("characters");
       }catch(err){alert(err.message||"The character sheet could not be saved.");}
     });
   }
-
   function openArchiveEditor(data=null,collection="characters"){
     if(collection==="npcs"&&!isDM())return;
     if(data&&collection==="characters"&&!canEditCharacter(data))return;
