@@ -32,7 +32,6 @@
     <button class="active" data-tab="dashboard">⌂ Overview</button>
     <button data-tab="reference">✧ Rules Library</button>
     <button data-tab="adventure">✥ Adventure</button>
-    <button data-tab="quests">⚑ Quests</button>
     <button data-tab="calendar">▦ Calendar</button>
     <button data-tab="characters">▤ Characters</button>
     <button data-tab="character-sheet" hidden>♙ Character Sheet</button>
@@ -40,7 +39,6 @@
     <button data-tab="spellbook">✦ Spellbooks</button>
     <button data-tab="world">✧ World Encyclopedia</button>
     <button data-tab="journal">✎ Journal</button>
-    <button data-tab="announcements">✉ Notices</button>
     <button class="dm-only" data-tab="dm-controls">⚙ DM Controls</button>
   </nav>
 
@@ -88,7 +86,7 @@
         <div class="hub-panel">
           <div class="panel-heading">
             <h3>⚑ ACTIVE QUESTS</h3>
-            <button class="small-button" onclick="Hub.go('quests')">VIEW ALL →</button>
+            <button class="small-button" onclick="Hub.go('adventure')">VIEW ALL →</button>
           </div>
           <div id="dashboard-quests"></div>
         </div>
@@ -175,6 +173,18 @@
         <div id="party-list" class="character-grid"></div>
       </section>
 
+      <section class="adventure-quest-panel hub-panel" id="adventure-quest-board">
+        <div class="page-heading">
+          <div>
+            <div class="hub-kicker">ADVENTURE AWAITS</div>
+            <h2>Quest Board</h2>
+            <p>Keep track of your party's current objectives.</p>
+          </div>
+          <button class="hub-button" onclick="Hub.addQuest()">+ New quest</button>
+        </div>
+        <div id="quest-list" class="hub-list"></div>
+      </section>
+
       <section class="combat-tracker-panel hub-panel" id="combat-tracker">
         <div class="panel-heading combat-heading">
           <div>
@@ -198,18 +208,6 @@
       </section>
       </div>
     </section>
-
-      <section class="hub-page" id="page-quests">
-        <div class="page-heading">
-          <div>
-            <div class="hub-kicker">ADVENTURE AWAITS</div>
-            <h2>Quest Board</h2>
-            <p>Keep track of your party's current objectives.</p>
-          </div>
-          <button class="hub-button" onclick="Hub.addQuest()">+ New quest</button>
-        </div>
-        <div id="quest-list" class="hub-list"></div>
-      </section>
 
     <!-- CHARACTER & NPC ARCHIVE -->
     <section class="hub-page" id="page-characters">
@@ -353,24 +351,12 @@
       </div>
     </section>
 
-    <!-- ANNOUNCEMENTS -->
-    <section class="hub-page" id="page-announcements">
-      <div class="page-heading">
-        <div>
-          <div class="hub-kicker">MESSAGES FROM THE DM</div>
-          <h2>Notice Board</h2>
-          <p>Campaign news, reminders and announcements.</p>
-        </div>
-        <button class="hub-button" onclick="Hub.addNotice()">+ New notice</button>
-      </div>
-      <div id="notice-list" class="hub-list"></div>
-    </section>
-
     <!-- DM-ONLY ADMINISTRATION -->
     <section class="hub-page" id="page-dm-controls">
       <div class="page-heading"><div><div class="hub-kicker">CAMPAIGN ADMINISTRATION</div><h2>DM Controls</h2><p>Administrative tools are kept here so the everyday campaign pages stay focused.</p></div></div>
       <div class="dm-controls-grid">
         <div class="hub-panel"><h3>♟ CHARACTER & NPC TOOLS</h3><p>Create campaign characters and manage the NPC directory.</p><div class="dm-control-actions"><button class="hub-button" onclick="Hub.addNPC()">+ ADD NPC</button><button class="small-button" onclick="Hub.randomizeNPC()">✧ RANDOMIZE NPC</button><button class="small-button" onclick="Hub.randomizeCharacter()">✧ RANDOMIZE CHARACTER</button><button class="small-button" onclick="Hub.go('characters')">OPEN CHARACTER ARCHIVE →</button></div></div>
+        <div class="hub-panel dm-notice-management"><div class="panel-heading"><div><h3>✉ NOTICE BOARD</h3><p>Publish campaign announcements. The newest notice appears on Overview.</p></div><button class="hub-button" onclick="Hub.addNotice()">+ NEW NOTICE</button></div><div id="notice-list" class="hub-list"></div></div>
         <div class="hub-panel"><h3>▣ CAMPAIGN BACKUPS</h3><p>Export a complete backup or restore campaign content from a previous backup file.</p><div class="dm-control-actions"><button class="small-button" onclick="Hub.exportCampaign()">↓ EXPORT CAMPAIGN</button><label class="small-button import-campaign-label">↑ IMPORT CAMPAIGN<input id="campaign-import-file" type="file" accept="application/json,.json" hidden></label></div><p class="dm-control-warning">Importing a backup replaces the current campaign content. Player accounts and access codes remain unchanged.</p></div>
         <div class="hub-panel dm-danger-panel"><h3>⚠ RESET CAMPAIGN</h3><p>Start the campaign again by clearing its content. Player accounts, access codes and memberships are preserved.</p><button class="small-button" onclick="Hub.resetCampaign()">RESET CAMPAIGN</button></div>
       </div>
