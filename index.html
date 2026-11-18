@@ -36,9 +36,7 @@
     <button data-tab="characters">▤ Characters</button>
     <button data-tab="character-sheet" hidden>♙ Character Sheet</button>
     <button data-tab="inventory">♜ Inventory & Loot</button>
-    <button data-tab="spellbook">✦ Spellbooks</button>
     <button data-tab="world">✧ World Encyclopedia</button>
-    <button data-tab="journal">✎ Journal</button>
     <button class="dm-only" data-tab="dm-controls">⚙ DM Controls</button>
   </nav>
 
@@ -185,6 +183,19 @@
         <div id="quest-list" class="hub-list"></div>
       </section>
 
+    <!-- JOURNAL -->
+    <section class="hub-page" id="page-journal">
+      <div class="page-heading">
+        <div>
+          <div class="hub-kicker">MEMORIES & DISCOVERIES</div>
+          <h2>Campaign Journal</h2>
+          <p>Record the events of your adventures.</p>
+        </div>
+        <button class="hub-button" onclick="Hub.addJournal()">+ New entry</button>
+      </div>
+      <div id="journal-list" class="hub-list"></div>
+    </section>
+
       <section class="combat-tracker-panel hub-panel" id="combat-tracker">
         <div class="panel-heading combat-heading">
           <div>
@@ -289,29 +300,10 @@
       <div class="hub-panel reference-attribution"><h3>CONTENT SOURCES</h3><p>Open rules reference content is retrieved from Open5e and limited to applicable SRD 5.1 (2014) and SRD 5.2 (2024) sources. Campaign homebrew is stored separately. Some official D&D material is not included in the SRD.</p><p>This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.</p><p>This work includes material from the System Reference Document 5.2 (“SRD 5.2”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.</p><p>Reference data provided via <a href="https://open5e.com/api-docs" target="_blank" rel="noopener">Open5e API</a>.</p></div>
     </section>
 
-    <!-- SPELLBOOK MANAGER -->
-    <section class="hub-page" id="page-spellbook">
-      <div class="page-heading"><div><div class="hub-kicker">ARCANE KNOWLEDGE</div><h2>Spellbook Manager</h2><p>Track known and prepared spells, components, concentration and spell notes.</p></div><button class="hub-button" onclick="Hub.addSpellToBook()">+ ADD SPELL</button></div>
-      <div class="hub-panel"><div class="reference-toolbar"><label for="spellbook-character">CHARACTER</label><select id="spellbook-character" onchange="Hub.selectSpellbookCharacter(this.value)"></select></div><div id="spellbook-summary" class="list-meta"></div><div id="spellbook-list" class="reference-results"></div></div>
-    </section>
-
     <!-- WORLD ENCYCLOPEDIA -->
     <section class="hub-page" id="page-world">
       <div class="page-heading"><div><div class="hub-kicker">ATLAS, ARCHIVES & SECRETS</div><h2>World Encyclopedia</h2><p>A shared guide to places, factions, cultures, history and lore.</p></div><button class="hub-button" onclick="Hub.addWorldEntry()">+ ADD ENTRY</button></div>
       <div class="hub-panel"><div class="reference-toolbar"><input id="world-search" type="search" placeholder="Search your world..." oninput="Hub.renderWorld()"><select id="world-filter" onchange="Hub.renderWorld()"><option value="all">All entries</option><option>Places</option><option>Regions</option><option>Factions</option><option>People</option><option>Deities</option><option>History</option><option>Culture</option><option>Other lore</option></select></div><div id="world-list" class="reference-results"></div></div>
-    </section>
-
-    <!-- JOURNAL -->
-    <section class="hub-page" id="page-journal">
-      <div class="page-heading">
-        <div>
-          <div class="hub-kicker">MEMORIES & DISCOVERIES</div>
-          <h2>Campaign Journal</h2>
-          <p>Record the events of your adventures.</p>
-        </div>
-        <button class="hub-button" onclick="Hub.addJournal()">+ New entry</button>
-      </div>
-      <div id="journal-list" class="hub-list"></div>
     </section>
 
     <!-- CALENDAR -->
