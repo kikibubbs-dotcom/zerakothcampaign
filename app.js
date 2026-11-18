@@ -694,7 +694,6 @@
     sec("PERSONAL DETAILS",'<p><b>Background:</b> '+escapeHTML(c.background||"—")+' · <b>Alignment:</b> '+escapeHTML(c.alignment||"—")+'</p><p><b>Personality:</b> '+escapeHTML(c.personality||"—")+'</p><p><b>Ideals:</b> '+escapeHTML(c.ideals||"—")+'</p><p><b>Bonds:</b> '+escapeHTML(c.bonds||"—")+'</p><p><b>Flaws:</b> '+escapeHTML(c.flaws||"—")+'</p><p><b>Backstory:</b> '+escapeHTML(c.backstory||"—")+'</p>')+'</div>';
     modal.hidden=false; modal.onclick=e=>{if(e.target===modal)closeModal();};
   }
-  function addSpellToBookFor(id){activeSpellbookId=id;addSpellToBook();}
 
   function renderCharacters() {
     const actions=root.querySelector(".archive-add-actions");
