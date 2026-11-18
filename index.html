@@ -73,6 +73,15 @@
         </div>
       </div>
 
+      <div class="overview-shortcuts hub-panel">
+        <div class="panel-heading"><div><h3>QUICK NAVIGATION</h3><p>Jump straight to the tools you use most.</p></div></div>
+        <div class="overview-shortcut-grid">
+          <button onclick="Hub.go('adventure')"><span>✥</span><strong>Adventure</strong><small>Party, quests & combat</small></button>
+          <button onclick="Hub.go('characters')"><span>♙</span><strong>Characters</strong><small>Open the character archive</small></button>
+          <button onclick="Hub.go('reference')"><span>✧</span><strong>Rules Library</strong><small>Find spells & rules</small></button>
+          <button onclick="Hub.go('calendar')"><span>▦</span><strong>Calendar</strong><small>Events & campaign time</small></button>
+        </div>
+      </div>
       <div class="hub-grid">
         <div class="hub-panel">
           <div class="panel-heading">
@@ -106,6 +115,13 @@
     <!-- ADVENTURE: MAP, PARTY AND COMBAT -->
     <section class="hub-page" id="page-adventure">
       <section class="session-mode-panel hub-panel dm-only" id="session-mode-panel"></section>
+      <nav class="adventure-jump-nav" aria-label="Adventure sections">
+        <button onclick="Hub.jumpTo('page-map')">🗺 World Map</button>
+        <button onclick="Hub.jumpTo('page-party')">♙ Party Tracker</button>
+        <button onclick="Hub.jumpTo('adventure-quest-board')">⚑ Quest Board</button>
+        <button onclick="Hub.jumpTo('page-journal')">▣ Campaign Journal</button>
+        <button onclick="Hub.jumpTo('combat-tracker')">⚔ Combat Tracker</button>
+      </nav>
       <div class="adventure-board-grid">
     <section id="page-map">
       <div class="page-heading">
@@ -235,11 +251,15 @@
       </div>
       <div class="archive-section">
         <div class="panel-heading"><h3>✦ PLAYER CHARACTERS & COMPANIONS</h3></div>
+        <div id="character-list-meta" class="list-meta"></div>
         <div id="character-list" class="character-grid"></div>
+        <div id="character-archive-pagination" class="archive-pagination"></div>
       </div>
       <div class="archive-section">
         <div class="panel-heading"><h3>♟ NPC DIRECTORY</h3></div>
+        <div id="npc-list-meta" class="list-meta"></div>
         <div id="npc-list" class="character-grid"></div>
+        <div id="npc-archive-pagination" class="archive-pagination"></div>
       </div>
     </section>
 
@@ -263,6 +283,7 @@
       <div class="page-heading"><div><div class="hub-kicker">THE RULES OF YOUR WORLD</div><h2>Rules & Reference Library</h2><p>Browse open 2014 and 2024 SRD material. Add entries to characters or create your own homebrew.</p></div><button class="hub-button" onclick="Hub.addHomebrew()">+ CREATE HOMEBREW</button></div>
       <div class="hub-panel reference-library-panel">
         <div class="reference-toolbar"><input id="reference-search" type="search" placeholder="Search spells, classes, species, equipment..." autocomplete="off"><select id="reference-edition"><option value="both">2014 + 2024</option><option value="2014">2014 rules</option><option value="2024">2024 rules</option></select><button class="small-button" onclick="Hub.loadReference()">SEARCH</button></div>
+        <div class="reference-browse-label"><strong>BROWSE BY CATEGORY</strong><span>Choose a category, then search or filter by rules edition.</span></div>
         <div class="reference-categories"><button class="active" data-reference-category="spells">Spells</button><button data-reference-category="species">Species</button><button data-reference-category="classes">Classes</button><button data-reference-category="backgrounds">Backgrounds</button><button data-reference-category="feats">Feats</button><button data-reference-category="items">Equipment</button><button data-reference-category="creatures">Creatures</button><button data-reference-category="languages">Languages</button><button data-reference-category="conditions">Conditions</button></div>
         <div id="reference-count" class="list-meta">Loading reference library...</div><div id="reference-results" class="reference-results"></div><div id="reference-pagination" class="reference-pagination"></div>
       </div>
@@ -346,12 +367,21 @@
 
     <!-- DM-ONLY ADMINISTRATION -->
     <section class="hub-page" id="page-dm-controls">
-      <div class="page-heading"><div><div class="hub-kicker">CAMPAIGN ADMINISTRATION</div><h2>DM Controls</h2><p>Administrative tools are kept here so the everyday campaign pages stay focused.</p></div></div>
-      <div class="dm-controls-grid">
-        <div class="hub-panel"><h3>♟ CHARACTER & NPC TOOLS</h3><p>Create campaign characters and manage the NPC directory.</p><div class="dm-control-actions"><button class="hub-button" onclick="Hub.addNPC()">+ ADD NPC</button><button class="small-button" onclick="Hub.randomizeNPC()">✧ RANDOMIZE NPC</button><button class="small-button" onclick="Hub.randomizeCharacter()">✧ RANDOMIZE CHARACTER</button><button class="small-button" onclick="Hub.go('characters')">OPEN CHARACTER ARCHIVE →</button></div></div>
-        <div class="hub-panel dm-notice-management"><div class="panel-heading"><div><h3>✉ NOTICE BOARD</h3><p>Publish campaign announcements. The newest notice appears on Overview.</p></div><button class="hub-button" onclick="Hub.addNotice()">+ NEW NOTICE</button></div><div id="notice-list" class="hub-list"></div></div>
-        <div class="hub-panel"><h3>▣ CAMPAIGN BACKUPS</h3><p>Export a complete backup or restore campaign content from a previous backup file.</p><div class="dm-control-actions"><button class="small-button" onclick="Hub.exportCampaign()">↓ EXPORT CAMPAIGN</button><label class="small-button import-campaign-label">↑ IMPORT CAMPAIGN<input id="campaign-import-file" type="file" accept="application/json,.json" hidden></label></div><p class="dm-control-warning">Importing a backup replaces the current campaign content. Player accounts and access codes remain unchanged.</p></div>
-        <div class="hub-panel dm-danger-panel"><h3>⚠ RESET CAMPAIGN</h3><p>Start the campaign again by clearing its content. Player accounts, access codes and memberships are preserved.</p><button class="small-button" onclick="Hub.resetCampaign()">RESET CAMPAIGN</button></div>
+      <div class="page-heading"><div><div class="hub-kicker">CAMPAIGN ADMINISTRATION</div><h2>DM Controls</h2><p>Manage the campaign, publish updates and protect your campaign data.</p></div></div>
+      <div class="dm-control-group">
+        <div class="dm-control-group-heading"><h3>CAMPAIGN CONTENT</h3><p>Tools for maintaining the people and announcements in your world.</p></div>
+        <div class="dm-controls-grid">
+          <div class="hub-panel"><h3>♟ CHARACTER & NPC TOOLS</h3><p>Create campaign characters and manage the NPC directory.</p><div class="dm-control-actions"><button class="hub-button" onclick="Hub.addNPC()">+ ADD NPC</button><button class="small-button" onclick="Hub.randomizeNPC()">✧ RANDOMIZE NPC</button><button class="small-button" onclick="Hub.randomizeCharacter()">✧ RANDOMIZE CHARACTER</button><button class="small-button" onclick="Hub.go('characters')">OPEN CHARACTER ARCHIVE →</button></div></div>
+          <div class="hub-panel dm-notice-management"><div class="panel-heading"><div><h3>✉ NOTICE BOARD</h3><p>Publish campaign announcements. The newest notice appears on Overview.</p></div><button class="hub-button" onclick="Hub.addNotice()">+ NEW NOTICE</button></div><div id="notice-list" class="hub-list"></div></div>
+        </div>
+      </div>
+      <div class="dm-control-group">
+        <div class="dm-control-group-heading"><h3>BACKUP & RECOVERY</h3><p>Keep an offline copy of your campaign before making major changes.</p></div>
+        <div class="hub-panel dm-backup-panel"><h3>▣ CAMPAIGN BACKUPS</h3><p>Export a complete backup or restore campaign content from a previous backup file.</p><div class="dm-control-actions"><button class="hub-button" onclick="Hub.exportCampaign()">↓ EXPORT CAMPAIGN</button><label class="small-button import-campaign-label">↑ IMPORT CAMPAIGN<input id="campaign-import-file" type="file" accept="application/json,.json" hidden></label></div><p class="dm-control-warning">Importing replaces the current campaign content, including characters, quests, journal, calendar and map. Player accounts, access codes and memberships are not replaced. Export a fresh backup first if you may need to undo the import.</p></div>
+      </div>
+      <div class="dm-control-group dm-danger-group">
+        <div class="dm-control-group-heading"><h3>DANGER ZONE</h3><p>Destructive actions are separated from everyday campaign tools.</p></div>
+        <div class="hub-panel dm-danger-panel"><div><h3>⚠ RESET CAMPAIGN</h3><p>Permanently clears campaign content and uploaded map files. Player accounts, access codes and memberships are preserved.</p></div><button class="small-button" onclick="Hub.resetCampaign()">RESET CAMPAIGN</button><p class="dm-control-warning">You will need to type RESET to confirm. This action cannot be undone unless you have a backup.</p></div>
       </div>
     </section>
 
