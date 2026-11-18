@@ -425,9 +425,9 @@
     const entries=[],add=(type,id,title,body,page)=>{const text=[title,body].filter(Boolean).join(" ");if(text.toLowerCase().includes(q))entries.push({type,id,title,body,page});};
     (state.characters||[]).forEach(x=>add(x.isNPC?"Companion":"Character",x.id,x.name,[x.player,x.race,x.className,x.backstory,x.notes,x.gear].join(" "),"characters"));
     (state.npcs||[]).forEach(x=>add("NPC",x.id,x.name,[x.role,x.description,x.location,x.relationship].join(" "),"characters"));
-    (state.quests||[]).forEach(x=>add("Quest",x.id,x.title,[x.description,x.reward,x.status].join(" "),"adventure"));
+    (state.quests||[]).forEach(x=>add("Quest",x.id,x.title,[x.description,x.reward,x.status].join(" "),"quests"));
     (state.journal||[]).forEach(x=>add("Journal",x.id,x.title,[x.date,x.author,x.body].join(" "),"journal"));
-    (state.events||[]).forEach(x=>add("Calendar event",x.id,x.title,[x.date,x.description,x.fantasyDate?JSON.stringify(x.fantasyDate):""].join(" "),"adventure"));
+    (state.events||[]).forEach(x=>add("Calendar event",x.id,x.title,[x.date,x.description,x.fantasyDate?JSON.stringify(x.fantasyDate):""].join(" "),"calendar"));
     (state.markers||[]).forEach(x=>add("Map location",x.id,x.label,x.description||"","adventure"));
     (state.sharedInventory||[]).forEach(x=>add("Party loot",x.id,x.name,[x.category,x.rarity,x.notes,x.value].join(" "),"inventory"));
     (state.characters||[]).forEach(c=>(c.inventoryItems||[]).forEach(x=>add("Character item",x.id,x.name,[c.name,x.category,x.rarity,x.notes,x.value].join(" "),"inventory")));
