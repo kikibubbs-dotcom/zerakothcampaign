@@ -158,7 +158,9 @@ Deno.serve(async (req) => {
         sharedInventory: [],
         partyGold: 0,
         sessions: [],
-        homebrew: []
+        homebrew: [],
+        encounters: [],
+        worldEntries: []
       };
       const { data: saved, error: saveError } = await admin.schema("private").rpc("save_campaign_data", {
         p_expected: before,
