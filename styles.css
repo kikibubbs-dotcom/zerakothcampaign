@@ -445,3 +445,15 @@
 #dnd-hub .archive-profile-details{margin:12px 0;padding:11px 12px;background:#191d29;border:1px solid var(--line);border-radius:6px}
 #dnd-hub .archive-profile-details summary{cursor:pointer;color:var(--gold);font:10px Arial,sans-serif;letter-spacing:1px}
 #dnd-hub .archive-profile-details p{margin:9px 0;line-height:1.55;white-space:pre-wrap}
+
+/* Digital character sheet */
+#dnd-hub .character-sheet-modal{width:min(1120px,96vw);max-height:90vh;overflow:auto}
+#dnd-hub .sheet-section{padding:16px 0;border-top:1px solid var(--line)}
+#dnd-hub .sheet-section h4{font:11px Arial,sans-serif;letter-spacing:1.5px;color:var(--gold);margin:0 0 13px}
+#dnd-hub .sheet-vitals,#dnd-hub .sheet-abilities,#dnd-hub .sheet-slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:9px}
+#dnd-hub .sheet-vitals>div,#dnd-hub .sheet-abilities>div,#dnd-hub .sheet-slots>div{background:#191d29;border:1px solid var(--line);border-radius:7px;padding:12px;display:flex;flex-direction:column;gap:6px}
+#dnd-hub .sheet-vitals b,#dnd-hub .sheet-abilities b,#dnd-hub .sheet-slots b{font:10px Arial,sans-serif;color:var(--muted);letter-spacing:1px}
+#dnd-hub .sheet-vitals strong,#dnd-hub .sheet-abilities strong,#dnd-hub .sheet-slots strong{font-size:20px;color:#fff}
+#dnd-hub .sheet-spell{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+#dnd-hub .sheet-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 14px}
+@media(max-width:650px){#dnd-hub .sheet-spell{grid-template-columns:1fr 1fr}}

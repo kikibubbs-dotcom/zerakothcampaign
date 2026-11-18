@@ -665,17 +665,40 @@
             ${c.languagesKnown?'<p><b>Languages:</b> '+escapeHTML(c.languagesKnown)+'</p>':""}
           </details>
           ${canEdit?`<div class="card-actions">
-            <button onclick="Hub.editCharacter('${c.id}')">OPEN PROFILE / EDIT</button>
+            <button onclick="Hub.openCharacterSheet('${c.id}')">OPEN CHARACTER SHEET</button>
+            <button onclick="Hub.editCharacter('${c.id}')">EDIT DETAILS</button>
             <button onclick="Hub.removeCharacter('${c.id}')">REMOVE</button>
           </div>`:`<p class="list-meta">VIEW ONLY</p>`}
         `}
       </article>`;
   }
 
+
+  function openCharacterSheet(id) {
+    const c=state.characters.find(x=>x.id===id); if(!c)return;
+    const can=canEditCharacter(c), abilities=[["STR","strength"],["DEX","dexterity"],["CON","constitution"],["INT","intelligence"],["WIS","wisdom"],["CHA","charisma"]];
+    const spells=Array.isArray(c.spellbook)?c.spellbook:[], slots=c.spellSlots||Array.from({length:9},()=>({used:0,total:0}));
+    const items=Array.isArray(c.inventoryItems)?c.inventoryItems:[];
+    const mod=v=>{const n=Math.floor((safeNumber(v,10)-10)/2);return n>=0?"+"+n:String(n);};
+    const sec=(title,body)=>'<section class="sheet-section"><h4>'+title+'</h4>'+body+'</section>';
+    const spellHtml=spells.map(s=>'<article class="sheet-spell"><div><b>'+escapeHTML(s.name)+'</b><p>'+escapeHTML(s.description||s.notes||"No description recorded.")+'</p><small>'+escapeHTML(s.castingTime||"—")+' · '+escapeHTML(s.range||"—")+' · '+escapeHTML(s.duration||"—")+'</small></div><label><input type="checkbox" '+(s.prepared?"checked":"")+' '+(can?"":"disabled")+' onchange="Hub.togglePreparedSpell(&quot;'+c.id+'&quot;,&quot;'+s.id+'\')"> Prepared</label></article>').join("")||empty("No spells added yet.");
+    const modal=$("hub-modal");
+    modal.innerHTML='<div class="modal-card character-sheet-modal"><div class="modal-top"><div><div class="hub-kicker">DIGITAL CHARACTER SHEET · '+escapeHTML(c.rulesEdition||"2014")+'</div><h3>'+escapeHTML(c.name)+'</h3><p>'+escapeHTML(c.race||"Species not set")+' · '+escapeHTML(c.className||"Class not set")+' · Level '+safeNumber(c.level,1)+'</p></div><button class="modal-close" onclick="Hub.closeModal()">✕</button></div>'+
+    '<div class="sheet-toolbar">'+(can?'<button class="hub-button" onclick="Hub.editCharacter(&quot;'+c.id+'&quot;)">EDIT DETAILS</button><button class="small-button" onclick="Hub.takeRest(&quot;'+c.id+'&quot;,&quot;short&quot;)">SHORT REST</button><button class="small-button" onclick="Hub.takeRest(&quot;'+c.id+'&quot;,&quot;long&quot;)">LONG REST</button>':'<span class="list-meta">VIEW ONLY</span>')+'</div>'+
+    sec("COMBAT & VITALS",'<div class="sheet-vitals"><div><b>HP</b><strong>'+safeNumber(c.hp)+' / '+safeNumber(c.maxHp)+'</strong>'+(can?'<button onclick="Hub.changeHP(&quot;'+c.id+'&quot;,1)">+1</button><button onclick="Hub.changeHP(&quot;'+c.id+'&quot;,-1)">−1</button>':'')+'</div><div><b>ARMOUR CLASS</b><strong>'+safeNumber(c.ac)+'</strong></div><div><b>INITIATIVE</b><strong>'+mod(c.dexterity)+'</strong></div><div><b>SPEED</b><strong>'+safeNumber(c.speed)+' ft</strong></div><div><b>PROFICIENCY</b><strong>+'+safeNumber(c.proficiency,2)+'</strong></div></div>')+
+    sec("ABILITY SCORES",'<div class="sheet-abilities">'+abilities.map(([label,key])=>'<div><b>'+label+'</b><strong>'+safeNumber(c[key],10)+'</strong><span>'+mod(c[key])+'</span></div>').join("")+'</div>')+
+    sec("PROFICIENCIES & FEATURES",'<p><b>Saving throws:</b> '+escapeHTML(c.savingThrows||"—")+'</p><p><b>Skills:</b> '+escapeHTML(c.skills||"—")+'</p><p><b>Features:</b> '+escapeHTML(c.features||"—")+'</p><p><b>Languages:</b> '+escapeHTML(c.languagesKnown||"—")+'</p><p><b>Senses:</b> '+escapeHTML(c.senses||"—")+'</p>')+
+    sec("SPELL SLOTS",'<div class="sheet-slots">'+slots.map((s,i)=>'<div><b>LEVEL '+(i+1)+'</b><strong>'+safeNumber(s.used)+' / '+safeNumber(s.total)+'</strong>'+(can?'<button onclick="Hub.slot(&quot;'+c.id+'&quot;,'+i+',-1)">−</button><button onclick="Hub.slot(&quot;'+c.id+'&quot;,'+i+',1)">+</button>':'')+'</div>').join("")+'</div>'+(can?'<button class="small-button" onclick="Hub.configureSlots(&quot;'+c.id+'&quot;)">CONFIGURE SLOTS</button>':'') )+
+    sec("SPELLBOOK & PREPARED SPELLS",'<div class="sheet-toolbar">'+(can?'<button class="hub-button" onclick="Hub.addSpellToBookFor(&quot;'+c.id+'&quot;)">+ ADD SPELL</button>':'')+'<span class="list-meta">'+spells.filter(s=>s.prepared).length+' prepared · '+spells.length+' known</span></div>'+spellHtml)+
+    sec("INVENTORY & GOLD",'<div class="sheet-toolbar"><b>'+safeNumber(c.gold)+' GP</b>'+(can?'<button class="small-button" onclick="Hub.addCharacterItem(&quot;'+c.id+'&quot;)">+ ADD ITEM</button><button class="small-button" onclick="Hub.editCharacterGold(&quot;'+c.id+'&quot;)">EDIT GOLD</button>':'')+'</div>'+(items.map(x=>'<p>'+escapeHTML(x.name)+' × '+safeNumber(x.quantity,1)+' · '+escapeHTML(x.category||"Item")+'</p>').join("")||empty("No equipment recorded.")))+
+    sec("PERSONAL DETAILS",'<p><b>Background:</b> '+escapeHTML(c.background||"—")+' · <b>Alignment:</b> '+escapeHTML(c.alignment||"—")+'</p><p><b>Personality:</b> '+escapeHTML(c.personality||"—")+'</p><p><b>Ideals:</b> '+escapeHTML(c.ideals||"—")+'</p><p><b>Bonds:</b> '+escapeHTML(c.bonds||"—")+'</p><p><b>Flaws:</b> '+escapeHTML(c.flaws||"—")+'</p><p><b>Backstory:</b> '+escapeHTML(c.backstory||"—")+'</p>')+'</div>';
+    modal.hidden=false; modal.onclick=e=>{if(e.target===modal)closeModal();};
+  }
+
   function renderCharacters() {
     const actions=root.querySelector(".archive-add-actions");
     if(actions){
-      actions.querySelectorAll("[onclick*='Hub.addCharacter'],[onclick*='Hub.randomizeCharacter']").forEach(el=>el.style.display=isDM()?"none":"");
+      actions.querySelectorAll("[onclick*='Hub.addCharacter']").forEach(el=>el.style.display=isDM()?"none":"");
       actions.querySelectorAll("[onclick*='Hub.addNPC'],[onclick*='Hub.randomizeNPC']").forEach(el=>el.style.display=isDM()?"":"none");
     }
     const partyAdd=root.querySelector("#page-party .page-heading button[onclick*='Hub.addCharacter']");
@@ -714,6 +737,7 @@
     {name:"notes",label:"Character-specific notes",type:"textarea",rows:3,value:s.notes||"",full:true}
   ];}
   function addSpellToBook(){const c=state.characters.find(x=>x.id===activeSpellbookId);if(!c||!canEditCharacter(c))return alert("Choose a character you can edit.");openForm("Add spell to "+c.name,spellFields(),v=>{if(!v.name.trim())return;mutate(()=>{if(!Array.isArray(c.spellbook))c.spellbook=[];c.spellbook.push({id:makeId(),...v,level:Math.max(0,Math.min(9,safeNumber(v.level))),concentration:/^(yes|true)$/i.test(v.concentration),ritual:/^(yes|true)$/i.test(v.ritual),prepared:true});});renderSpellbook();});}
+  function addSpellToBookFor(id){activeSpellbookId=id;addSpellToBook();}
   function editSpell(cid,sid){const c=state.characters.find(x=>x.id===cid),s=c?.spellbook?.find(x=>x.id===sid);if(!c||!s||!canEditCharacter(c))return;openForm("Edit "+s.name,spellFields(s),v=>mutate(()=>Object.assign(s,{...v,level:Math.max(0,Math.min(9,safeNumber(v.level))),concentration:/^(yes|true)$/i.test(v.concentration),ritual:/^(yes|true)$/i.test(v.ritual)})));}
   function togglePreparedSpell(cid,sid){const c=state.characters.find(x=>x.id===cid),s=c?.spellbook?.find(x=>x.id===sid);if(!c||!s||!canEditCharacter(c))return;mutate(()=>s.prepared=!s.prepared);renderSpellbook();}
   function removeSpell(cid,sid){const c=state.characters.find(x=>x.id===cid);if(!c||!canEditCharacter(c)||!confirm("Remove this spell from the spellbook?"))return;mutate(()=>c.spellbook=(c.spellbook||[]).filter(s=>s.id!==sid));renderSpellbook();}
@@ -1070,11 +1094,8 @@
   }
 
   function archiveFields(data={},type="player"){
-    const options=isDM()
-      ?[{value:"player",label:"Player character"},{value:"npc",label:"NPC"},{value:"companion",label:"NPC companion"}]
-      :[{value:"player",label:"Player character"}];
     return [
-      {name:"recordType",label:"Is this a player character, NPC or NPC companion?",type:"select",value:type,options,required:true,full:true},
+      ...(type==="npc"?[{name:"joinParty",label:"Add this NPC to the party as a companion?",type:"select",value:data?.isCompanion?"yes":"no",options:[{value:"no",label:"No — keep in NPC directory"},{value:"yes",label:"Yes — add to party tracker"}],full:true}]:[]),
       {type:"section",label:"IDENTITY & APPEARANCE",group:"player companion npc"},
       {name:"name",label:"Name",value:data.name||"",required:true,group:"player companion npc"},
       {name:"player",label:"Player / owner",value:data.player||(isDM()?"":member?.display_name),group:"player"},
@@ -1153,17 +1174,20 @@
     const editing=!!data;
     const initialType=collection==="npcs"?"npc":data?.isNPC?"companion":"player";
     const fields=archiveFields(data||{},initialType);
-    fields[0].options=[{value:initialType,label:initialType==="npc"?"NPC":initialType==="companion"?"NPC companion":"Player character"}];
     openForm(editing?"Edit archive entry":"Add to character & NPC archive",fields,v=>{
       if(!v.name.trim())return alert("Please enter a name.");
-      const type=v.recordType,portrait=v.portraitFile||v.portrait||data?.portrait||"";
+      const type=collection==="npcs"?"npc":initialType,portrait=v.portraitFile||v.portrait||data?.portrait||"";
       const common={id:data?.id||makeId(),name:v.name.trim(),race:v.race,className:v.className,alignment:v.alignment,portrait,personality:v.personality,ideals:v.ideals,bonds:v.bonds,flaws:v.flaws,backstory:v.backstory,loveInterest:v.loveInterest,notes:v.notes,rulesEdition:v.rulesEdition||"2014",exhaustion:Math.max(0,Math.min(6,safeNumber(v.exhaustion))),hitDiceUsed:Math.max(0,safeNumber(v.hitDiceUsed)),resources:Array.isArray(data?.resources)?data.resources:[],armorProficiencies:v.armorProficiencies,weaponProficiencies:v.weaponProficiencies,toolProficiencies:v.toolProficiencies,languagesKnown:v.languagesKnown,senses:v.senses,damageResistances:v.damageResistances,conditions:v.conditions,deathSuccesses:Math.max(0,Math.min(3,safeNumber(v.deathSuccesses))),deathFailures:Math.max(0,Math.min(3,safeNumber(v.deathFailures))),inspiration:v.inspiration==="Yes",attacks:v.attacks,spellcastingAbility:v.spellcastingAbility,spellSaveDC:safeNumber(v.spellSaveDC),spellAttackBonus:safeNumber(v.spellAttackBonus),spellbook:Array.isArray(data?.spellbook)?data.spellbook:[]};
       if(type==="npc"){
         const npc={...common,player:v.player,role:v.role,location:v.location,relationship:v.relationship,description:v.description,goals:v.goals,secrets:v.secrets,challengeRating:v.challengeRating,senses:v.senses,languages:v.languages,npcActions:v.npcActions,hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),hitDice:v.hitDice,proficiency:safeNumber(v.proficiency),strength:safeNumber(v.strength,10),dexterity:safeNumber(v.dexterity,10),constitution:safeNumber(v.constitution,10),intelligence:safeNumber(v.intelligence,10),wisdom:safeNumber(v.wisdom,10),charisma:safeNumber(v.charisma,10),savingThrows:v.savingThrows,skills:v.skills,features:v.features,spells:v.spells,attacks:v.attacks};
         if(!isDM())return;
         mutate(()=>{
-          if(collection==="characters")state.characters=state.characters.filter(x=>x.id!==data?.id);
-          if(collection==="npcs"&&data)Object.assign(data,npc);
+          if(v.joinParty==="yes"){
+            const companion={...npc,id:data?.partyCharacterId||makeId(),isNPC:true,isCompanion:true,player:"Party companion",level:1,background:"NPC companion",rulesEdition:"2014",proficiency:safeNumber(npc.proficiency,2),spellSlots:Array.from({length:9},()=>({used:0,total:0})),spellbook:[]};
+            if(data?.partyCharacterId){const existing=state.characters.find(x=>x.id===data.partyCharacterId);if(existing)Object.assign(existing,companion);else state.characters.push(companion);}
+            else state.characters.push(companion);
+            state.npcs=state.npcs.filter(x=>x.id!==data?.id);
+          }else if(collection==="npcs"&&data)Object.assign(data,npc);
           else state.npcs.unshift(npc);
         });
       }else{
@@ -1184,7 +1208,7 @@
   function pickRandom(items){return items[Math.floor(Math.random()*items.length)];}
   function randomFullName(){return pickRandom(["Alder","Briar","Caelan","Dara","Elowen","Fen","Galen","Ilyra","Joren","Kaia","Liora","Marek","Neris","Orin","Perrin","Quill","Rhea","Sylvi","Tarin","Vesper","Wren","Yara","Zephyr"])+" "+pickRandom(["Ashford","Blackthorn","Brightwater","Cinderfall","Dawnmere","Duskwalker","Embervale","Frostmere","Greystone","Holloway","Ironwood","Moonbrook","Ravencrest","Silverleaf","Stormborn","Thornfield","Vale"]);}
   function randomizeCharacter(){
-    if(isDM())return;
+    if(!isDM()&&!member)return;
     const race=pickRandom(["Human","Elf","Dwarf","Halfling","Gnome","Dragonborn","Tiefling","Half-Orc","Half-Elf","Orc","Aasimar","Goliath"]);
     const cls=pickRandom(["Barbarian","Bard","Cleric","Druid","Fighter","Monk","Paladin","Ranger","Rogue","Sorcerer","Warlock","Wizard"]);
     const background=pickRandom(["Acolyte","Charlatan","Criminal","Entertainer","Folk Hero","Guild Artisan","Hermit","Noble","Outlander","Sage","Sailor","Soldier","Urchin"]);
@@ -1192,7 +1216,7 @@
     keys.forEach((k,i)=>stats[k]=scores[i]);
     const die={Barbarian:12,Fighter:10,Paladin:10,Ranger:10,Bard:8,Cleric:8,Druid:8,Monk:8,Rogue:8,Sorcerer:6,Warlock:8,Wizard:6}[cls]||8;
     const hp=Math.max(1,die+Math.floor((stats.constitution-10)/2)),name=randomFullName();
-    const entry={id:makeId(),name,player:isDM()?"":member.display_name,race,className:cls,background,level:1,rulesEdition:pickRandom(["2014","2024"]),hp,maxHp:hp,ac:10+Math.floor((stats.dexterity-10)/2),initiative:Math.floor((stats.dexterity-10)/2),speed:30,proficiency:2,hitDice:"1d"+die,...stats,alignment:pickRandom(["Lawful Good","Neutral Good","Chaotic Good","Lawful Neutral","True Neutral","Chaotic Neutral","Lawful Evil","Neutral Evil","Chaotic Evil"]),personality:pickRandom(["Speaks before thinking, then regrets it.","Quietly observant and difficult to surprise.","Warm-hearted, generous and fiercely loyal.","Restless, curious and easily distracted.","Dry-witted, guarded and secretly sentimental.","Bold in a crisis, nervous in quiet moments."]),ideals:pickRandom(["Freedom: everyone deserves the chance to choose their own path.","Knowledge: understanding the world is worth any effort.","Community: nobody should be left behind.","Ambition: greatness must be earned.","Balance: every action has consequences.","Mercy: people can change when given a chance."]),bonds:pickRandom(["Owes their life to a stranger who vanished.","Carries a keepsake from a family member.","Protects a small hometown they rarely visit.","Searching for a missing friend or mentor.","Bound by a promise made to a loved one."]),flaws:pickRandom(["Cannot resist a mystery, even when dangerous.","Holds grudges longer than they should.","Takes foolish risks to prove their worth.","Hides problems instead of asking for help.","Trusts charming strangers too easily.","Will not back down from a public challenge."]),backstory:"Raised in "+pickRandom(["a remote mountain village","a crowded port city","a travelling merchant caravan","a noble household","a monastery","a frontier settlement","the backstreets of a sprawling city"])+", "+name.split(" ")[0]+" learned that "+pickRandom(["family is chosen as much as inherited","secrets can be more valuable than gold","the world is larger than any map","kindness can be a form of courage","survival depends on unlikely allies"])+". After "+pickRandom(["a disastrous expedition","a falling-out with a mentor","an unexpected inheritance","a strange recurring dream","a debt they could not repay","a chance encounter with a wandering adventurer"])+", they set out to discover what comes next.",skills:pickRandom(["Perception, Insight","Athletics, Intimidation","Stealth, Sleight of Hand","Arcana, History","Persuasion, Performance","Survival, Nature"]),languagesKnown:"Common, "+pickRandom(["Elvish","Dwarvish","Draconic","Halfling","Goblin","Sylvan"]),gear:"Adventurer's pack, a keepsake, travel clothes and 10 GP",spellSlots:Array.from({length:9},()=>({used:0,total:0})),isNPC:false};
+    const entry={id:makeId(),name,player:isDM()?"Unassigned":member.display_name,race,className:cls,background,level:1,rulesEdition:pickRandom(["2014","2024"]),hp,maxHp:hp,ac:10+Math.floor((stats.dexterity-10)/2),initiative:Math.floor((stats.dexterity-10)/2),speed:30,proficiency:2,hitDice:"1d"+die,...stats,alignment:pickRandom(["Lawful Good","Neutral Good","Chaotic Good","Lawful Neutral","True Neutral","Chaotic Neutral","Lawful Evil","Neutral Evil","Chaotic Evil"]),personality:pickRandom(["Speaks before thinking, then regrets it.","Quietly observant and difficult to surprise.","Warm-hearted, generous and fiercely loyal.","Restless, curious and easily distracted.","Dry-witted, guarded and secretly sentimental.","Bold in a crisis, nervous in quiet moments."]),ideals:pickRandom(["Freedom: everyone deserves the chance to choose their own path.","Knowledge: understanding the world is worth any effort.","Community: nobody should be left behind.","Ambition: greatness must be earned.","Balance: every action has consequences.","Mercy: people can change when given a chance."]),bonds:pickRandom(["Owes their life to a stranger who vanished.","Carries a keepsake from a family member.","Protects a small hometown they rarely visit.","Searching for a missing friend or mentor.","Bound by a promise made to a loved one."]),flaws:pickRandom(["Cannot resist a mystery, even when dangerous.","Holds grudges longer than they should.","Takes foolish risks to prove their worth.","Hides problems instead of asking for help.","Trusts charming strangers too easily.","Will not back down from a public challenge."]),backstory:"Raised in "+pickRandom(["a remote mountain village","a crowded port city","a travelling merchant caravan","a noble household","a monastery","a frontier settlement","the backstreets of a sprawling city"])+", "+name.split(" ")[0]+" learned that "+pickRandom(["family is chosen as much as inherited","secrets can be more valuable than gold","the world is larger than any map","kindness can be a form of courage","survival depends on unlikely allies"])+". After "+pickRandom(["a disastrous expedition","a falling-out with a mentor","an unexpected inheritance","a strange recurring dream","a debt they could not repay","a chance encounter with a wandering adventurer"])+", they set out to discover what comes next.",skills:pickRandom(["Perception, Insight","Athletics, Intimidation","Stealth, Sleight of Hand","Arcana, History","Persuasion, Performance","Survival, Nature"]),languagesKnown:"Common, "+pickRandom(["Elvish","Dwarvish","Draconic","Halfling","Goblin","Sylvan"]),gear:"Adventurer's pack, a keepsake, travel clothes and 10 GP",spellSlots:Array.from({length:9},()=>({used:0,total:0})),isNPC:false};
     if(!isDM())entry.ownerId=member.id;
     mutate(()=>state.characters.push(entry));
     alert("A new adventurer has joined the archive: "+name+". Open their profile to customise them.");
@@ -1435,7 +1459,7 @@
     selectReferenceCategory,
     changeReferencePage,
     loadReference,
-    renderSpellbook,selectSpellbookCharacter,addSpellToBook,editSpell,togglePreparedSpell,removeSpell,
+    renderSpellbook,selectSpellbookCharacter,addSpellToBook,addSpellToBookFor,editSpell,togglePreparedSpell,removeSpell,openCharacterSheet,
     searchBestiary,viewBestiary,saveBestiaryCreature,addBestiaryCreature,addEncounter,editEncounter,removeEncounter,
     renderWorld,addWorldEntry,editWorldEntry,removeWorldEntry,
     takeRest,
