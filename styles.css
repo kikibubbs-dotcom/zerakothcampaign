@@ -685,3 +685,5 @@
 #dnd-hub .ddb-sheet-editor .ddb-edit-identity-fields{gap:10px}
 #dnd-hub .spellbook-embedded{margin-top:18px}
 @media(max-width:760px){#dnd-hub .ddb-sheet-editor .ddb-edit-main-grid{grid-template-columns:1fr}}
+
+#dnd-hub .adventure-journal-panel{grid-column:1/-1;margin:18px 0}
