@@ -662,3 +662,14 @@
 #dnd-hub .beyond-item-equipped .beyond-row-main>strong:after{content:" · EQUIPPED";font-size:10px;letter-spacing:.08em;color:#d9b978}
 #dnd-hub #sheet-inventory .beyond-row-main small{display:block;line-height:1.55;margin-top:5px}
 #dnd-hub #sheet-inventory .beyond-subheading>div:first-child>small{display:block;max-width:650px;margin-top:7px;color:var(--muted,#888);line-height:1.5}
+
+
+/* Character sheet mini-sections */
+#dnd-hub .beyond-tab-nav{display:flex;gap:7px;overflow-x:auto;padding:12px 0 15px;border-bottom:1px solid var(--line);margin-bottom:4px;}
+#dnd-hub .beyond-tab-nav button{flex:0 0 auto;border:1px solid var(--line);border-radius:6px;background:#202431;color:#d9c99f;padding:10px 14px;font:700 10px Arial,sans-serif;letter-spacing:.7px;cursor:pointer;}
+#dnd-hub .beyond-tab-nav button:hover,#dnd-hub .beyond-tab-nav button.active{background:var(--gold);border-color:var(--gold);color:#202431;}
+#dnd-hub .beyond-tab-panel{display:none;}
+#dnd-hub .beyond-tab-panel.active{display:block;}
+#dnd-hub .adventure-quest-panel{margin:18px 0;}
+#dnd-hub .adventure-quest-panel .page-heading{margin-bottom:14px;}
+@media(max-width:600px){#dnd-hub .beyond-tab-nav{gap:5px;}#dnd-hub .beyond-tab-nav button{padding:9px 11px;font-size:9px;}}
