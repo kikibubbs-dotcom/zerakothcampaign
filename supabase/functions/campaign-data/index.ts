@@ -36,7 +36,7 @@ const asArray = (value: unknown) => Array.isArray(value) ? value : null;
 
 function validatePlayerChange(before: any, after: any, memberId: string) {
   if (!after || typeof after !== "object" || Array.isArray(after)) return "Campaign data is invalid.";
-  const allowed = new Set(["characters", "journal", "events", "sharedInventory", "partyGold", "sessions", "homebrew"]);
+  const allowed = new Set(["characters", "journal", "events", "worldEntries", "sharedInventory", "partyGold", "sessions", "homebrew"]);
   const keys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
   for (const key of keys) {
     if (!allowed.has(key) && !same(before?.[key], after?.[key])) {
@@ -64,7 +64,7 @@ function validatePlayerChange(before: any, after: any, memberId: string) {
   }
   for (const [id, entry] of newHomebrewById) if (!oldHomebrewById.has(id) && entry.ownerId !== memberId) return "New homebrew entries must be attributed to your account.";
 
-  for (const collection of ["characters", "journal", "events"]) {
+  for (const collection of ["characters", "journal", "events", "worldEntries"]) {
     const oldItems = asArray(before?.[collection]);
     const newItems = asArray(after?.[collection]);
     if (!oldItems || !newItems) return "Campaign collection is invalid: " + collection + ".";
@@ -84,6 +84,14 @@ function validatePlayerChange(before: any, after: any, memberId: string) {
         }
         if (newItem && newItem.isNPC) {
           return "Player-owned characters cannot be changed into NPC companions.";
+        }
+      } else if (collection === "worldEntries") {
+        const isOwner = (oldItem as any)?.ownerId === memberId;
+        if (!isOwner && (!newItem || !same(oldItem, newItem))) {
+          return "You can only edit or remove world entries you created.";
+        }
+        if (isOwner && newItem && newItem.ownerId !== memberId) {
+          return "A world entry cannot be transferred to another account.";
         }
       } else if (newItem && newItem.ownerId !== (oldItem as any)?.ownerId) {
         return "An entry's original author cannot be changed.";
