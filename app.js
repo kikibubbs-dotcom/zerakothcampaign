@@ -30,7 +30,9 @@
     sharedInventory:[],
     partyGold:0,
     sessions:[],
-    homebrew:[]
+    homebrew:[],
+    encounters:[],
+    worldEntries:[]
   });
 
   let state = blank();
@@ -120,6 +122,9 @@
     renderSessions();
     renderReferenceLibrary();
     renderCharacters();
+    renderSpellbook();
+    renderEncounters();
+    renderWorld();
     renderQuests();
     renderNPCs();
     renderJournal();
@@ -219,7 +224,7 @@
           mapUrl=upload.publicUrl;
         }
         const fresh={...blank(),...incoming,mapUrl};
-        ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions","homebrew"].forEach(k=>{if(!Array.isArray(fresh[k]))fresh[k]=[];});
+        ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions","homebrew","encounters","worldEntries"].forEach(k=>{if(!Array.isArray(fresh[k]))fresh[k]=[];});
         mutate(()=>state=fresh);
         alert("Campaign imported. The map image and campaign content were restored; player accounts and access codes were not changed.");
       }catch(err){alert(err.message||"The campaign backup could not be imported.");}
@@ -351,7 +356,11 @@
         if(referenceCategory==="classes")c.className=entry.name;
         else if(referenceCategory==="species")c.race=entry.name;
         else if(referenceCategory==="backgrounds")c.background=entry.name;
-        else if(referenceCategory==="spells")c.spells=[c.spells||"",line].filter(Boolean).join("\n");
+        else if(referenceCategory==="spells"){
+          if(!Array.isArray(c.spellbook))c.spellbook=[];
+          if(!c.spellbook.some(s=>String(s.name).toLowerCase()===String(entry.name).toLowerCase()))c.spellbook.push({id:makeId(),name:entry.name,level:safeNumber(entry.level),school:entry.school||"",castingTime:entry.casting_time||"",range:entry.range||"",components:entry.components||"",duration:entry.duration||"",concentration:!!entry.concentration,ritual:!!entry.ritual,prepared:true,notes:detail,description:entry.desc||entry.description||""});
+          c.spells=[c.spells||"",line].filter(Boolean).join("\n");
+        }
         else if(referenceCategory==="items"){
           if(!Array.isArray(c.inventoryItems))c.inventoryItems=[];
           c.inventoryItems.push({id:makeId(),name:entry.name,category:"Equipment",rarity:"Common",quantity:1,notes:detail});
@@ -659,6 +668,83 @@
       ? state.characters.map(c=>characterCard(c,false)).join("")
       : empty("No character profiles have been created.");
   }
+
+
+  let activeSpellbookId="";
+  function renderSpellbook(){
+    const sel=$("spellbook-character"),list=$("spellbook-list");if(!sel||!list)return;
+    const owned=state.characters.filter(c=>canEditCharacter(c));
+    const visible=state.characters;
+    if(!visible.length){sel.innerHTML="";list.innerHTML=empty("Create a character to manage a spellbook.");return;}
+    if(!activeSpellbookId||!visible.some(c=>c.id===activeSpellbookId))activeSpellbookId=(owned[0]||visible[0]).id;
+    sel.innerHTML=visible.map(c=>'<option value="'+escapeHTML(c.id)+'" '+(c.id===activeSpellbookId?'selected':'')+'>'+escapeHTML(c.name)+(canEditCharacter(c)?'':' · VIEW ONLY')+'</option>').join("");
+    const c=visible.find(x=>x.id===activeSpellbookId),spells=Array.isArray(c.spellbook)?c.spellbook:[];
+    $("spellbook-summary").textContent=spells.length+" spells · "+spells.filter(s=>s.prepared).length+" prepared · "+(c.rulesEdition||"2014")+" rules";
+    list.innerHTML=spells.length?spells.map(s=>'<article class="reference-card"><div class="reference-card-top"><span class="tag">'+(safeNumber(s.level)===0?'Cantrip':'Level '+safeNumber(s.level))+'</span><span class="list-meta">'+escapeHTML(s.school||'Spell')+(s.concentration?' · Concentration':'')+(s.ritual?' · Ritual':'')+'</span></div><h3>'+escapeHTML(s.name)+'</h3><p>'+escapeHTML(s.description||s.notes||'No description recorded.')+'</p><div class="spell-meta-grid"><span><b>CASTING</b> '+escapeHTML(s.castingTime||'—')+'</span><span><b>RANGE</b> '+escapeHTML(s.range||'—')+'</span><span><b>COMPONENTS</b> '+escapeHTML(s.components||'—')+'</span><span><b>DURATION</b> '+escapeHTML(s.duration||'—')+'</span></div><div class="card-actions">'+(canEditCharacter(c)?'<button onclick="Hub.togglePreparedSpell(\''+c.id+'\',\''+s.id+'\')">'+(s.prepared?'UNPREPARE':'PREPARE')+'</button><button onclick="Hub.editSpell(\''+c.id+'\',\''+s.id+'\')">EDIT</button><button onclick="Hub.removeSpell(\''+c.id+'\',\''+s.id+'\')">REMOVE</button>':'<span class="list-meta">VIEW ONLY</span>')+'</div></article>').join(""):empty("No spells in this spellbook yet. Add spells from the Rules Library or create a custom spell.");
+  }
+  function selectSpellbookCharacter(id){activeSpellbookId=id;renderSpellbook();}
+  function spellFields(s={}){return [
+    {name:"name",label:"Spell name",value:s.name||"",required:true,full:true},
+    {name:"level",label:"Spell level (0 = cantrip)",type:"number",min:0,max:9,value:s.level??0},
+    {name:"school",label:"School",value:s.school||""},
+    {name:"castingTime",label:"Casting time",value:s.castingTime||""},
+    {name:"range",label:"Range",value:s.range||""},
+    {name:"components",label:"Components",value:s.components||""},
+    {name:"duration",label:"Duration",value:s.duration||""},
+    {name:"concentration",label:"Concentration? (yes/no)",value:s.concentration?"yes":"no"},
+    {name:"ritual",label:"Ritual? (yes/no)",value:s.ritual?"yes":"no"},
+    {name:"description",label:"Spell description & effects",type:"textarea",rows:6,value:s.description||"",full:true},
+    {name:"notes",label:"Character-specific notes",type:"textarea",rows:3,value:s.notes||"",full:true}
+  ];}
+  function addSpellToBook(){const c=state.characters.find(x=>x.id===activeSpellbookId);if(!c||!canEditCharacter(c))return alert("Choose a character you can edit.");openForm("Add spell to "+c.name,spellFields(),v=>{if(!v.name.trim())return;mutate(()=>{if(!Array.isArray(c.spellbook))c.spellbook=[];c.spellbook.push({id:makeId(),...v,level:Math.max(0,Math.min(9,safeNumber(v.level))),concentration:/^(yes|true)$/i.test(v.concentration),ritual:/^(yes|true)$/i.test(v.ritual),prepared:true});});renderSpellbook();});}
+  function editSpell(cid,sid){const c=state.characters.find(x=>x.id===cid),s=c?.spellbook?.find(x=>x.id===sid);if(!c||!s||!canEditCharacter(c))return;openForm("Edit "+s.name,spellFields(s),v=>mutate(()=>Object.assign(s,{...v,level:Math.max(0,Math.min(9,safeNumber(v.level))),concentration:/^(yes|true)$/i.test(v.concentration),ritual:/^(yes|true)$/i.test(v.ritual)})));}
+  function togglePreparedSpell(cid,sid){const c=state.characters.find(x=>x.id===cid),s=c?.spellbook?.find(x=>x.id===sid);if(!c||!s||!canEditCharacter(c))return;mutate(()=>s.prepared=!s.prepared);renderSpellbook();}
+  function removeSpell(cid,sid){const c=state.characters.find(x=>x.id===cid);if(!c||!canEditCharacter(c)||!confirm("Remove this spell from the spellbook?"))return;mutate(()=>c.spellbook=(c.spellbook||[]).filter(s=>s.id!==sid));renderSpellbook();}
+
+  let bestiaryResults=[];
+  async function searchBestiary(){
+    const host=$("bestiary-results");if(!host)return;const q=$("bestiary-search").value.trim();
+    host.innerHTML=empty("Searching the open creature reference...");
+    try{const p=new URLSearchParams({limit:"20",ordering:"name",document__key__in:"srd-2014,srd-2024"});if(q)p.set("name__icontains",q);
+      const res=await fetch("https://api.open5e.com/v2/creatures/?"+p);if(!res.ok)throw new Error("Creature reference is unavailable.");const data=await res.json();bestiaryResults=data.results||[];
+      host.innerHTML=bestiaryResults.length?bestiaryResults.map((m,i)=>'<article class="reference-card"><div class="reference-card-top"><span class="tag">CR '+escapeHTML(m.cr||m.challenge_rating||'?')+'</span><span class="list-meta">AC '+safeNumber(m.ac)+' · HP '+safeNumber(m.hp)+'</span></div><h3>'+escapeHTML(m.name)+'</h3><p>'+escapeHTML(String(m.desc||'').slice(0,320))+'</p><div class="card-actions"><button onclick="Hub.viewBestiary('+i+')">STAT BLOCK</button><button class="dm-only" onclick="Hub.saveBestiaryCreature('+i+')">SAVE TO ARCHIVE</button></div></article>').join(""):empty("No creatures found.");
+      if(!isDM())host.querySelectorAll(".dm-only").forEach(x=>x.remove());
+    }catch(e){host.innerHTML=empty(e.message+" You can still add a custom creature.");}
+  }
+  function viewBestiary(i){const m=bestiaryResults[i];if(!m)return;openForm(m.name+" · Stat block",[
+    {name:"stats",label:"Core statistics",type:"textarea",rows:4,value:"CR: "+(m.cr||m.challenge_rating||"?")+"\nAC: "+(m.ac??"?")+"\nHP: "+(m.hp??"?")+"\nSpeed: "+(m.speed||"") ,full:true},
+    {name:"abilities",label:"Abilities, traits & actions",type:"textarea",rows:9,value:(m.desc||"")+(Array.isArray(m.actions)?"\n\n"+m.actions.map(a=>a.name+": "+a.desc).join("\n\n"):""),full:true},
+    {name:"source",label:"Source",value:m.document?.display_name||"Open SRD"}
+  ],()=>{});const b=$("hub-modal-form")?.querySelector('button[type="submit"]');if(b)b.textContent="CLOSE";}
+  function saveBestiaryCreature(i){if(!isDM())return;const m=bestiaryResults[i];if(!m)return;const n={id:makeId(),name:m.name,role:"Creature",description:m.desc||"",challengeRating:m.cr||m.challenge_rating||"",hp:safeNumber(m.hp),maxHp:Math.max(1,safeNumber(m.hp,1)),ac:safeNumber(m.ac),speed:m.speed||"",senses:m.senses||"",languages:m.languages||"",npcActions:Array.isArray(m.actions)?m.actions.map(a=>a.name+": "+a.desc).join("\n\n"):"",source:m.document?.display_name||"Open SRD",creatureType:m.type||"",size:m.size||"",alignment:m.alignment||""};mutate(()=>state.npcs.unshift(n));alert(m.name+" saved to the NPC archive.");}
+  function addBestiaryCreature(){if(!isDM())return;openForm("Add custom creature",[
+    {name:"name",label:"Creature name",required:true,full:true},{name:"creatureType",label:"Creature type"},{name:"size",label:"Size"},{name:"alignment",label:"Alignment"},
+    {name:"challengeRating",label:"Challenge rating"},{name:"hp",label:"Hit points",type:"number",min:1,value:10},{name:"maxHp",label:"Maximum HP",type:"number",min:1,value:10},{name:"ac",label:"Armour class",type:"number",min:0,value:10},{name:"speed",label:"Speed"},{name:"senses",label:"Senses"},{name:"languages",label:"Languages"},{name:"description",label:"Description & traits",type:"textarea",rows:4,full:true},{name:"npcActions",label:"Actions & attacks",type:"textarea",rows:5,full:true}
+  ],v=>{if(!v.name.trim())return;mutate(()=>state.npcs.unshift({id:makeId(),...v,hp:safeNumber(v.hp),maxHp:Math.max(1,safeNumber(v.maxHp)),ac:safeNumber(v.ac),role:"Creature"}));});
+  }
+  function renderEncounters(){const host=$("encounter-list");if(!host)return;const list=Array.isArray(state.encounters)?state.encounters:[];host.innerHTML=list.length?list.map(e=>'<article class="reference-card"><div class="reference-card-top"><span class="tag">'+escapeHTML(e.status||"Prepared")+'</span><span class="list-meta">'+(e.roster||[]).length+' roster entries</span></div><h3>'+escapeHTML(e.name)+'</h3><p>'+escapeHTML(e.notes||"No encounter notes.")+'</p><p>'+escapeHTML((e.roster||[]).map(x=>x.count+" × "+x.name).join(" · "))+'</p>'+(isDM()?'<div class="card-actions"><button onclick="Hub.editEncounter(\''+e.id+'\')">EDIT</button><button onclick="Hub.removeEncounter(\''+e.id+'\')">DELETE</button></div>':"")+'</article>').join(""):empty("No encounters prepared yet.");}
+  function encounterFields(e={}){return [
+    {name:"name",label:"Encounter name",value:e.name||"",required:true,full:true},
+    {name:"roster",label:"One creature per line: creature name | quantity",type:"textarea",rows:6,value:(e.roster||[]).map(x=>x.name+" | "+x.count).join("\n"),full:true},
+    {name:"notes",label:"Environment, tactics, objectives & treasure notes",type:"textarea",rows:5,value:e.notes||"",full:true},
+    {name:"status",label:"Status",type:"select",value:e.status||"Prepared",options:["Prepared","In progress","Completed"].map(x=>({value:x,label:x}))}
+  ];}
+  function addEncounter(){if(!isDM())return;openForm("Build encounter",encounterFields(),v=>{if(!v.name.trim())return;const roster=v.roster.split("\n").map(x=>x.split("|")).filter(x=>x[0]?.trim()).map(x=>({name:x[0].trim(),count:Math.max(1,safeNumber(x[1],1))}));mutate(()=>state.encounters.unshift({id:makeId(),name:v.name.trim(),roster,notes:v.notes,status:v.status,createdAt:new Date().toISOString()}));});}
+  function editEncounter(id){if(!isDM())return;const e=state.encounters.find(x=>x.id===id);if(!e)return;openForm("Edit encounter",encounterFields(e),v=>{const roster=v.roster.split("\n").map(x=>x.split("|")).filter(x=>x[0]?.trim()).map(x=>({name:x[0].trim(),count:Math.max(1,safeNumber(x[1],1))}));mutate(()=>Object.assign(e,{name:v.name.trim(),roster,notes:v.notes,status:v.status}));});}
+  function removeEncounter(id){if(!isDM()||!confirm("Delete this prepared encounter?"))return;mutate(()=>state.encounters=state.encounters.filter(x=>x.id!==id));renderEncounters();}
+
+  function worldFields(e={}){return [
+    {name:"title",label:"Entry title",value:e.title||"",required:true,full:true},
+    {name:"category",label:"Category",type:"select",value:e.category||"Places",options:["Places","Regions","Factions","People","Deities","History","Culture","Other lore"].map(x=>({value:x,label:x}))},
+    {name:"summary",label:"Short description",type:"textarea",rows:3,value:e.summary||"",full:true},
+    {name:"details",label:"Full entry / lore",type:"textarea",rows:8,value:e.details||"",full:true},
+    {name:"connections",label:"Related people, places, quests or clues",type:"textarea",rows:3,value:e.connections||"",full:true},
+    {name:"secrets",label:"DM-only secrets (visible to DM only)",type:"textarea",rows:4,value:e.secrets||"",full:true}
+  ];}
+  function renderWorld(){const host=$("world-list");if(!host)return;const q=($("world-search")?.value||"").toLowerCase(),cat=$("world-filter")?.value||"all";const list=(state.worldEntries||[]).filter(e=>(cat==="all"||e.category===cat)&&[e.title,e.summary,e.details,e.connections].join(" ").toLowerCase().includes(q));host.innerHTML=list.length?list.map(e=>'<article class="reference-card"><div class="reference-card-top"><span class="tag">'+escapeHTML(e.category)+'</span></div><h3>'+escapeHTML(e.title)+'</h3><p>'+escapeHTML(e.summary||"")+'</p><details><summary>READ FULL ENTRY</summary><p>'+escapeHTML(e.details||"")+'</p>'+(e.connections?'<p><b>Connections:</b> '+escapeHTML(e.connections)+'</p>':"")+'</details>'+(isDM()&&e.secrets?'<details class="dm-secret"><summary>DM SECRETS</summary><p>'+escapeHTML(e.secrets)+'</p></details>':"")+(isDM()?'<div class="card-actions"><button onclick="Hub.editWorldEntry(\''+e.id+'\')">EDIT</button><button onclick="Hub.removeWorldEntry(\''+e.id+'\')">DELETE</button></div>':"")+'</article>').join(""):empty("No world entries match this search.");}
+  function addWorldEntry(){if(!isDM())return;openForm("Add world encyclopedia entry",worldFields(),v=>{if(!v.title.trim())return;mutate(()=>{if(!Array.isArray(state.worldEntries))state.worldEntries=[];state.worldEntries.unshift({id:makeId(),...v,createdAt:new Date().toISOString()});});renderWorld();});}
+  function editWorldEntry(id){if(!isDM())return;const e=state.worldEntries.find(x=>x.id===id);if(!e)return;openForm("Edit "+e.title,worldFields(e),v=>{if(!v.title.trim())return;mutate(()=>Object.assign(e,v));renderWorld();});}
+  function removeWorldEntry(id){if(!isDM()||!confirm("Delete this world entry?"))return;mutate(()=>state.worldEntries=state.worldEntries.filter(x=>x.id!==id));renderWorld();}
 
   function renderQuests() {
     $("quest-list").innerHTML = state.quests.length
@@ -996,6 +1082,21 @@
       {name:"languages",label:"Languages",value:data.languages||"",group:"npc"},
       {name:"npcActions",label:"Actions & attacks",type:"textarea",rows:4,value:data.npcActions||"",group:"npc",full:true},
       {name:"secrets",label:"Secrets / information",type:"textarea",rows:3,value:data.secrets||"",group:"npc",full:true},
+      {type:"section",label:"SAVING THROWS, SKILLS & DEFENCES",group:"player companion npc"},
+      {name:"armorProficiencies",label:"Armour & shield proficiencies",value:data.armorProficiencies||"",group:"player companion npc",full:true},
+      {name:"weaponProficiencies",label:"Weapon proficiencies",value:data.weaponProficiencies||"",group:"player companion npc",full:true},
+      {name:"toolProficiencies",label:"Tool proficiencies",value:data.toolProficiencies||"",group:"player companion npc",full:true},
+      {name:"languagesKnown",label:"Languages known",value:data.languagesKnown||"",group:"player companion npc",full:true},
+      {name:"senses",label:"Senses & passive perception",value:data.senses||"",group:"player companion npc"},
+      {name:"damageResistances",label:"Damage resistances / immunities / vulnerabilities",type:"textarea",rows:2,value:data.damageResistances||"",group:"player companion npc",full:true},
+      {name:"conditions",label:"Condition immunities / current conditions",value:data.conditions||"",group:"player companion npc",full:true},
+      {name:"deathSuccesses",label:"Death save successes",type:"number",min:0,max:3,value:data.deathSuccesses??0,group:"player companion"},
+      {name:"deathFailures",label:"Death save failures",type:"number",min:0,max:3,value:data.deathFailures??0,group:"player companion"},
+      {name:"inspiration",label:"Heroic inspiration / inspiration",type:"select",value:data.inspiration||"No",options:[{value:"No",label:"No"},{value:"Yes",label:"Yes"}],group:"player companion"},
+      {name:"attacks",label:"Attacks & combat options",type:"textarea",rows:3,value:data.attacks||"",group:"player companion npc",full:true},
+      {name:"spellcastingAbility",label:"Spellcasting ability",value:data.spellcastingAbility||"",group:"player companion"},
+      {name:"spellSaveDC",label:"Spell save DC",type:"number",min:0,value:data.spellSaveDC??0,group:"player companion"},
+      {name:"spellAttackBonus",label:"Spell attack bonus",type:"number",value:data.spellAttackBonus??0,group:"player companion"},
       {name:"notes",label:"Additional notes",type:"textarea",rows:4,value:data.notes||"",group:"player companion npc",full:true}
     ];
   }
@@ -1007,9 +1108,9 @@
     openForm(editing?"Edit archive entry":"Add to character & NPC archive",archiveFields(data||{},initialType),v=>{
       if(!v.name.trim())return alert("Please enter a name.");
       const type=v.recordType,portrait=v.portraitFile||v.portrait||data?.portrait||"";
-      const common={id:data?.id||makeId(),name:v.name.trim(),race:v.race,className:v.className,alignment:v.alignment,portrait,personality:v.personality,ideals:v.ideals,bonds:v.bonds,flaws:v.flaws,backstory:v.backstory,loveInterest:v.loveInterest,notes:v.notes,rulesEdition:v.rulesEdition||"2014",exhaustion:Math.max(0,Math.min(6,safeNumber(v.exhaustion))),hitDiceUsed:Math.max(0,safeNumber(v.hitDiceUsed)),resources:Array.isArray(data?.resources)?data.resources:[]};
+      const common={id:data?.id||makeId(),name:v.name.trim(),race:v.race,className:v.className,alignment:v.alignment,portrait,personality:v.personality,ideals:v.ideals,bonds:v.bonds,flaws:v.flaws,backstory:v.backstory,loveInterest:v.loveInterest,notes:v.notes,rulesEdition:v.rulesEdition||"2014",exhaustion:Math.max(0,Math.min(6,safeNumber(v.exhaustion))),hitDiceUsed:Math.max(0,safeNumber(v.hitDiceUsed)),resources:Array.isArray(data?.resources)?data.resources:[],armorProficiencies:v.armorProficiencies,weaponProficiencies:v.weaponProficiencies,toolProficiencies:v.toolProficiencies,languagesKnown:v.languagesKnown,senses:v.senses,damageResistances:v.damageResistances,conditions:v.conditions,deathSuccesses:Math.max(0,Math.min(3,safeNumber(v.deathSuccesses))),deathFailures:Math.max(0,Math.min(3,safeNumber(v.deathFailures))),inspiration:v.inspiration==="Yes",attacks:v.attacks,spellcastingAbility:v.spellcastingAbility,spellSaveDC:safeNumber(v.spellSaveDC),spellAttackBonus:safeNumber(v.spellAttackBonus),spellbook:Array.isArray(data?.spellbook)?data.spellbook:[]};
       if(type==="npc"){
-        const npc={...common,player:v.player,role:v.role,location:v.location,relationship:v.relationship,description:v.description,goals:v.goals,secrets:v.secrets,challengeRating:v.challengeRating,senses:v.senses,languages:v.languages,npcActions:v.npcActions,hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),hitDice:v.hitDice,proficiency:safeNumber(v.proficiency),strength:safeNumber(v.strength,10),dexterity:safeNumber(v.dexterity,10),constitution:safeNumber(v.constitution,10),intelligence:safeNumber(v.intelligence,10),wisdom:safeNumber(v.wisdom,10),charisma:safeNumber(v.charisma,10),savingThrows:v.savingThrows,skills:v.skills,features:v.features,spells:v.spells};
+        const npc={...common,player:v.player,role:v.role,location:v.location,relationship:v.relationship,description:v.description,goals:v.goals,secrets:v.secrets,challengeRating:v.challengeRating,senses:v.senses,languages:v.languages,npcActions:v.npcActions,hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),hitDice:v.hitDice,proficiency:safeNumber(v.proficiency),strength:safeNumber(v.strength,10),dexterity:safeNumber(v.dexterity,10),constitution:safeNumber(v.constitution,10),intelligence:safeNumber(v.intelligence,10),wisdom:safeNumber(v.wisdom,10),charisma:safeNumber(v.charisma,10),savingThrows:v.savingThrows,skills:v.skills,features:v.features,spells:v.spells,attacks:v.attacks};
         if(!isDM())return;
         mutate(()=>{
           if(collection==="characters")state.characters=state.characters.filter(x=>x.id!==data?.id);
@@ -1017,7 +1118,7 @@
           else state.npcs.unshift(npc);
         });
       }else{
-        const c={...common,player:type==="player"?(isDM()?v.player:member.display_name):"",background:v.background,level:Math.max(1,safeNumber(v.level,1)),experience:Math.max(0,safeNumber(v.experience)),hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),hitDice:v.hitDice,proficiency:safeNumber(v.proficiency),strength:safeNumber(v.strength,10),dexterity:safeNumber(v.dexterity,10),constitution:safeNumber(v.constitution,10),intelligence:safeNumber(v.intelligence,10),wisdom:safeNumber(v.wisdom,10),charisma:safeNumber(v.charisma,10),savingThrows:v.savingThrows,skills:v.skills,features:v.features,spells:v.spells,gear:v.gear,isNPC:type==="companion",resources:Array.isArray(data?.resources)?data.resources:[],hitDiceUsed:Math.max(0,safeNumber(data?.hitDiceUsed))};
+        const c={...common,player:type==="player"?(isDM()?v.player:member.display_name):"",background:v.background,level:Math.max(1,safeNumber(v.level,1)),experience:Math.max(0,safeNumber(v.experience)),hp:Math.max(0,safeNumber(v.hp)),maxHp:Math.max(1,safeNumber(v.maxHp,1)),ac:safeNumber(v.ac),initiative:safeNumber(v.initiative),speed:safeNumber(v.speed),hitDice:v.hitDice,proficiency:safeNumber(v.proficiency),strength:safeNumber(v.strength,10),dexterity:safeNumber(v.dexterity,10),constitution:safeNumber(v.constitution,10),intelligence:safeNumber(v.intelligence,10),wisdom:safeNumber(v.wisdom,10),charisma:safeNumber(v.charisma,10),savingThrows:v.savingThrows,skills:v.skills,features:v.features,spells:v.spells,gear:v.gear,isNPC:type==="companion",resources:Array.isArray(data?.resources)?data.resources:[],hitDiceUsed:Math.max(0,safeNumber(data?.hitDiceUsed)),armorProficiencies:v.armorProficiencies,weaponProficiencies:v.weaponProficiencies,toolProficiencies:v.toolProficiencies,languagesKnown:v.languagesKnown,senses:v.senses,damageResistances:v.damageResistances,conditions:v.conditions,deathSuccesses:Math.max(0,Math.min(3,safeNumber(v.deathSuccesses))),deathFailures:Math.max(0,Math.min(3,safeNumber(v.deathFailures))),inspiration:v.inspiration==="Yes",attacks:v.attacks,spellcastingAbility:v.spellcastingAbility,spellSaveDC:safeNumber(v.spellSaveDC),spellAttackBonus:safeNumber(v.spellAttackBonus),spellbook:Array.isArray(data?.spellbook)?data.spellbook:[]};
         c.hp=Math.min(c.hp,c.maxHp);
         if(!isDM())c.ownerId=member.id;else if(data?.ownerId)c.ownerId=data.ownerId;
         mutate(()=>{
@@ -1158,6 +1259,9 @@
     if(adventureGrid)adventureGrid.classList.toggle("adventure-visible",tab==="adventure");
     if(tab==="adventure")adventureTabs.forEach(name=>$("page-"+name).classList.add("active"));
     else{const page=$("page-"+tab);if(page)page.classList.add("active");}
+    if(tab==="spellbook")renderSpellbook();
+    if(tab==="bestiary"){renderEncounters();searchBestiary();}
+    if(tab==="world")renderWorld();
   }
 
   $("campaign-search-input").addEventListener("input",searchCampaign);
@@ -1260,6 +1364,9 @@
     selectReferenceCategory,
     changeReferencePage,
     loadReference,
+    renderSpellbook,selectSpellbookCharacter,addSpellToBook,editSpell,togglePreparedSpell,removeSpell,
+    searchBestiary,viewBestiary,saveBestiaryCreature,addBestiaryCreature,addEncounter,editEncounter,removeEncounter,
+    renderWorld,addWorldEntry,editWorldEntry,removeWorldEntry,
     takeRest,
     editResources,
     exportCampaign,
