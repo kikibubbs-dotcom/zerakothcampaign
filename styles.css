@@ -286,8 +286,9 @@
 
 /* Archive, spacing and quest/calendar polish */
 #dnd-hub .hub-page > * + * {margin-top:36px;}
-#dnd-hub .adventure-board-grid {display:none;grid-template-columns:repeat(2,minmax(0,1fr));gap:30px;align-items:start;margin-bottom:36px;}
-#dnd-hub .adventure-board-grid.adventure-visible {display:grid;}
+#dnd-hub .adventure-board-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:30px;align-items:start;margin-bottom:36px;}
+#dnd-hub #page-adventure > .adventure-board-grid > #page-map {grid-column:1/-1;min-width:0;}
+#dnd-hub #page-adventure > .adventure-board-grid > #page-party {min-width:0;}
 #dnd-hub .adventure-board-grid > .hub-page {min-width:0;}
 #dnd-hub .archive-section {margin-top:24px;padding:18px;background:#1d202c;border:1px solid var(--line);border-radius:9px;}
 #dnd-hub .archive-section .panel-heading {margin-bottom:14px;}
@@ -321,6 +322,13 @@
 @keyframes calendarStamp {0%{opacity:0;transform:scale(2.4) rotate(-22deg)}45%{opacity:1;transform:scale(.92) rotate(8deg)}65%{transform:scale(1.05) rotate(-4deg)}100%{opacity:0;transform:scale(1) rotate(0)}}
 @keyframes eventDayGlow {from{box-shadow:0 0 0 #d6b87900}to{box-shadow:0 0 22px #d6b87999;border-color:var(--gold)}}
 @media(max-width:850px){#dnd-hub .adventure-board-grid{grid-template-columns:1fr;}}
+#dnd-hub .dm-controls-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+#dnd-hub .dm-controls-grid .hub-panel{margin:0;min-width:0}
+#dnd-hub .dm-control-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}
+#dnd-hub .dm-control-warning{margin-top:14px;padding:10px 12px;border-left:2px solid var(--gold2);background:#191d29;border-radius:3px}
+#dnd-hub .dm-danger-panel{border-color:#78504f}
+#dnd-hub .dm-danger-panel h3{color:#e2a39b}
+@media(max-width:650px){#dnd-hub .dm-controls-grid{grid-template-columns:1fr}}
 
 #dnd-hub #calendar-workspace > * + * {margin-top:32px;}
 #dnd-hub .calendar-event-chip.event-missed {background:#090a0e;color:#666;opacity:.5;text-decoration:none;}
