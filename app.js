@@ -184,7 +184,7 @@
     const list=$("session-list"),sessions=Array.isArray(state.sessions)?state.sessions:[];
     list.innerHTML=sessions.length?sessions.slice().sort((a,b)=>safeNumber(b.number)-safeNumber(a.number)).map(s=>{
       let out='<article class="list-card session-card"><div class="list-meta">SESSION '+safeNumber(s.number)+' · '+escapeHTML(s.date||"Date not recorded")+'</div><h3>'+escapeHTML(s.title||"Untitled session")+'</h3>';
-      const sections=[["SUMMARY",s.summary],["IMPORTANT DECISIONS",s.decisions],["DISCOVERIES",s.discoveries],["NPC ENCOUNTERS",s.npcEncounters],["UNRESOLVED HOOKS",s.openHooks]];
+      const sections=[["SUMMARY",s.summary],["IMPORTANT DECISIONS",s.decisions],["DISCOVERIES",s.discoveries],["NPC ENCOUNTERS",s.npcEncounters],["UNRESOLVED HOOKS",s.openHooks],["COMBAT & PARTY SNAPSHOT",s.combatSummary]];
       sections.forEach(([label,value])=>{if(value)out+='<div class="session-detail"><strong>'+label+'</strong><p>'+escapeHTML(value)+'</p></div>';});
       if(isDM())out+='<div class="card-actions"><button onclick="Hub.editSession(\''+s.id+'\')">EDIT</button><button onclick="Hub.removeSession(\''+s.id+'\')">DELETE</button></div>';
       return out+'</article>';
