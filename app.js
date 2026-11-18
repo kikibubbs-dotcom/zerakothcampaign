@@ -1092,7 +1092,7 @@
       {name:"conditions",label:"Condition immunities / current conditions",value:data.conditions||"",group:"player companion npc",full:true},
       {name:"deathSuccesses",label:"Death save successes",type:"number",min:0,max:3,value:data.deathSuccesses??0,group:"player companion"},
       {name:"deathFailures",label:"Death save failures",type:"number",min:0,max:3,value:data.deathFailures??0,group:"player companion"},
-      {name:"inspiration",label:"Heroic inspiration / inspiration",type:"select",value:data.inspiration||"No",options:[{value:"No",label:"No"},{value:"Yes",label:"Yes"}],group:"player companion"},
+      {name:"inspiration",label:"Heroic inspiration / inspiration",type:"select",value:data.inspiration?"Yes":"No",options:[{value:"No",label:"No"},{value:"Yes",label:"Yes"}],group:"player companion"},
       {name:"attacks",label:"Attacks & combat options",type:"textarea",rows:3,value:data.attacks||"",group:"player companion npc",full:true},
       {name:"spellcastingAbility",label:"Spellcasting ability",value:data.spellcastingAbility||"",group:"player companion"},
       {name:"spellSaveDC",label:"Spell save DC",type:"number",min:0,value:data.spellSaveDC??0,group:"player companion"},
