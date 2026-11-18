@@ -1131,7 +1131,9 @@
     if(data&&collection==="characters"&&!canEditCharacter(data))return;
     const editing=!!data;
     const initialType=collection==="npcs"?"npc":data?.isNPC?"companion":"player";
-    openForm(editing?"Edit archive entry":"Add to character & NPC archive",archiveFields(data||{},initialType),v=>{
+    const fields=archiveFields(data||{},initialType);
+    fields[0].options=[{value:initialType,label:initialType==="npc"?"NPC":initialType==="companion"?"NPC companion":"Player character"}];
+    openForm(editing?"Edit archive entry":"Add to character & NPC archive",fields,v=>{
       if(!v.name.trim())return alert("Please enter a name.");
       const type=v.recordType,portrait=v.portraitFile||v.portrait||data?.portrait||"";
       const common={id:data?.id||makeId(),name:v.name.trim(),race:v.race,className:v.className,alignment:v.alignment,portrait,personality:v.personality,ideals:v.ideals,bonds:v.bonds,flaws:v.flaws,backstory:v.backstory,loveInterest:v.loveInterest,notes:v.notes,rulesEdition:v.rulesEdition||"2014",exhaustion:Math.max(0,Math.min(6,safeNumber(v.exhaustion))),hitDiceUsed:Math.max(0,safeNumber(v.hitDiceUsed)),resources:Array.isArray(data?.resources)?data.resources:[],armorProficiencies:v.armorProficiencies,weaponProficiencies:v.weaponProficiencies,toolProficiencies:v.toolProficiencies,languagesKnown:v.languagesKnown,senses:v.senses,damageResistances:v.damageResistances,conditions:v.conditions,deathSuccesses:Math.max(0,Math.min(3,safeNumber(v.deathSuccesses))),deathFailures:Math.max(0,Math.min(3,safeNumber(v.deathFailures))),inspiration:v.inspiration==="Yes",attacks:v.attacks,spellcastingAbility:v.spellcastingAbility,spellSaveDC:safeNumber(v.spellSaveDC),spellAttackBonus:safeNumber(v.spellAttackBonus),spellbook:Array.isArray(data?.spellbook)?data.spellbook:[]};
