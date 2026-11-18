@@ -48,6 +48,7 @@
   let calendarView = null;
   let mapDrawing = false;
   let journalCanvasDirty = false;
+  let activeCharacterSheetId = "";
 
   const empty = text => `<div class="empty-state">${escapeHTML(text)}</div>`;
   const isDM = () => member?.role === "dm";
@@ -122,6 +123,7 @@
     renderSessions();
     renderReferenceLibrary();
     renderCharacters();
+    if(activeCharacterSheetId)renderCharacterSheet();
     renderSpellbook();
     renderWorld();
     renderQuests();
@@ -675,24 +677,44 @@
 
 
   function openCharacterSheet(id) {
-    const c=state.characters.find(x=>x.id===id); if(!c)return;
-    const can=canEditCharacter(c), abilities=[["STR","strength"],["DEX","dexterity"],["CON","constitution"],["INT","intelligence"],["WIS","wisdom"],["CHA","charisma"]];
-    const spells=Array.isArray(c.spellbook)?c.spellbook:[], slots=c.spellSlots||Array.from({length:9},()=>({used:0,total:0}));
-    const items=Array.isArray(c.inventoryItems)?c.inventoryItems:[];
-    const mod=v=>{const n=Math.floor((safeNumber(v,10)-10)/2);return n>=0?"+"+n:String(n);};
-    const sec=(title,body)=>'<section class="sheet-section"><h4>'+title+'</h4>'+body+'</section>';
-    const spellHtml=spells.map(s=>'<article class="sheet-spell"><div><b>'+escapeHTML(s.name)+'</b><p>'+escapeHTML(s.description||s.notes||"No description recorded.")+'</p><small>'+escapeHTML(s.castingTime||"—")+' · '+escapeHTML(s.range||"—")+' · '+escapeHTML(s.duration||"—")+'</small></div><label><input type="checkbox" '+(s.prepared?"checked":"")+' '+(can?"":"disabled")+' onchange="Hub.togglePreparedSpell(&quot;'+c.id+'&quot;,&quot;'+s.id+'\')"> Prepared</label></article>').join("")||empty("No spells added yet.");
-    const modal=$("hub-modal");
-    modal.innerHTML='<div class="modal-card character-sheet-modal"><div class="modal-top"><div><div class="hub-kicker">DIGITAL CHARACTER SHEET · '+escapeHTML(c.rulesEdition||"2014")+'</div><h3>'+escapeHTML(c.name)+'</h3><p>'+escapeHTML(c.race||"Species not set")+' · '+escapeHTML(c.className||"Class not set")+' · Level '+safeNumber(c.level,1)+'</p></div><button class="modal-close" onclick="Hub.closeModal()">✕</button></div>'+
-    '<div class="sheet-toolbar">'+(can?'<button class="hub-button" onclick="Hub.editCharacter(&quot;'+c.id+'&quot;)">EDIT DETAILS</button><button class="small-button" onclick="Hub.takeRest(&quot;'+c.id+'&quot;,&quot;short&quot;)">SHORT REST</button><button class="small-button" onclick="Hub.takeRest(&quot;'+c.id+'&quot;,&quot;long&quot;)">LONG REST</button>':'<span class="list-meta">VIEW ONLY</span>')+'</div>'+
-    sec("COMBAT & VITALS",'<div class="sheet-vitals"><div><b>HP</b><strong>'+safeNumber(c.hp)+' / '+safeNumber(c.maxHp)+'</strong>'+(can?'<button onclick="Hub.changeHP(&quot;'+c.id+'&quot;,1)">+1</button><button onclick="Hub.changeHP(&quot;'+c.id+'&quot;,-1)">−1</button>':'')+'</div><div><b>ARMOUR CLASS</b><strong>'+safeNumber(c.ac)+'</strong></div><div><b>INITIATIVE</b><strong>'+mod(c.dexterity)+'</strong></div><div><b>SPEED</b><strong>'+safeNumber(c.speed)+' ft</strong></div><div><b>PROFICIENCY</b><strong>+'+safeNumber(c.proficiency,2)+'</strong></div></div>')+
-    sec("ABILITY SCORES",'<div class="sheet-abilities">'+abilities.map(([label,key])=>'<div><b>'+label+'</b><strong>'+safeNumber(c[key],10)+'</strong><span>'+mod(c[key])+'</span></div>').join("")+'</div>')+
-    sec("PROFICIENCIES & FEATURES",'<p><b>Saving throws:</b> '+escapeHTML(c.savingThrows||"—")+'</p><p><b>Skills:</b> '+escapeHTML(c.skills||"—")+'</p><p><b>Features:</b> '+escapeHTML(c.features||"—")+'</p><p><b>Languages:</b> '+escapeHTML(c.languagesKnown||"—")+'</p><p><b>Senses:</b> '+escapeHTML(c.senses||"—")+'</p>')+
-    sec("SPELL SLOTS",'<div class="sheet-slots">'+slots.map((s,i)=>'<div><b>LEVEL '+(i+1)+'</b><strong>'+safeNumber(s.used)+' / '+safeNumber(s.total)+'</strong>'+(can?'<button onclick="Hub.slot(&quot;'+c.id+'&quot;,'+i+',-1)">−</button><button onclick="Hub.slot(&quot;'+c.id+'&quot;,'+i+',1)">+</button>':'')+'</div>').join("")+'</div>'+(can?'<button class="small-button" onclick="Hub.configureSlots(&quot;'+c.id+'&quot;)">CONFIGURE SLOTS</button>':'') )+
-    sec("SPELLBOOK & PREPARED SPELLS",'<div class="sheet-toolbar">'+(can?'<button class="hub-button" onclick="Hub.addSpellToBookFor(&quot;'+c.id+'&quot;)">+ ADD SPELL</button>':'')+'<span class="list-meta">'+spells.filter(s=>s.prepared).length+' prepared · '+spells.length+' known</span></div>'+spellHtml)+
-    sec("INVENTORY & GOLD",'<div class="sheet-toolbar"><b>'+safeNumber(c.gold)+' GP</b>'+(can?'<button class="small-button" onclick="Hub.addCharacterItem(&quot;'+c.id+'&quot;)">+ ADD ITEM</button><button class="small-button" onclick="Hub.editCharacterGold(&quot;'+c.id+'&quot;)">EDIT GOLD</button>':'')+'</div>'+(items.map(x=>'<p>'+escapeHTML(x.name)+' × '+safeNumber(x.quantity,1)+' · '+escapeHTML(x.category||"Item")+'</p>').join("")||empty("No equipment recorded.")))+
-    sec("PERSONAL DETAILS",'<p><b>Background:</b> '+escapeHTML(c.background||"—")+' · <b>Alignment:</b> '+escapeHTML(c.alignment||"—")+'</p><p><b>Personality:</b> '+escapeHTML(c.personality||"—")+'</p><p><b>Ideals:</b> '+escapeHTML(c.ideals||"—")+'</p><p><b>Bonds:</b> '+escapeHTML(c.bonds||"—")+'</p><p><b>Flaws:</b> '+escapeHTML(c.flaws||"—")+'</p><p><b>Backstory:</b> '+escapeHTML(c.backstory||"—")+'</p>')+'</div>';
-    modal.hidden=false; modal.onclick=e=>{if(e.target===modal)closeModal();};
+    const c=state.characters.find(x=>x.id===id);if(!c)return;
+    activeCharacterSheetId=id;
+    const tab=root.querySelector('[data-tab="character-sheet"]');if(tab)tab.hidden=false;
+    go("character-sheet");renderCharacterSheet();
+  }
+
+  function renderCharacterSheet(){
+    const host=$("character-sheet-content"),c=state.characters.find(x=>x.id===activeCharacterSheetId);
+    if(!host)return;if(!c){host.innerHTML=empty("Choose a character from the archive.");return;}
+    const can=canEditCharacter(c),mod=v=>{const n=Math.floor((safeNumber(v,10)-10)/2);return n>=0?"+"+n:String(n);};
+    const abilities=[["STR","strength"],["DEX","dexterity"],["CON","constitution"],["INT","intelligence"],["WIS","wisdom"],["CHA","charisma"]];
+    const slots=Array.isArray(c.spellSlots)?c.spellSlots:Array.from({length:9},()=>({used:0,total:0}));
+    const spells=Array.isArray(c.spellbook)?c.spellbook:[],items=Array.isArray(c.inventoryItems)?c.inventoryItems:[];
+    const section=(id,title,body)=>'<section class="beyond-section" id="sheet-'+id+'"><div class="beyond-section-heading"><h3>'+title+'</h3></div>'+body+'</section>';
+    const skillText=String(c.skills||"").split(/[,;\\n]+/).map(x=>x.trim()).filter(Boolean);
+    const saveText=String(c.savingThrows||"").split(/[,;\\n]+/).map(x=>x.trim()).filter(Boolean);
+    const hp=safeNumber(c.hp),maxHp=Math.max(1,safeNumber(c.maxHp,1));
+    const spellsHtml=spells.length?spells.map(s=>'<article class="beyond-list-row"><div class="beyond-row-main"><strong>'+escapeHTML(s.name)+'</strong><p>'+escapeHTML(s.description||s.notes||"No description recorded.")+'</p><small>'+escapeHTML(s.level?"Level "+s.level:"Cantrip")+' · '+escapeHTML(s.school||"Spell")+' · '+escapeHTML(s.castingTime||"—")+' · '+escapeHTML(s.range||"—")+'</small></div><div class="beyond-row-actions"><span class="beyond-pill">'+(s.prepared?"PREPARED":"KNOWN")+'</span>'+(can?'<button class="small-button" onclick="Hub.togglePreparedSpell(\\''+c.id+'\\',\\''+s.id+'\\')">'+(s.prepared?"UNPREPARE":"PREPARE")+'</button><button class="small-button" onclick="Hub.editSpell(\\''+c.id+'\\',\\''+s.id+'\\')">EDIT</button>':"")+'</div></article>').join(""):empty("No spells recorded.");
+    const itemsHtml=items.length?items.map(x=>'<article class="beyond-list-row"><div class="beyond-row-main"><strong>'+escapeHTML(x.name)+'</strong><p>'+escapeHTML(x.category||"Equipment")+' · '+escapeHTML(x.rarity||"Common")+' · Qty '+safeNumber(x.quantity,1)+'</p><small>'+escapeHTML(x.notes||"")+'</small></div>'+(can?'<div class="beyond-row-actions"><button class="small-button" onclick="Hub.editCharacterItem(\\''+c.id+'\\',\\''+x.id+'\\')">EDIT</button><button class="small-button" onclick="Hub.removeCharacterItem(\\''+c.id+'\\',\\''+x.id+'\\')">REMOVE</button></div>':"")+'</article>').join(""):empty("No equipment recorded.");
+    const slotHtml=slots.map((s,i)=>'<div class="beyond-slot"><span>LEVEL '+(i+1)+'</span><strong>'+safeNumber(s.used)+' / '+safeNumber(s.total)+'</strong><div class="beyond-slot-dots">'+Array.from({length:Math.min(10,safeNumber(s.total))},(_,n)=>'<i class="'+(n<safeNumber(s.used)?"used":"")+'"></i>').join("")+'</div>'+(can?'<div class="beyond-row-actions"><button class="small-button" onclick="Hub.slot(\\''+c.id+'\\','+i+',-1)">−</button><button class="small-button" onclick="Hub.slot(\\''+c.id+'\\','+i+',1)">+</button></div>':"")+'</div>').join("");
+    host.innerHTML='<div class="beyond-sheet"><div class="beyond-topline"><button class="small-button" onclick="Hub.go(\\'characters\\')">← CHARACTER ARCHIVE</button><span class="beyond-edition">'+escapeHTML(c.rulesEdition||"2014")+' RULES</span></div>'+
+    '<header class="beyond-hero">'+(c.portrait?'<img class="beyond-portrait" src="'+escapeHTML(c.portrait)+'" alt="Character portrait">':'<div class="beyond-portrait placeholder">✦</div>')+'<div class="beyond-identity"><div class="hub-kicker">'+(c.isNPC?"NPC / COMPANION":"PLAYER CHARACTER")+'</div><h2>'+escapeHTML(c.name)+'</h2><p>'+escapeHTML(c.race||"Species not set")+' · '+escapeHTML(c.className||"Class not set")+' · Level '+safeNumber(c.level,1)+'</p><div class="beyond-tags"><span>'+escapeHTML(c.background||"Background not set")+'</span><span>'+escapeHTML(c.alignment||"Alignment not set")+'</span><span>'+escapeHTML(c.player||"No player assigned")+'</span></div></div><div class="beyond-hero-actions">'+(can?'<button class="hub-button" onclick="Hub.editCharacter(\\''+c.id+'\\')">EDIT CHARACTER</button><button class="small-button" onclick="Hub.takeRest(\\''+c.id+'\\',\\'short\\')">SHORT REST</button><button class="small-button" onclick="Hub.takeRest(\\''+c.id+'\\',\\'long\\')">LONG REST</button>':'<span class="list-meta">VIEW ONLY</span>')+'</div></header>'+
+    '<div class="beyond-combat-strip"><div class="beyond-hp"><span>HIT POINTS</span><strong>'+hp+' <small>/ '+maxHp+'</small></strong><div class="beyond-hp-track"><i style="width:'+Math.max(0,Math.min(100,hp/maxHp*100))+'%"></i></div><small>'+safeNumber(c.tempHp)+' TEMP HP</small>'+(can?'<div class="beyond-row-actions"><button class="small-button" onclick="Hub.changeHP(\\''+c.id+'\\',1)">+1 HP</button><button class="small-button" onclick="Hub.changeHP(\\''+c.id+'\\',-1)">−1 HP</button><button class="small-button" onclick="Hub.setTempHP(\\''+c.id+'\\')">TEMP HP</button></div>':"")+'</div>'+
+    '<div class="beyond-stat"><span>ARMOUR CLASS</span><strong>'+safeNumber(c.ac,10)+'</strong></div><div class="beyond-stat"><span>INITIATIVE</span><strong>'+mod(c.dexterity)+'</strong></div><div class="beyond-stat"><span>SPEED</span><strong>'+safeNumber(c.speed,30)+' ft</strong></div><div class="beyond-stat"><span>PROFICIENCY</span><strong>+'+safeNumber(c.proficiency,2)+'</strong></div><div class="beyond-stat"><span>HIT DICE</span><strong>'+escapeHTML(c.hitDice||"—")+'</strong><small>'+safeNumber(c.hitDiceUsed)+' spent</small></div></div>'+
+    '<nav class="beyond-anchor-nav"><a href="#sheet-core">Core</a><a href="#sheet-saves">Saves & Skills</a><a href="#sheet-spells">Spells</a><a href="#sheet-inventory">Inventory</a><a href="#sheet-features">Features</a><a href="#sheet-notes">Notes</a></nav>'+
+    '<div class="beyond-main-grid"><div class="beyond-primary">'+
+    section("core","ABILITY SCORES",'<div class="beyond-abilities">'+abilities.map(([label,key])=>'<div class="beyond-ability"><span>'+label+'</span><strong>'+safeNumber(c[key],10)+'</strong><b>'+mod(c[key])+'</b></div>').join("")+'</div>')+
+    section("saves","SAVING THROWS & SKILLS",'<div class="beyond-two-col"><div><h4>Saving throws</h4>'+(saveText.length?saveText.map(x=>'<span class="beyond-pill">'+escapeHTML(x)+'</span>').join(""):empty("Not recorded."))+'</div><div><h4>Skills</h4>'+(skillText.length?skillText.map(x=>'<span class="beyond-pill">'+escapeHTML(x)+'</span>').join(""):empty("Not recorded."))+'</div></div>')+
+    section("spells","SPELLCASTING",'<div class="beyond-subheading"><div><h4>Spell slots</h4><p>Track expended slots here.</p></div>'+(can?'<button class="small-button" onclick="Hub.configureSlots(\\''+c.id+'\\')">CONFIGURE SLOTS</button>':"")+'</div><div class="beyond-slots">'+slotHtml+'</div><div class="beyond-subheading"><div><h4>Spellbook</h4><p>'+spells.filter(s=>s.prepared).length+' prepared · '+spells.length+' known</p></div>'+(can?'<button class="hub-button" onclick="Hub.addSpellToBookFor(\\''+c.id+'\\')">+ ADD SPELL</button>':"")+'</div>'+spellsHtml)+
+    section("inventory","EQUIPMENT & INVENTORY",'<div class="beyond-subheading"><div><h4>Carried equipment</h4><p>Gold: <b>'+safeNumber(c.gold)+' GP</b></p></div>'+(can?'<div class="beyond-row-actions"><button class="small-button" onclick="Hub.addCharacterItem(\\''+c.id+'\\')">+ ADD ITEM</button><button class="small-button" onclick="Hub.editCharacterGold(\\''+c.id+'\\')">EDIT GOLD</button></div>':"")+'</div>'+itemsHtml)+
+    section("features","FEATURES, PROFICIENCIES & TRAITS",'<div class="beyond-two-col"><div><h4>Features & traits</h4><p class="beyond-pre">'+escapeHTML(c.features||"No features recorded.")+'</p></div><div><h4>Other proficiencies</h4><p><b>Languages:</b> '+escapeHTML(c.languagesKnown||"—")+'</p><p><b>Senses:</b> '+escapeHTML(c.senses||"—")+'</p><p><b>Other:</b> '+escapeHTML(c.proficiencies||"—")+'</p></div></div>')+
+    section("notes","BACKGROUND & CHARACTER NOTES",'<div class="beyond-two-col"><div><h4>Personality</h4><p class="beyond-pre">'+escapeHTML(c.personality||"—")+'</p><h4>Ideals</h4><p class="beyond-pre">'+escapeHTML(c.ideals||"—")+'</p><h4>Bonds</h4><p class="beyond-pre">'+escapeHTML(c.bonds||"—")+'</p><h4>Flaws</h4><p class="beyond-pre">'+escapeHTML(c.flaws||"—")+'</p></div><div><h4>Backstory</h4><p class="beyond-pre">'+escapeHTML(c.backstory||"—")+'</p><h4>Additional notes</h4><p class="beyond-pre">'+escapeHTML(c.notes||"—")+'</p></div></div>')+
+    '</div><aside class="beyond-sidebar"><section class="beyond-side-card"><h3>COMBAT RESOURCES</h3><p><b>Exhaustion:</b> '+safeNumber(c.exhaustion)+'</p><p><b>Death saves:</b> '+safeNumber(c.deathSaveSuccesses)+'/3 successes · '+safeNumber(c.deathSaveFailures)+'/3 failures</p>'+(can?'<button class="small-button" onclick="Hub.editResources(\\''+c.id+'\\')">MANAGE RESOURCES</button>':"")+'</section><section class="beyond-side-card"><h3>CHARACTER DETAILS</h3><p><b>Class & Subclass</b><br>'+escapeHTML(c.className||"—")+' '+escapeHTML(c.subclass||"")+'</p><p><b>Background</b><br>'+escapeHTML(c.background||"—")+'</p><p><b>Alignment</b><br>'+escapeHTML(c.alignment||"—")+'</p><p><b>Experience</b><br>'+escapeHTML(c.experience??"—")+'</p></section><section class="beyond-side-card"><h3>CONDITIONS</h3><p>'+escapeHTML(c.conditions||"No active conditions recorded.")+'</p>'+(can?'<button class="small-button" onclick="Hub.editCharacter(\\''+c.id+'\\')">EDIT CHARACTER</button>':"")+'</section></aside></div></div>';
+  }
+
+  function setTempHP(id){
+    const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;
+    openForm("Set temporary hit points",[{name:"tempHp",label:"Temporary HP",type:"number",min:0,value:safeNumber(c.tempHp)}],v=>mutate(()=>c.tempHp=Math.max(0,safeNumber(v.tempHp))));
   }
 
   function renderCharacters() {
@@ -1348,6 +1370,7 @@
   }
 
   function go(tab){
+    if(tab!=="character-sheet"&&activeCharacterSheetId){activeCharacterSheetId="";const st=root.querySelector('[data-tab="character-sheet"]');if(st)st.hidden=true;}
     const adventureTabs=["map","party","quests","calendar"];
     root.querySelectorAll(".hub-page").forEach(p=>p.classList.remove("active"));
     root.querySelectorAll(".hub-nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
@@ -1356,6 +1379,7 @@
     if(tab==="adventure")adventureTabs.forEach(name=>$("page-"+name).classList.add("active"));
     else{const page=$("page-"+tab);if(page)page.classList.add("active");}
     if(tab==="spellbook")renderSpellbook();
+    if(tab==="character-sheet")renderCharacterSheet();
     if(tab==="world")renderWorld();
   }
 
@@ -1459,7 +1483,7 @@
     selectReferenceCategory,
     changeReferencePage,
     loadReference,
-    renderSpellbook,selectSpellbookCharacter,addSpellToBook,addSpellToBookFor,editSpell,togglePreparedSpell,removeSpell,openCharacterSheet,
+    renderSpellbook,selectSpellbookCharacter,addSpellToBook,addSpellToBookFor,editSpell,togglePreparedSpell,removeSpell,openCharacterSheet,setTempHP,
     searchBestiary,viewBestiary,saveBestiaryCreature,addBestiaryCreature,addEncounter,editEncounter,removeEncounter,
     renderWorld,addWorldEntry,editWorldEntry,removeWorldEntry,
     takeRest,
