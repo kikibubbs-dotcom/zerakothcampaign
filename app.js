@@ -696,7 +696,7 @@
     const c=state.characters.find(x=>x.id===id);if(!c)return;
     activeCharacterSheetId=id;
     const tab=root.querySelector('[data-tab="character-sheet"]');if(tab)tab.hidden=false;
-    go("character-sheet");renderCharacterSheet();
+    go("character-sheet");renderCharacterSheet();renderSpellbook();
   }
 
   function renderCharacterSheet(){
@@ -1479,7 +1479,7 @@
     root.querySelectorAll(".hub-nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
     const page=$("page-"+tab);if(page)page.classList.add("active");
     if(tab==="spellbook")renderSpellbook();
-    if(tab==="character-sheet")renderCharacterSheet();
+    if(tab==="character-sheet"){renderCharacterSheet();renderSpellbook();}
     if(tab==="world")renderWorld();
   }
   $("campaign-search-input").addEventListener("input",searchCampaign);
