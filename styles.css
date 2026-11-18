@@ -457,3 +457,65 @@
 #dnd-hub .sheet-spell{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
 #dnd-hub .sheet-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 14px}
 @media(max-width:650px){#dnd-hub .sheet-spell{grid-template-columns:1fr 1fr}}
+
+
+/* Full-page D&D Beyond-inspired character sheet */
+#dnd-hub #page-character-sheet{max-width:1500px;margin-inline:auto}
+#dnd-hub .beyond-topline{display:flex;justify-content:space-between;gap:12px;margin-bottom:16px}
+#dnd-hub .beyond-edition{font:10px Arial,sans-serif;letter-spacing:1.5px;color:var(--gold)}
+#dnd-hub .beyond-hero{display:flex;align-items:center;gap:22px;padding:24px;background:linear-gradient(115deg,#272b39,#1c202b 70%);border:1px solid var(--line);border-radius:10px}
+#dnd-hub .beyond-portrait{width:116px;height:116px;flex:0 0 116px;object-fit:cover;border-radius:8px;border:2px solid var(--gold2);background:#141823}
+#dnd-hub .beyond-portrait.placeholder{display:grid;place-items:center;color:var(--gold);font-size:48px}
+#dnd-hub .beyond-identity{min-width:0;flex:1}
+#dnd-hub .beyond-identity h2{font-size:clamp(25px,4vw,38px);margin:5px 0;color:#fff}
+#dnd-hub .beyond-identity>p{color:#c4c2c8;margin:0 0 12px}
+#dnd-hub .beyond-tags{display:flex;gap:7px;flex-wrap:wrap}
+#dnd-hub .beyond-tags span,#dnd-hub .beyond-pill{display:inline-block;padding:5px 8px;border:1px solid #555363;border-radius:4px;background:#292d3b;color:#e0d2ad;font:10px Arial,sans-serif;margin:2px}
+#dnd-hub .beyond-hero-actions{display:flex;flex-direction:column;gap:8px}
+#dnd-hub .beyond-combat-strip{display:grid;grid-template-columns:1.5fr repeat(5,minmax(90px,1fr));gap:9px;margin:14px 0}
+#dnd-hub .beyond-stat,#dnd-hub .beyond-hp{min-width:0;padding:14px;background:#202431;border:1px solid var(--line);border-radius:7px;display:flex;flex-direction:column;justify-content:center;gap:7px}
+#dnd-hub .beyond-stat>span,#dnd-hub .beyond-hp>span{font:9px Arial,sans-serif;letter-spacing:1px;color:var(--gold)}
+#dnd-hub .beyond-stat>strong{font-size:24px;color:#fff}
+#dnd-hub .beyond-stat>small,#dnd-hub .beyond-hp>small{font-size:10px;color:var(--muted)}
+#dnd-hub .beyond-hp>strong{font-size:27px;color:#fff}
+#dnd-hub .beyond-hp>strong small{font-size:15px;color:#aaa}
+#dnd-hub .beyond-hp-track{height:7px;background:#11151e;border-radius:9px;overflow:hidden}
+#dnd-hub .beyond-hp-track i{display:block;height:100%;background:#a84c58;border-radius:9px}
+#dnd-hub .beyond-row-actions{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+#dnd-hub .beyond-anchor-nav{display:flex;gap:5px;overflow-x:auto;padding:10px 0 14px;border-bottom:1px solid var(--line)}
+#dnd-hub .beyond-anchor-nav a{white-space:nowrap;padding:8px 12px;border:1px solid var(--line);border-radius:5px;color:#d9c99f;text-decoration:none;font:10px Arial,sans-serif}
+#dnd-hub .beyond-main-grid{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:18px;align-items:start}
+#dnd-hub .beyond-primary{min-width:0}
+#dnd-hub .beyond-section{margin-top:18px;padding:19px;background:#202431;border:1px solid var(--line);border-radius:8px;scroll-margin-top:20px}
+#dnd-hub .beyond-section-heading{border-bottom:1px solid var(--line);padding-bottom:11px;margin-bottom:14px}
+#dnd-hub .beyond-section-heading h3{font:bold 12px Arial,sans-serif;letter-spacing:1.4px;color:var(--gold);margin:0}
+#dnd-hub .beyond-abilities{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
+#dnd-hub .beyond-ability{display:flex;flex-direction:column;align-items:center;gap:7px;padding:13px 5px;background:#171b25;border:1px solid #4a4652;border-radius:7px}
+#dnd-hub .beyond-ability span{font:bold 11px Arial,sans-serif;color:var(--gold)}
+#dnd-hub .beyond-ability strong{font-size:27px;color:#fff}
+#dnd-hub .beyond-ability b{min-width:43px;text-align:center;padding:5px;border-radius:20px;background:#393445;color:#f1dfb8}
+#dnd-hub .beyond-two-col{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+#dnd-hub .beyond-two-col h4,#dnd-hub .beyond-subheading h4{font-size:13px;color:#fff;margin:0 0 9px}
+#dnd-hub .beyond-two-col p{line-height:1.6}
+#dnd-hub .beyond-pre{white-space:pre-wrap;overflow-wrap:anywhere}
+#dnd-hub .beyond-subheading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:14px 0}
+#dnd-hub .beyond-subheading p{margin:4px 0;color:var(--muted);font-size:11px}
+#dnd-hub .beyond-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:22px}
+#dnd-hub .beyond-slot{padding:10px;background:#171b25;border:1px solid var(--line);border-radius:6px;display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
+#dnd-hub .beyond-slot>span{font:9px Arial,sans-serif;color:var(--gold);letter-spacing:1px}
+#dnd-hub .beyond-slot>strong{font-size:15px}
+#dnd-hub .beyond-slot-dots{grid-column:1/-1;display:flex;gap:5px;flex-wrap:wrap}
+#dnd-hub .beyond-slot-dots i{width:9px;height:9px;border-radius:50%;border:1px solid #9b8b69}
+#dnd-hub .beyond-slot-dots i.used{background:#b9a16d}
+#dnd-hub .beyond-list-row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:13px 0;border-top:1px solid var(--line)}
+#dnd-hub .beyond-row-main{min-width:0;flex:1}
+#dnd-hub .beyond-row-main>strong{color:#fff}
+#dnd-hub .beyond-row-main p{margin:6px 0;color:#c5c2cb;font-size:12px;line-height:1.5}
+#dnd-hub .beyond-row-main small{color:var(--muted);font-size:10px}
+#dnd-hub .beyond-sidebar{display:grid;gap:14px;position:sticky;top:14px}
+#dnd-hub .beyond-side-card{padding:16px;background:#202431;border:1px solid var(--line);border-radius:8px}
+#dnd-hub .beyond-side-card h3{font:bold 10px Arial,sans-serif;letter-spacing:1.3px;color:var(--gold);margin:0 0 13px}
+#dnd-hub .beyond-side-card p{font-size:12px;line-height:1.55;margin:0 0 12px;overflow-wrap:anywhere}
+@media(max-width:1000px){#dnd-hub .beyond-combat-strip{grid-template-columns:repeat(3,minmax(0,1fr))}#dnd-hub .beyond-main-grid{grid-template-columns:minmax(0,1fr) 230px}}
+@media(max-width:760px){#dnd-hub .beyond-hero{align-items:flex-start;flex-wrap:wrap;padding:16px}#dnd-hub .beyond-portrait{width:84px;height:84px;flex-basis:84px}#dnd-hub .beyond-hero-actions{width:100%;flex-direction:row;flex-wrap:wrap}#dnd-hub .beyond-main-grid{grid-template-columns:1fr}#dnd-hub .beyond-sidebar{position:static;grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){#dnd-hub .beyond-combat-strip{grid-template-columns:repeat(2,minmax(0,1fr))}#dnd-hub .beyond-hp{grid-column:1/-1}#dnd-hub .beyond-abilities{grid-template-columns:repeat(3,minmax(0,1fr))}#dnd-hub .beyond-two-col{grid-template-columns:1fr}#dnd-hub .beyond-slots{grid-template-columns:repeat(2,minmax(0,1fr))}#dnd-hub .beyond-sidebar{grid-template-columns:1fr}#dnd-hub .beyond-list-row{flex-direction:column}#dnd-hub .beyond-topline{align-items:flex-start;flex-direction:column}}
