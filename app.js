@@ -123,7 +123,6 @@
     renderReferenceLibrary();
     renderCharacters();
     renderSpellbook();
-    renderEncounters();
     renderWorld();
     renderQuests();
     renderNPCs();
@@ -664,6 +663,8 @@
   }
 
   function renderCharacters() {
+    const actions=root.querySelector(".archive-add-actions");
+    if(actions)actions.querySelectorAll("[onclick*='Hub.addNPC'],[onclick*='Hub.randomizeNPC']").forEach(el=>el.style.display=isDM()?"":"none");
     $("character-list").innerHTML = state.characters.length
       ? state.characters.map(c=>characterCard(c,false)).join("")
       : empty("No character profiles have been created.");
@@ -741,10 +742,29 @@
     {name:"connections",label:"Related people, places, quests or clues",type:"textarea",rows:3,value:e.connections||"",full:true},
     {name:"secrets",label:"DM-only secrets (visible to DM only)",type:"textarea",rows:4,value:e.secrets||"",full:true}
   ];}
-  function renderWorld(){const host=$("world-list");if(!host)return;const q=($("world-search")?.value||"").toLowerCase(),cat=$("world-filter")?.value||"all";const list=(state.worldEntries||[]).filter(e=>(cat==="all"||e.category===cat)&&[e.title,e.summary,e.details,e.connections].join(" ").toLowerCase().includes(q));host.innerHTML=list.length?list.map(e=>'<article class="reference-card"><div class="reference-card-top"><span class="tag">'+escapeHTML(e.category)+'</span></div><h3>'+escapeHTML(e.title)+'</h3><p>'+escapeHTML(e.summary||"")+'</p><details><summary>READ FULL ENTRY</summary><p>'+escapeHTML(e.details||"")+'</p>'+(e.connections?'<p><b>Connections:</b> '+escapeHTML(e.connections)+'</p>':"")+'</details>'+(isDM()?'<div class="card-actions"><button onclick="Hub.editWorldEntry(\''+e.id+'\')">EDIT</button><button onclick="Hub.removeWorldEntry(\''+e.id+'\')">DELETE</button></div>':"")+'</article>').join(""):empty("No world entries match this search.");}
-  function addWorldEntry(){if(!isDM())return;openForm("Add world encyclopedia entry",worldFields(),v=>{if(!v.title.trim())return;mutate(()=>{if(!Array.isArray(state.worldEntries))state.worldEntries=[];state.worldEntries.unshift({id:makeId(),...v,createdAt:new Date().toISOString()});});renderWorld();});}
-  function editWorldEntry(id){if(!isDM())return;const e=state.worldEntries.find(x=>x.id===id);if(!e)return;openForm("Edit "+e.title,worldFields(e),v=>{if(!v.title.trim())return;mutate(()=>Object.assign(e,v));renderWorld();});}
-  function removeWorldEntry(id){if(!isDM()||!confirm("Delete this world entry?"))return;mutate(()=>state.worldEntries=state.worldEntries.filter(x=>x.id!==id));renderWorld();}
+  function canEditWorldEntry(e){return isDM()||e?.ownerId===member?.id;}
+  function renderWorld(){
+    const host=$("world-list");if(!host)return;
+    const q=($("world-search")?.value||"").toLowerCase(),cat=$("world-filter")?.value||"all";
+    const list=(state.worldEntries||[]).filter(e=>(cat==="all"||e.category===cat)&&[e.title,e.summary,e.details,e.connections].join(" ").toLowerCase().includes(q));
+    host.innerHTML=list.length?list.map(e=>'<article class="reference-card"><div class="reference-card-top"><span class="tag">'+escapeHTML(e.category)+'</span><span class="list-meta">'+escapeHTML(e.authorName||(e.ownerId===member?.id?member.display_name:"Campaign contributor"))+'</span></div><h3>'+escapeHTML(e.title)+'</h3><p>'+escapeHTML(e.summary||"")+'</p><details><summary>READ FULL ENTRY</summary><p>'+escapeHTML(e.details||"")+'</p>'+(e.connections?'<p><b>Connections:</b> '+escapeHTML(e.connections)+'</p>':"")+(isDM()&&e.secrets?'<p class="dm-secret"><b>DM notes:</b> '+escapeHTML(e.secrets)+'</p>':"")+'</details>'+(canEditWorldEntry(e)?'<div class="card-actions"><button onclick="Hub.editWorldEntry(\''+e.id+'\')">EDIT</button><button onclick="Hub.removeWorldEntry(\''+e.id+'\')">DELETE</button></div>':"")+'</article>').join(""):empty("No world entries match this search.");
+  }
+  function addWorldEntry(){
+    openForm("Add world encyclopedia entry",worldFields(),v=>{
+      if(!v.title.trim())return;
+      const entry={id:makeId(),...v,ownerId:isDM()?null:member.id,authorName:member?.display_name||"Campaign",createdAt:new Date().toISOString()};
+      mutate(()=>{if(!Array.isArray(state.worldEntries))state.worldEntries=[];state.worldEntries.unshift(entry);});
+      renderWorld();
+    });
+  }
+  function editWorldEntry(id){
+    const e=state.worldEntries.find(x=>x.id===id);if(!e||!canEditWorldEntry(e))return;
+    openForm("Edit "+e.title,worldFields(e),v=>{if(!v.title.trim())return;mutate(()=>Object.assign(e,v));renderWorld();});
+  }
+  function removeWorldEntry(id){
+    const e=state.worldEntries.find(x=>x.id===id);if(!e||!canEditWorldEntry(e)||!confirm("Delete this world entry?"))return;
+    mutate(()=>state.worldEntries=state.worldEntries.filter(x=>x.id!==id));renderWorld();
+  }
 
   function renderQuests() {
     $("quest-list").innerHTML = state.quests.length
@@ -1132,6 +1152,28 @@
   function addCharacter(){openArchiveEditor(null,"characters");}
   function editCharacter(id){const c=state.characters.find(x=>x.id===id);if(c)openArchiveEditor(c,"characters");}
   function addNPC(){if(isDM())openArchiveEditor(null,"npcs");}
+  function pickRandom(items){return items[Math.floor(Math.random()*items.length)];}
+  function randomFullName(){return pickRandom(["Alder","Briar","Caelan","Dara","Elowen","Fen","Galen","Ilyra","Joren","Kaia","Liora","Marek","Neris","Orin","Perrin","Quill","Rhea","Sylvi","Tarin","Vesper","Wren","Yara","Zephyr"])+" "+pickRandom(["Ashford","Blackthorn","Brightwater","Cinderfall","Dawnmere","Duskwalker","Embervale","Frostmere","Greystone","Holloway","Ironwood","Moonbrook","Ravencrest","Silverleaf","Stormborn","Thornfield","Vale"]);}
+  function randomizeCharacter(){
+    const race=pickRandom(["Human","Elf","Dwarf","Halfling","Gnome","Dragonborn","Tiefling","Half-Orc","Half-Elf","Orc","Aasimar","Goliath"]);
+    const cls=pickRandom(["Barbarian","Bard","Cleric","Druid","Fighter","Monk","Paladin","Ranger","Rogue","Sorcerer","Warlock","Wizard"]);
+    const background=pickRandom(["Acolyte","Charlatan","Criminal","Entertainer","Folk Hero","Guild Artisan","Hermit","Noble","Outlander","Sage","Sailor","Soldier","Urchin"]);
+    const scores=[15,14,13,12,10,8].sort(()=>Math.random()-.5),keys=["strength","dexterity","constitution","intelligence","wisdom","charisma"],stats={};
+    keys.forEach((k,i)=>stats[k]=scores[i]);
+    const die={Barbarian:12,Fighter:10,Paladin:10,Ranger:10,Bard:8,Cleric:8,Druid:8,Monk:8,Rogue:8,Sorcerer:6,Warlock:8,Wizard:6}[cls]||8;
+    const hp=Math.max(1,die+Math.floor((stats.constitution-10)/2)),name=randomFullName();
+    const entry={id:makeId(),name,player:isDM()?"":member.display_name,race,className:cls,background,level:1,rulesEdition:pickRandom(["2014","2024"]),hp,maxHp:hp,ac:10+Math.floor((stats.dexterity-10)/2),initiative:Math.floor((stats.dexterity-10)/2),speed:30,proficiency:2,hitDice:"1d"+die,...stats,alignment:pickRandom(["Lawful Good","Neutral Good","Chaotic Good","Lawful Neutral","True Neutral","Chaotic Neutral","Lawful Evil","Neutral Evil","Chaotic Evil"]),personality:pickRandom(["Speaks before thinking, then regrets it.","Quietly observant and difficult to surprise.","Warm-hearted, generous and fiercely loyal.","Restless, curious and easily distracted.","Dry-witted, guarded and secretly sentimental.","Bold in a crisis, nervous in quiet moments."]),ideals:pickRandom(["Freedom: everyone deserves the chance to choose their own path.","Knowledge: understanding the world is worth any effort.","Community: nobody should be left behind.","Ambition: greatness must be earned.","Balance: every action has consequences.","Mercy: people can change when given a chance."]),bonds:pickRandom(["Owes their life to a stranger who vanished.","Carries a keepsake from a family member.","Protects a small hometown they rarely visit.","Searching for a missing friend or mentor.","Bound by a promise made to a loved one."]),flaws:pickRandom(["Cannot resist a mystery, even when dangerous.","Holds grudges longer than they should.","Takes foolish risks to prove their worth.","Hides problems instead of asking for help.","Trusts charming strangers too easily.","Will not back down from a public challenge."]),backstory:"Raised in "+pickRandom(["a remote mountain village","a crowded port city","a travelling merchant caravan","a noble household","a monastery","a frontier settlement","the backstreets of a sprawling city"])+", "+name.split(" ")[0]+" learned that "+pickRandom(["family is chosen as much as inherited","secrets can be more valuable than gold","the world is larger than any map","kindness can be a form of courage","survival depends on unlikely allies"])+". After "+pickRandom(["a disastrous expedition","a falling-out with a mentor","an unexpected inheritance","a strange recurring dream","a debt they could not repay","a chance encounter with a wandering adventurer"])+", they set out to discover what comes next.",skills:pickRandom(["Perception, Insight","Athletics, Intimidation","Stealth, Sleight of Hand","Arcana, History","Persuasion, Performance","Survival, Nature"]),languagesKnown:"Common, "+pickRandom(["Elvish","Dwarvish","Draconic","Halfling","Goblin","Sylvan"]),gear:"Adventurer's pack, a keepsake, travel clothes and 10 GP",spellSlots:Array.from({length:9},()=>({used:0,total:0})),isNPC:false};
+    if(!isDM())entry.ownerId=member.id;
+    mutate(()=>state.characters.push(entry));
+    alert("A new adventurer has joined the archive: "+name+". Open their profile to customise them.");
+  }
+  function randomizeNPC(){
+    if(!isDM())return;
+    const name=randomFullName(),scores=Array.from({length:6},()=>8+Math.floor(Math.random()*9)),[strength,dexterity,constitution,intelligence,wisdom,charisma]=scores,hp=6+Math.floor(Math.random()*25);
+    const n={id:makeId(),name,role:pickRandom(["Wandering merchant","Town guard","Retired adventurer","Travelling healer","Local artisan","Court advisor","Mysterious scholar","Bounty hunter","Innkeeper","Smuggler","Village elder","Street performer"]),race:pickRandom(["Human","Elf","Dwarf","Halfling","Tiefling","Gnome","Dragonborn","Orc"]),alignment:pickRandom(["Lawful Good","Neutral Good","Chaotic Good","Lawful Neutral","True Neutral","Chaotic Neutral","Lawful Evil","Neutral Evil"]),location:pickRandom(["The market square","The old harbour","A roadside inn","The royal court","The temple district","A remote village","The city archives","The forest edge"]),relationship:pickRandom(["Potential ally","Friendly contact","Rival","Uncertain stranger","Reluctant informant","Local authority"]),description:pickRandom(["A weathered traveller with watchful eyes and a careful smile.","An impeccably dressed figure whose hands are stained with ink.","A cheerful presence who seems to know everyone in town.","A quiet individual with an old scar and a newer secret.","A sharp-eyed professional who never gives a straight answer.","A kindly face hiding a formidable will."]),goals:pickRandom(["Wants to find a missing family member.","Hopes to restore a ruined business.","Is quietly investigating a local mystery.","Seeks a rare artefact before a rival finds it.","Wants to leave their old life behind.","Is protecting someone who does not know it."]),backstory:"Once "+pickRandom(["served a powerful household","worked aboard a merchant vessel","studied forbidden histories","travelled with a circus troupe","guarded a remote border","lived among travelling performers"])+". Their life changed after "+pickRandom(["a betrayal","a failed expedition","a mysterious letter","a debt came due","a chance act of kindness","an unexplained disappearance"])+". Now they are determined to "+pickRandom(["make amends","find the truth","protect their community","build a new reputation","settle an old score","keep a dangerous secret hidden"])+".",hp,maxHp:hp,ac:10+Math.floor(Math.random()*7),initiative:Math.floor((dexterity-10)/2),speed:30,challengeRating:pickRandom(["0","1/8","1/4","1/2","1"]),strength,dexterity,constitution,intelligence,wisdom,charisma,proficiency:2,senses:"Passive Perception "+(10+Math.floor((wisdom-10)/2)),languages:"Common",npcActions:pickRandom(["Dagger: +3 to hit, 1d4+1 piercing damage.","Shortsword: +4 to hit, 1d6+2 piercing damage.","Light crossbow: +3 to hit, 1d8+1 piercing damage.","Unarmed strike: +2 to hit, 1 bludgeoning damage."]),features:pickRandom(["Insight, Persuasion","Perception, Survival","Deception, Sleight of Hand","History, Investigation","Athletics, Intimidation"])};
+    mutate(()=>state.npcs.unshift(n));
+    alert("A new NPC has been added: "+name+". You can edit their profile in the archive.");
+  }
   function editNPC(id){const n=state.npcs.find(x=>x.id===id);if(n)openArchiveEditor(n,"npcs");}
   function changeHP(id,amount) {
     const c = state.characters.find(x=>x.id===id);
@@ -1260,7 +1302,6 @@
     if(tab==="adventure")adventureTabs.forEach(name=>$("page-"+name).classList.add("active"));
     else{const page=$("page-"+tab);if(page)page.classList.add("active");}
     if(tab==="spellbook")renderSpellbook();
-    if(tab==="bestiary"){renderEncounters();searchBestiary();}
     if(tab==="world")renderWorld();
   }
 
@@ -1375,6 +1416,8 @@
     go,
     addCharacter:()=>addCharacter(),
     addNPC:()=>addNPC(),
+    randomizeCharacter,
+    randomizeNPC,
     addQuest,
     editQuest,
     addJournal,
