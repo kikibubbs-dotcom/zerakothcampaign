@@ -435,3 +435,8 @@
 .mechanics-grid summary{cursor:pointer;font-weight:700;color:var(--gold,#d6ad5d);letter-spacing:.025em}
 .mechanics-grid details p{font-size:.9rem;line-height:1.65;color:var(--text,#e7e4ee);margin:12px 0 0}
 .reference-mechanics{margin-top:20px}
+
+/* Archive contribution and generator controls */
+#dnd-hub .archive-add-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+#dnd-hub .archive-add-actions button{white-space:nowrap}
+@media(max-width:650px){#dnd-hub .archive-add-actions{justify-content:flex-start}#dnd-hub .archive-add-actions button{flex:1 1 45%}}
