@@ -1473,18 +1473,14 @@
 
   function go(tab){
     if(tab!=="character-sheet"&&activeCharacterSheetId){activeCharacterSheetId="";const st=root.querySelector('[data-tab="character-sheet"]');if(st)st.hidden=true;}
-    const adventureTabs=["map","party","quests","calendar"];
+    if(tab==="dm-controls"&&!isDM())tab="dashboard";
     root.querySelectorAll(".hub-page").forEach(p=>p.classList.remove("active"));
     root.querySelectorAll(".hub-nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
-    const adventureGrid=root.querySelector(".adventure-board-grid");
-    if(adventureGrid)adventureGrid.classList.toggle("adventure-visible",tab==="adventure");
-    if(tab==="adventure")adventureTabs.forEach(name=>$("page-"+name).classList.add("active"));
-    else{const page=$("page-"+tab);if(page)page.classList.add("active");}
+    const page=$("page-"+tab);if(page)page.classList.add("active");
     if(tab==="spellbook")renderSpellbook();
     if(tab==="character-sheet")renderCharacterSheet();
     if(tab==="world")renderWorld();
   }
-
   $("campaign-search-input").addEventListener("input",searchCampaign);
   $("campaign-import-file").addEventListener("change",e=>{const file=e.target.files?.[0];if(file)importCampaign(file);e.target.value="";});
   $("reference-search").addEventListener("keydown",e=>{if(e.key==="Enter"){referencePage=1;loadReference();}});
