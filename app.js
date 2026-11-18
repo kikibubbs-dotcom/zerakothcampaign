@@ -650,7 +650,7 @@
             <button onclick="Hub.changeHP('${c.id}',-5)">−5 HP</button>
             <button onclick="Hub.changeHP('${c.id}',1)">+1 HP</button>
             <button onclick="Hub.changeHP('${c.id}',5)">+5 HP</button>
-            <button onclick="Hub.editCharacter('${c.id}')">EDIT</button>
+            <button onclick="Hub.openCharacterSheet('${c.id}')">OPEN CHARACTER SHEET</button>
             <button onclick="Hub.configureSlots('${c.id}')">SET SPELL SLOTS</button><button onclick="Hub.takeRest('${c.id}','short')">SHORT REST</button><button onclick="Hub.takeRest('${c.id}','long')">LONG REST</button><button onclick="Hub.editResources('${c.id}')">RESOURCES</button>
           </div>`:`<p class="list-meta">VIEW ONLY</p>`}
           <div class="hp-line"><strong>ARMOUR CLASS</strong><span>${safeNumber(c.ac)}</span></div>
@@ -685,7 +685,6 @@
           </details>
           ${canEdit?`<div class="card-actions">
             <button onclick="Hub.openCharacterSheet('${c.id}')">OPEN CHARACTER SHEET</button>
-            <button onclick="Hub.editCharacter('${c.id}')">EDIT DETAILS</button>
             <button onclick="Hub.removeCharacter('${c.id}')">REMOVE</button>
           </div>`:`<p class="list-meta">VIEW ONLY</p>`}
         `}
