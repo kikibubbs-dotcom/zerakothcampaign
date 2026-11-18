@@ -440,3 +440,8 @@
 #dnd-hub .archive-add-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 #dnd-hub .archive-add-actions button{white-space:nowrap}
 @media(max-width:650px){#dnd-hub .archive-add-actions{justify-content:flex-start}#dnd-hub .archive-add-actions button{flex:1 1 45%}}
+
+/* Expanded archive profiles */
+#dnd-hub .archive-profile-details{margin:12px 0;padding:11px 12px;background:#191d29;border:1px solid var(--line);border-radius:6px}
+#dnd-hub .archive-profile-details summary{cursor:pointer;color:var(--gold);font:10px Arial,sans-serif;letter-spacing:1px}
+#dnd-hub .archive-profile-details p{margin:9px 0;line-height:1.55;white-space:pre-wrap}
