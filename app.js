@@ -664,7 +664,10 @@
 
   function renderCharacters() {
     const actions=root.querySelector(".archive-add-actions");
-    if(actions)actions.querySelectorAll("[onclick*='Hub.addNPC'],[onclick*='Hub.randomizeNPC']").forEach(el=>el.style.display=isDM()?"":"none");
+    if(actions){
+      actions.querySelectorAll("[onclick*='Hub.addCharacter'],[onclick*='Hub.randomizeCharacter']").forEach(el=>el.style.display=isDM()?"none":"");
+      actions.querySelectorAll("[onclick*='Hub.addNPC'],[onclick*='Hub.randomizeNPC']").forEach(el=>el.style.display=isDM()?"":"none");
+    }
     $("character-list").innerHTML = state.characters.length
       ? state.characters.map(c=>characterCard(c,false)).join("")
       : empty("No character profiles have been created.");
@@ -734,14 +737,17 @@
   function editEncounter(id){if(!isDM())return;const e=state.encounters.find(x=>x.id===id);if(!e)return;openForm("Edit encounter",encounterFields(e),v=>{const roster=v.roster.split("\n").map(x=>x.split("|")).filter(x=>x[0]?.trim()).map(x=>({name:x[0].trim(),count:Math.max(1,safeNumber(x[1],1))}));mutate(()=>Object.assign(e,{name:v.name.trim(),roster,notes:v.notes,status:v.status}));});}
   function removeEncounter(id){if(!isDM()||!confirm("Delete this prepared encounter?"))return;mutate(()=>state.encounters=state.encounters.filter(x=>x.id!==id));renderEncounters();}
 
-  function worldFields(e={}){return [
-    {name:"title",label:"Entry title",value:e.title||"",required:true,full:true},
-    {name:"category",label:"Category",type:"select",value:e.category||"Places",options:["Places","Regions","Factions","People","Deities","History","Culture","Other lore"].map(x=>({value:x,label:x}))},
-    {name:"summary",label:"Short description",type:"textarea",rows:3,value:e.summary||"",full:true},
-    {name:"details",label:"Full entry / lore",type:"textarea",rows:8,value:e.details||"",full:true},
-    {name:"connections",label:"Related people, places, quests or clues",type:"textarea",rows:3,value:e.connections||"",full:true},
-    {name:"secrets",label:"DM-only secrets (visible to DM only)",type:"textarea",rows:4,value:e.secrets||"",full:true}
-  ];}
+  function worldFields(e={}){
+    const fields=[
+      {name:"title",label:"Entry title",value:e.title||"",required:true,full:true},
+      {name:"category",label:"Category",type:"select",value:e.category||"Places",options:["Places","Regions","Factions","People","Deities","History","Culture","Other lore"].map(x=>({value:x,label:x}))},
+      {name:"summary",label:"Short description",type:"textarea",rows:3,value:e.summary||"",full:true},
+      {name:"details",label:"Full entry / lore",type:"textarea",rows:8,value:e.details||"",full:true},
+      {name:"connections",label:"Related people, places, quests or clues",type:"textarea",rows:3,value:e.connections||"",full:true}
+    ];
+    if(isDM())fields.push({name:"secrets",label:"DM notes (campaign data is shared)",type:"textarea",rows:4,value:e.secrets||"",full:true});
+    return fields;
+  }
   function canEditWorldEntry(e){return isDM()||e?.ownerId===member?.id;}
   function renderWorld(){
     const host=$("world-list");if(!host)return;
@@ -1149,12 +1155,13 @@
       }
     });
   }
-  function addCharacter(){openArchiveEditor(null,"characters");}
+  function addCharacter(){if(!isDM())openArchiveEditor(null,"characters");}
   function editCharacter(id){const c=state.characters.find(x=>x.id===id);if(c)openArchiveEditor(c,"characters");}
   function addNPC(){if(isDM())openArchiveEditor(null,"npcs");}
   function pickRandom(items){return items[Math.floor(Math.random()*items.length)];}
   function randomFullName(){return pickRandom(["Alder","Briar","Caelan","Dara","Elowen","Fen","Galen","Ilyra","Joren","Kaia","Liora","Marek","Neris","Orin","Perrin","Quill","Rhea","Sylvi","Tarin","Vesper","Wren","Yara","Zephyr"])+" "+pickRandom(["Ashford","Blackthorn","Brightwater","Cinderfall","Dawnmere","Duskwalker","Embervale","Frostmere","Greystone","Holloway","Ironwood","Moonbrook","Ravencrest","Silverleaf","Stormborn","Thornfield","Vale"]);}
   function randomizeCharacter(){
+    if(isDM())return;
     const race=pickRandom(["Human","Elf","Dwarf","Halfling","Gnome","Dragonborn","Tiefling","Half-Orc","Half-Elf","Orc","Aasimar","Goliath"]);
     const cls=pickRandom(["Barbarian","Bard","Cleric","Druid","Fighter","Monk","Paladin","Ranger","Rogue","Sorcerer","Warlock","Wizard"]);
     const background=pickRandom(["Acolyte","Charlatan","Criminal","Entertainer","Folk Hero","Guild Artisan","Hermit","Noble","Outlander","Sage","Sailor","Soldier","Urchin"]);
