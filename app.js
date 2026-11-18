@@ -259,7 +259,9 @@
         const parsed=JSON.parse(String(reader.result||""));
         const incoming=parsed.format==="adventurers-chronicle-campaign"?parsed.data:parsed;
         if(!incoming||typeof incoming!=="object"||Array.isArray(incoming)||!Array.isArray(incoming.characters)||!Array.isArray(incoming.quests)||!Array.isArray(incoming.npcs))throw new Error("This doesn't look like a valid campaign backup.");
-        if(!confirm("Import this campaign and replace the current campaign content? This cannot be undone. Player accounts and access codes will stay unchanged."))return;
+        if(!confirm("You are about to replace the current campaign content. Player accounts and access codes will stay unchanged."))return;
+        const confirmation=prompt("For safety, type REPLACE CAMPAIGN to continue importing this backup.");
+        if(confirmation!=="REPLACE CAMPAIGN"){alert("Confirmation did not match. Nothing was imported.");return;}
         let mapUrl=incoming.mapUrl||"";
         if(parsed.mapImage){
           const parts=String(parsed.mapImage).match(/^data:([^;]+);base64,(.+)$/);
@@ -335,7 +337,21 @@
   }
 
 
-  let referenceCategory="spells", referenceResults=[], referenceEdition="both", referencePage=1, referenceHasNext=false, referenceLastQuery="";
+  let referenceCategory="spells", referenceResults=[], referenceEdition="both", referencePage=1, referenceHasNext=false, referenceTotalPages=1, referenceLastQuery="";
+  const archivePageSize=8;
+  let characterArchivePage=1,npcArchivePage=1;
+  function archivePager(kind,page,total){
+    const host=$(kind==="characters"?"character-archive-pagination":"npc-archive-pagination");if(!host)return;
+    if(total<=1){host.innerHTML="";return;}
+    const start=Math.max(1,Math.min(page-2,total-4)),end=Math.min(total,start+4);
+    let buttons="";
+    if(page>1)buttons+='<button class="small-button" onclick="Hub.changeArchivePage(\''+kind+'\',-1)">← PREVIOUS</button>';
+    for(let n=start;n<=end;n++)buttons+='<button class="page-number'+(n===page?' active':'')+'" aria-label="Page '+n+'" aria-current="'+(n===page?'page':'false')+'" onclick="Hub.goArchivePage(\''+kind+'\','+n+')">'+n+'</button>';
+    if(page<total)buttons+='<button class="small-button" onclick="Hub.changeArchivePage(\''+kind+'\',1)">NEXT →</button>';
+    host.innerHTML=buttons;
+  }
+  function changeArchivePage(kind,delta){const list=kind==="characters"?state.characters:state.npcs,total=Math.max(1,Math.ceil(list.length/archivePageSize)),key=kind==="characters"?"characterArchivePage":"npcArchivePage";if(kind!=="characters"&&kind!=="npcs")return;if(kind==="characters")characterArchivePage=Math.max(1,Math.min(total,characterArchivePage+delta));else npcArchivePage=Math.max(1,Math.min(total,npcArchivePage+delta));renderCharacters();renderNPCs();}
+  function goArchivePage(kind,page){if(kind==="characters")characterArchivePage=page;else if(kind==="npcs")npcArchivePage=page;else return;renderCharacters();renderNPCs();}
   const referenceTypes={spells:"spells",species:"species",classes:"classes",backgrounds:"backgrounds",feats:"feats",items:"items",creatures:"creatures",languages:"languages",conditions:"conditions"};
   function sourceEdition(entry){
     const key=String(entry.document?.key||"").toLowerCase();
@@ -351,7 +367,7 @@
       if(referenceEdition==="2024")params.set("document__key__iexact","srd-2024");
       const response=await fetch("https://api.open5e.com/v2/"+referenceTypes[referenceCategory]+"/?"+params.toString());
       if(!response.ok)throw new Error("The open reference source is temporarily unavailable.");
-      const payload=await response.json();referenceResults=Array.isArray(payload.results)?payload.results:[];referenceHasNext=!!payload.next;
+      const payload=await response.json();referenceResults=Array.isArray(payload.results)?payload.results:[];referenceHasNext=!!payload.next;referenceTotalPages=Math.max(1,Math.ceil(safeNumber(payload.count,referenceResults.length)/30));
       renderReferenceLibrary();
     }catch(err){list.innerHTML=empty(err.message+" You can still create campaign homebrew.");}
   }
@@ -374,7 +390,14 @@
       return '<article class="reference-card"><div class="reference-card-top"><span class="tag">'+escapeHTML(edition)+'</span><span class="list-meta">'+escapeHTML(meta)+'</span></div><h3>'+escapeHTML(entry.name||"Untitled")+'</h3><p>'+escapeHTML(detail||"Open the entry to view details.")+'</p><div class="list-meta">'+escapeHTML(source)+'</div><div class="card-actions">'+controls+own+'</div></article>';
     }).join("");
     $("reference-count").textContent=entries.length+" entries shown · Open SRD material and campaign homebrew";
-    const pager=$("reference-pagination");if(pager)pager.innerHTML=(referencePage>1?'<button class="small-button" onclick="Hub.changeReferencePage(-1)">← PREVIOUS</button>':"")+(referenceHasNext?'<button class="small-button" onclick="Hub.changeReferencePage(1)">NEXT PAGE →</button>':"");
+    const pager=$("reference-pagination");
+    if(pager){
+      const start=Math.max(1,Math.min(referencePage-2,referenceTotalPages-4)),end=Math.min(referenceTotalPages,start+4);
+      let controls=referencePage>1?'<button class="small-button" onclick="Hub.changeReferencePage(-1)">← PREVIOUS</button>':"";
+      for(let n=start;n<=end;n++)controls+='<button class="page-number'+(n===referencePage?' active':'')+'" aria-label="Page '+n+'" aria-current="'+(n===referencePage?'page':'false')+'" onclick="Hub.goReferencePage('+n+')">'+n+'</button>';
+      if(referencePage<referenceTotalPages&&referenceHasNext)controls+='<button class="small-button" onclick="Hub.changeReferencePage(1)">NEXT →</button>';
+      pager.innerHTML=controls;
+    }
   }
   function openReferenceEntry(index){
     const entry=referenceEntries()[index];if(!entry)return;
@@ -443,7 +466,8 @@
     const e=state.homebrew?.find(x=>x.id===id);if(!e||(!isDM()&&e.ownerId!==member.id)||!confirm("Delete this homebrew entry?"))return;
     mutate(()=>state.homebrew=state.homebrew.filter(x=>x.id!==id));renderReferenceLibrary();
   }
-  function changeReferencePage(amount){referencePage=Math.max(1,referencePage+amount);loadReference();}
+  function changeReferencePage(amount){goReferencePage(referencePage+amount);}
+  function goReferencePage(page){referencePage=Math.max(1,Math.min(referenceTotalPages,safeNumber(page,1)));loadReference();}
   function selectReferenceCategory(category){
     if(!referenceTypes[category])return;referenceCategory=category;referencePage=1;
     root.querySelectorAll("[data-reference-category]").forEach(b=>b.classList.toggle("active",b.dataset.referenceCategory===category));
@@ -702,21 +726,11 @@
           ${(c.resources||[]).length?`<div class="card-subtitle" style="margin-top:14px">CLASS & CHARACTER RESOURCES</div>${c.resources.map(r=>`<div class="hp-line"><span>${escapeHTML(r.name)}</span><span>${safeNumber(r.used)}/${safeNumber(r.max)} used · ${escapeHTML(r.recovery||"long")} rest</span></div>`).join("")}`:""}
           ${safeNumber(c.exhaustion)>0?`<div class="hp-line"><strong>EXHAUSTION · ${escapeHTML(c.rulesEdition||"2014")}</strong><span>${safeNumber(c.exhaustion)}/6</span></div>`:""}
         `:`
-          <div class="tag">HP ${hp}/${max}</div>
-          <div class="tag">AC ${safeNumber(c.ac)}</div>
-          <details class="archive-profile-details"><summary>VIEW FULL PROFILE</summary>
-            <p><b>Background:</b> ${escapeHTML(c.background||"Not recorded")} · <b>Alignment:</b> ${escapeHTML(c.alignment||"Not recorded")}</p>
-            <p><b>STR</b> ${safeNumber(c.strength,10)} · <b>DEX</b> ${safeNumber(c.dexterity,10)} · <b>CON</b> ${safeNumber(c.constitution,10)} · <b>INT</b> ${safeNumber(c.intelligence,10)} · <b>WIS</b> ${safeNumber(c.wisdom,10)} · <b>CHA</b> ${safeNumber(c.charisma,10)}</p>
-            ${c.personality?'<p><b>Personality:</b> '+escapeHTML(c.personality)+'</p>':""}
-            ${c.ideals?'<p><b>Ideals:</b> '+escapeHTML(c.ideals)+'</p>':""}
-            ${c.bonds?'<p><b>Bonds:</b> '+escapeHTML(c.bonds)+'</p>':""}
-            ${c.flaws?'<p><b>Flaws:</b> '+escapeHTML(c.flaws)+'</p>':""}
-            ${c.backstory?'<p><b>Backstory:</b> '+escapeHTML(c.backstory)+'</p>':""}
-            ${c.languagesKnown?'<p><b>Languages:</b> '+escapeHTML(c.languagesKnown)+'</p>':""}
-          </details>
-          ${canEdit?`<div class="card-actions">
-            <button onclick="Hub.openCharacterSheet('${c.id}')">OPEN CHARACTER SHEET</button>
-            <button onclick="Hub.removeCharacter('${c.id}')">REMOVE</button>
+          <div class="archive-card-vitals"><span>HP <b>${hp}/${max}</b></span><span>AC <b>${safeNumber(c.ac)}</b></span><span>INIT <b>${safeNumber(c.initiative)>=0?"+":""}${safeNumber(c.initiative)}</b></span></div>
+          <div class="archive-card-owner">${escapeHTML(c.player|| (c.isNPC?"Companion":"Player not assigned"))} · ${escapeHTML(c.rulesEdition||"2014")} rules</div>
+          ${canEdit?`<div class="card-actions archive-card-actions">
+            <button class="hub-button" onclick="Hub.openCharacterSheet('${c.id}')">OPEN CHARACTER SHEET →</button>
+            <button class="small-button" onclick="Hub.removeCharacter('${c.id}')">REMOVE</button>
           </div>`:`<p class="list-meta">VIEW ONLY</p>`}
         `}
       </article>`;
@@ -783,9 +797,15 @@
     const partyAdd=root.querySelector("#page-party .page-heading button[onclick*='Hub.addCharacter']");
     if(partyAdd)partyAdd.style.display=isDM()?"none":"";
 
+    const characterTotal=Math.max(1,Math.ceil(state.characters.length/archivePageSize));
+    characterArchivePage=Math.min(characterArchivePage,characterTotal);
+    const characterStart=(characterArchivePage-1)*archivePageSize;
+    const visibleCharacters=state.characters.slice(characterStart,characterStart+archivePageSize);
+    $("character-list-meta").textContent=state.characters.length?("Showing "+(characterStart+1)+"–"+Math.min(characterStart+archivePageSize,state.characters.length)+" of "+state.characters.length+" characters"):"";
     $("character-list").innerHTML = state.characters.length
-      ? state.characters.map(c=>characterCard(c,false)).join("")
+      ? visibleCharacters.map(c=>characterCard(c,false)).join("")
       : empty("No character profiles have been created.");
+    archivePager("characters",characterArchivePage,characterTotal);
   }
 
 
@@ -909,8 +929,11 @@
   }
 
   function renderNPCs() {
+    const total=Math.max(1,Math.ceil(state.npcs.length/archivePageSize));npcArchivePage=Math.min(npcArchivePage,total);
+    const start=(npcArchivePage-1)*archivePageSize,visible=state.npcs.slice(start,start+archivePageSize);
+    $("npc-list-meta").textContent=state.npcs.length?("Showing "+(start+1)+"–"+Math.min(start+archivePageSize,state.npcs.length)+" of "+state.npcs.length+" NPCs"):"";
     $("npc-list").innerHTML = state.npcs.length
-      ? state.npcs.map(n=>`
+      ? visible.map(n=>`
         <article class="character-card">
           ${n.portrait?`<img src="${escapeHTML(n.portrait)}" alt="" class="portrait-preview">`:""}
           <div class="card-subtitle">${escapeHTML(n.role||"UNKNOWN ROLE")}</div>
@@ -930,6 +953,7 @@
           ${isDM()? `<div class="card-actions"><button onclick="Hub.editNPC('${n.id}')">EDIT</button><button onclick="Hub.removeItem('npcs','${n.id}')">DELETE</button></div>`:""}
         </article>`).join("")
       : empty("No NPCs discovered yet.");
+    archivePager("npcs",npcArchivePage,total);
   }
 
   function renderJournal() {
@@ -1614,6 +1638,9 @@
     removeHomebrew,
     selectReferenceCategory,
     changeReferencePage,
+    goReferencePage,
+    changeArchivePage,
+    goArchivePage,
     loadReference,
     renderSpellbook,addSpellToBook,addSpellToBookFor,editSpell,togglePreparedSpell,removeSpell,openCharacterSheet,setTempHP,
     searchBestiary,viewBestiary,saveBestiaryCreature,addBestiaryCreature,addEncounter,editEncounter,removeEncounter,
