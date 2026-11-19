@@ -504,8 +504,16 @@
   function openSearchResult(page){go(page==="sessions"?"dashboard":page);}
 
   function renderDashboard() {
+    const welcomeKicker=$("dashboard-welcome-kicker");
+    const welcomeTitle=$("dashboard-welcome-title");
+    const welcomeText=$("dashboard-welcome-text");
+    if(welcomeKicker)welcomeKicker.textContent=isDM()?"DM CAMPAIGN OVERVIEW":"WELCOME BACK, ADVENTURER";
+    if(welcomeTitle)welcomeTitle.textContent=isDM()?"Your campaign at a glance.":"Your next adventure awaits.";
+    if(welcomeText)welcomeText.textContent=isDM()
+      ?"Check on your party, review campaign activity and get ready for the next session."
+      :"Your character, quests and the latest campaign updates — all in one place.";
     $("stat-party").textContent = state.characters.filter(c=>!c.isNPC).length;
-    $("stat-quests").textContent = state.quests.filter(q=>q.status==="Active").length;
+    $("stat-quests").textContent = state.quests.filter(q=>(q.status||"Active").toLowerCase()==="active").length;
     $("stat-npcs").textContent = state.npcs.length;
     $("stat-journal").textContent = state.journal.length;
 
@@ -539,7 +547,7 @@
       `).join("")
       : empty("No adventurers have joined yet.");
 
-    const quests = state.quests.filter(q=>q.status==="Active").slice(0,4);
+    const quests = state.quests.filter(q=>(q.status||"Active").toLowerCase()==="active").slice(0,4);
     $("dashboard-quests").innerHTML = quests.length
       ? quests.map(q=>`<div class="list-card quest-card" onclick="Hub.openQuestDetails('${q.id}')"><h3>${escapeHTML(q.title)}</h3><p>${escapeHTML(q.description)}</p></div>`).join("")
       : empty("No active quests.");
