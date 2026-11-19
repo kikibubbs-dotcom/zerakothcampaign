@@ -1028,7 +1028,7 @@
     if(type==="npc"){
       const npc=state.npcs.find(x=>x.id===id);if(!npc)return;
       const modal=$("hub-modal");
-      modal.innerHTML='<div class="modal-card"><div class="modal-top"><h3>'+escapeHTML(npc.name)+'</h3><button class="modal-close" onclick="Hub.closeModal()">✕</button></div><div class="list-meta">'+escapeHTML(npc.role||"NPC")+' · '+escapeHTML(npc.location||"Location unknown")+'</div><p>'+escapeHTML(npc.description||"No description recorded.")+'</p><p><b>Relationship:</b> '+escapeHTML(npc.relationship||"Unknown")+'</p>'+(npc.goals?'<p><b>Goals:</b> '+escapeHTML(npc.goals)+'</p>':"")+'<div class="modal-actions"><button class="hub-button" onclick="Hub.go(\\'characters\\');Hub.closeModal()">OPEN NPC DIRECTORY</button></div></div>';
+      modal.innerHTML='<div class="modal-card"><div class="modal-top"><h3>'+escapeHTML(npc.name)+'</h3><button class="modal-close" onclick="Hub.closeModal()">✕</button></div><div class="list-meta">'+escapeHTML(npc.role||"NPC")+' · '+escapeHTML(npc.location||"Location unknown")+'</div><p>'+escapeHTML(npc.description||"No description recorded.")+'</p><p><b>Relationship:</b> '+escapeHTML(npc.relationship||"Unknown")+'</p>'+(npc.goals?'<p><b>Goals:</b> '+escapeHTML(npc.goals)+'</p>':"")+'<div class="modal-actions"><button class="hub-button" onclick="Hub.go(\'characters\');Hub.closeModal()">OPEN NPC DIRECTORY</button></div></div>';
       modal.hidden=false;modal.onclick=e=>{if(e.target===modal)closeModal();};return;
     }
     if(type==="world"){
