@@ -459,7 +459,7 @@
       const source=entry._homebrew?"CAMPAIGN HOMEBREW":(entry.document?.display_name||entry.document?.name||"OPEN SRD");
       const edition=entry._homebrew?(entry.edition||"Homebrew"):sourceEdition(entry);
       const fullDetail=referenceDescription(entry);
-      const detail=fullDetail.replace(/<[^>]*>/g," ").replace(/\\s+/g," ").trim().slice(0,300);
+      const detail=fullDetail.replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim().slice(0,300);
       const meta=referenceMeta(entry,source);
       const addLabel=referenceCategory==="creatures"?"ADD TO NPC ARCHIVE":"ADD TO CHARACTER";
       const canApply=referenceCategory!=="conditions";
