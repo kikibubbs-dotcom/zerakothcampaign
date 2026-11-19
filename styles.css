@@ -886,3 +886,17 @@
 #dnd-hub .journal-tools input{flex:1 1 260px;min-width:0}
 #dnd-hub .journal-quest-link{display:inline-block;margin:0 0 9px;padding:5px 8px;border:1px solid var(--gold2);border-radius:4px;background:rgba(214,173,93,.07);color:var(--gold);font:10px Arial,sans-serif}
 #dnd-hub .journal-card>h3{margin-bottom:8px}
+
+
+/* Adventure workspace clarity: group existing tools by the way a session flows */
+#dnd-hub .adventure-section-heading{margin:24px 0 12px;padding:0 2px}
+#dnd-hub .adventure-section-heading h2{font-size:20px;margin:3px 0 5px}
+#dnd-hub .adventure-section-heading p{margin:0;font-size:12px}
+#dnd-hub .adventure-section-heading .hub-kicker{margin-bottom:4px}
+#dnd-hub .adventure-section-heading.adventure-grid-heading{grid-column:1/-1;margin:8px 0 -12px}
+#dnd-hub .adventure-jump-nav{align-items:center}
+#dnd-hub .adventure-nav-label{color:var(--muted);font:700 9px Arial,sans-serif;letter-spacing:1px;padding:0 5px}
+#dnd-hub .session-prep-panel{margin-top:10px}
+#dnd-hub .map-toolbar.dm-only{display:flex}
+#dnd-hub .map-toolbar.dm-only[hidden]{display:none}
+@media(max-width:650px){#dnd-hub .adventure-section-heading{margin-top:20px}#dnd-hub .adventure-section-heading.adventure-grid-heading{margin-bottom:-8px}#dnd-hub .adventure-nav-label{width:100%;padding:2px 4px}}
