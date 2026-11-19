@@ -102,7 +102,7 @@
           <div id="dashboard-events"></div>
         </div>
       </div>
-      <div class="hub-grid overview-insights"><section class="hub-panel"><div class="panel-heading"><h3>▣ LATEST SESSION</h3></div><div id="dashboard-latest-session"></div></section><section class="hub-panel dm-only"><div class="panel-heading"><h3>✧ CAMPAIGN PULSE</h3></div><div id="dashboard-pulse"></div></section></div>
+      <div class="hub-grid overview-insights"><section class="hub-panel"><div class="panel-heading"><h3>▣ LATEST SESSION</h3></div><div id="dashboard-latest-session"></div></section></div>
       <section class="overview-sessions hub-panel dm-only"><div class="panel-heading"><div><h3>▣ SESSION HISTORY</h3><p>The story so far, from your latest adventure.</p></div><button class="hub-button dm-only" onclick="Hub.addSession()">+ LOG SESSION</button></div><div id="session-list" class="hub-list"></div></section>
     </section>
 
@@ -111,6 +111,8 @@
       <section class="session-prep-panel hub-panel dm-only" id="session-prep-panel"><div class="prep-heading"><div><div class="hub-kicker">BEFORE THE SESSION</div><h3>SESSION PREPARATION</h3><p>Keep plans, objectives and reminders together before opening Session Mode.</p></div></div><div class="prep-fields"><label class="prep-field"><span>SESSION TITLE</span><input id="prep-title" placeholder="e.g. The Sunken Archive"></label><label class="prep-field"><span>PLANNED DATE</span><input id="prep-date" placeholder="e.g. 22 November"></label><label class="prep-field prep-wide"><span>SESSION OBJECTIVES</span><textarea id="prep-objectives" rows="2" placeholder="What should the party discover or achieve?"></textarea></label><label class="prep-field prep-wide"><span>PLANNED ENCOUNTERS & NPCS</span><textarea id="prep-encounters" rows="3" placeholder="Encounters, NPCs, locations and possible complications…"></textarea></label><label class="prep-field prep-wide"><span>DM PREPARATION NOTES</span><textarea id="prep-notes" rows="3" placeholder="Clues, secrets, reminders and possible outcomes…"></textarea></label><label class="prep-field prep-wide"><span>PRE-SESSION CHECKLIST</span><textarea id="prep-checklist" rows="3" placeholder="One task per line…"></textarea></label></div><div class="prep-footer"><span class="list-meta">These notes are stored in shared campaign data, not private DM notes.</span><button class="hub-button" onclick="Hub.startSessionMode()">START SESSION →</button></div></section>
       <section class="session-mode-panel hub-panel dm-only" id="session-mode-panel"></section>
       <nav class="adventure-jump-nav" aria-label="Adventure sections">
+        <button class="dm-only" onclick="Hub.jumpTo('session-prep-panel')">✎ Session Preparation</button>
+        <button class="dm-only" onclick="Hub.jumpTo('session-mode-panel')">▶ Session Mode</button>
         <button onclick="Hub.jumpTo('page-map')">🗺 World Map</button>
         <button onclick="Hub.jumpTo('page-party')">♙ Party Tracker</button>
         <button onclick="Hub.jumpTo('adventure-quest-board')">⚑ Quest Board</button>
