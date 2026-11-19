@@ -900,3 +900,16 @@
 #dnd-hub .map-toolbar.dm-only{display:flex}
 #dnd-hub .map-toolbar.dm-only[hidden]{display:none}
 @media(max-width:650px){#dnd-hub .adventure-section-heading{margin-top:20px}#dnd-hub .adventure-section-heading.adventure-grid-heading{margin-bottom:-8px}#dnd-hub .adventure-nav-label{width:100%;padding:2px 4px}}
+
+
+/* Session preparation visibility and player-safe preview */
+#dnd-hub #page-adventure .adventure-jump-nav[hidden],
+#dnd-hub #page-adventure .adventure-board-grid[hidden],
+#dnd-hub #session-prep-panel[hidden],
+#dnd-hub #session-prep-player-panel[hidden],
+#dnd-hub #session-mode-panel[hidden]{display:none!important}
+#dnd-hub .session-player-preview{display:grid;gap:14px;margin:10px 0 18px;border-color:rgba(214,173,93,.5)}
+#dnd-hub .player-prep-field{padding-bottom:12px;border-bottom:1px solid var(--line)}
+#dnd-hub .player-prep-field:last-child{padding-bottom:0;border-bottom:0}
+#dnd-hub .player-prep-field span{display:block;margin-bottom:5px;color:var(--gold);font-size:9px;font-weight:800;letter-spacing:.12em}
+#dnd-hub .player-prep-field p{margin:0;color:var(--text,#eee);font-size:13px;line-height:1.6;white-space:pre-wrap}
