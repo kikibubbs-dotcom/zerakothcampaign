@@ -220,13 +220,16 @@
           <div>
             <div class="hub-kicker">THE CLASH OF STEEL</div>
             <h2>Combat Tracker</h2>
-            <p>Initiative order, hit points and conditions for the current encounter.</p>
+            <p>Initiative, turn order, hit points and conditions — with reusable encounter templates.</p>
           </div>
           <span class="combat-round-label" id="combat-round-label">NO ACTIVE ENCOUNTER</span>
         </div>
         <div class="combat-toolbar dm-only">
           <button class="hub-button" onclick="Hub.addCombatant()">+ ADD FROM ARCHIVE</button>
           <button class="small-button" onclick="Hub.addCombatEnemy()">+ ADD ENEMY</button>
+          <button class="small-button" onclick="Hub.addTemporaryCombatant()">+ TEMPORARY</button>
+          <button class="small-button" onclick="Hub.saveCombatEncounter()">SAVE ENCOUNTER</button>
+          <button class="small-button" onclick="Hub.loadCombatEncounter()">LOAD SAVED</button>
           <button class="small-button" onclick="Hub.startCombat()">START COMBAT</button>
           <button class="small-button" onclick="Hub.previousCombatTurn()">← PREVIOUS TURN</button>
           <button class="small-button" onclick="Hub.nextCombatTurn()">NEXT TURN →</button>
