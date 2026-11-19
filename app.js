@@ -412,9 +412,62 @@
     const key=String(entry.document?.key||"").toLowerCase();
     return key.includes("2024")?"2024":key.includes("2014")?"2014":"Open5e";
   }
+  function builtInReferenceEntries(category){
+    const languageRows=[
+      ["Common","Standard","Sigil"],["Common Sign Language","Standard","Sigil"],["Draconic","Standard","Dragons"],["Dwarvish","Standard","Dwarves"],["Elvish","Standard","Elves"],["Giant","Standard","Giants"],["Gnomish","Standard","Gnomes"],["Goblin","Standard","Goblinoids"],["Halfling","Standard","Halflings"],["Orc","Standard","Orcs"],
+      ["Abyssal","Rare","Demons of the Abyss"],["Celestial","Rare","Celestials"],["Deep Speech","Rare","Aberrations"],["Druidic","Rare · Secret","Druidic circles"],["Infernal","Rare","Devils of the Nine Hells"],["Primordial","Rare","Elementals"],["Sylvan","Rare","The Feywild"],["Thieves’ Cant","Rare · Secret","Various criminal guilds"],["Undercommon","Rare","The Underdark"]
+    ];
+    const legacyLanguages=[
+      ["Common","Standard","Humans and trade"],["Dwarvish","Standard","Dwarves"],["Elvish","Standard","Elves"],["Giant","Standard","Giants"],["Gnomish","Standard","Gnomes"],["Goblin","Standard","Goblinoids"],["Halfling","Standard","Halflings"],["Orc","Standard","Orcs"],
+      ["Abyssal","Rare","Demons"],["Celestial","Rare","Celestials"],["Deep Speech","Rare","Mind flayers and beholders"],["Draconic","Rare","Dragons"],["Infernal","Rare","Devils"],["Primordial","Rare","Elementals"],["Sylvan","Rare","Fey"],["Undercommon","Rare","Underdark traders"],["Druidic","Rare · Secret","Druids"],["Thieves’ Cant","Rare · Secret","Rogues and criminal networks"]
+    ];
+    if(category==="languages"){
+      const rows=referenceEdition==="2014"?legacyLanguages:languageRows;
+      return rows.map(([name,kind,origin])=>({
+        name,desc:"Origin: "+origin+". "+(kind.includes("Secret")?"This is a secret language learned through particular training or features.":kind==="Rare"?"This language is uncommon on the Material Plane and is usually learned through a feature, background or special circumstance.":"This is a widely used standard language in D&D worlds."),
+        is_exotic:kind!=="Standard",is_secret:kind.includes("Secret"),
+        document:{key:referenceEdition==="2014"?"srd-2014":"srd-2024",display_name:"D&D "+(referenceEdition==="2014"?"2014":"2024")+" Basic Rules"}
+      }));
+    }
+    if(category==="conditions"){
+      const rows=[
+        ["Blinded","You can’t see. You automatically fail ability checks that require sight. Attack rolls against you have Advantage, and your attack rolls have Disadvantage."],
+        ["Charmed","You can’t attack the charmer or target them with harmful abilities or magical effects. The charmer has Advantage on ability checks to interact socially with you."],
+        ["Deafened","You can’t hear and automatically fail ability checks that require hearing."],
+        ["Exhaustion",referenceEdition==="2014"?"Exhaustion is measured in six levels. Each level applies cumulative penalties; finishing a Long Rest reduces your exhaustion by one level if you have also had food and drink.":"Your level of Exhaustion subtracts 2 from every D20 Test per level and reduces your Speed by 5 feet per level. At level 6, you die. Finishing a Long Rest reduces your Exhaustion level by 1."],
+        ["Frightened","You have Disadvantage on ability checks and attack rolls while the source of your fear is within line of sight. You can’t willingly move closer to it."],
+        ["Grappled","Your Speed is 0 and can’t increase. You have Disadvantage on attack rolls against targets other than the grappler. The grappler can move you when it moves, subject to the grapple rules."],
+        ["Incapacitated","You can’t take actions or Reactions, and you lose Concentration."],
+        ["Invisible","You can’t be seen without magic or a special sense. You count as Heavily Obscured for hiding. Attack rolls against you have Disadvantage, and your attack rolls have Advantage."],
+        ["Paralyzed","You are Incapacitated, can’t move or speak, and automatically fail Strength and Dexterity saving throws. Attack rolls against you have Advantage; attacks that hit from within 5 feet are Critical Hits."],
+        ["Petrified","You are transformed into a solid inanimate substance, are Incapacitated and unaware of your surroundings. You have Resistance to all damage, are immune to Poison and Disease, and your weight increases tenfold."],
+        ["Poisoned","You have Disadvantage on attack rolls and ability checks."],
+        ["Prone","Your only movement option is to crawl unless you stand up. Your attack rolls have Disadvantage. Attack rolls against you have Advantage if the attacker is within 5 feet; otherwise they have Disadvantage."],
+        ["Restrained","Your Speed is 0 and can’t increase. Attack rolls against you have Advantage, your attack rolls have Disadvantage, and you have Disadvantage on Dexterity saving throws."],
+        ["Stunned","You are Incapacitated, can’t move, and can speak only falteringly. You automatically fail Strength and Dexterity saving throws, and attack rolls against you have Advantage."],
+        ["Unconscious","You are Incapacitated, can’t move or speak, and are unaware of your surroundings. You drop what you’re holding, fall Prone, and automatically fail Strength and Dexterity saving throws. Attack rolls against you have Advantage; attacks that hit from within 5 feet are Critical Hits."]
+      ];
+      return rows.map(([name,desc])=>({name,desc,document:{key:referenceEdition==="2014"?"srd-2014":"srd-2024",display_name:"D&D "+(referenceEdition==="2014"?"2014":"2024")+" Basic Rules"}}));
+    }
+    return null;
+  }
   async function loadReference(){
     const list=$("reference-results");if(!list)return;
-    const q=$("reference-search").value.trim();if(q!==referenceLastQuery){referencePage=1;referenceLastQuery=q;}list.innerHTML=empty("Searching the open rules library...");
+    const q=$("reference-search").value.trim();if(q!==referenceLastQuery){referencePage=1;referenceLastQuery=q;}
+    const builtIn=builtInReferenceEntries(referenceCategory);
+    if(builtIn){
+      list.innerHTML=empty("Loading reference entries...");
+      const home=(state.homebrew||[]).filter(x=>x.category===referenceCategory||x.category==="all").map(x=>({...x,_homebrew:true}));
+      const filtered=builtIn.filter(entry=>!q||(entry.name+" "+entry.desc).toLowerCase().includes(q.toLowerCase()));
+      const all=[...filtered];
+      referenceTotalPages=Math.max(1,Math.ceil(all.length/12));
+      referencePage=Math.max(1,Math.min(referencePage,referenceTotalPages));
+      referenceResults=all.slice((referencePage-1)*12,referencePage*12);
+      referenceHasNext=referencePage<referenceTotalPages;
+      renderReferenceLibrary();
+      return;
+    }
+    list.innerHTML=empty("Searching the open rules library...");
     try{
       const params=new URLSearchParams({limit:"12",ordering:"name",page:String(referencePage),document__key__in:"srd-2014,srd-2024"});
       if(q){
