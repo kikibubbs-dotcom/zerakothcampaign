@@ -417,7 +417,10 @@
     const q=$("reference-search").value.trim();if(q!==referenceLastQuery){referencePage=1;referenceLastQuery=q;}list.innerHTML=empty("Searching the open rules library...");
     try{
       const params=new URLSearchParams({limit:"12",ordering:"name",page:String(referencePage),document__key__in:"srd-2014,srd-2024"});
-      if(q)params.set("name__icontains",q);
+      if(q){
+        if(referenceCategory==="languages"||referenceCategory==="conditions")params.set("search",q);
+        else params.set("name__icontains",q);
+      }
       if(referenceEdition==="2014")params.set("document__key__iexact","srd-2014");
       if(referenceEdition==="2024")params.set("document__key__iexact","srd-2024");
       const response=await fetch("https://api.open5e.com/v2/"+referenceTypes[referenceCategory]+"/?"+params.toString());
@@ -430,6 +433,24 @@
     const home=(state.homebrew||[]).filter(x=>x.category===referenceCategory||x.category==="all").map(x=>({...x,_homebrew:true}));
     return [...home,...referenceResults];
   }
+  function referenceDescription(entry){
+    if(entry._homebrew)return String(entry.description||entry.desc||"");
+    if(Array.isArray(entry.descriptions)&&entry.descriptions.length){
+      const wanted=String(entry.document?.key||"").toLowerCase();
+      const match=entry.descriptions.find(item=>String(item.document||"").toLowerCase().includes(wanted)||String(item.gamesystem||"").toLowerCase().includes(referenceEdition.toLowerCase()));
+      return String(match?.desc||entry.descriptions[0]?.desc||"");
+    }
+    return String(entry.desc||entry.description||"");
+  }
+  function referenceMeta(entry,source){
+    if(entry._homebrew)return source;
+    if(referenceCategory==="languages"){
+      const kind=entry.is_secret?"Secret language":entry.is_exotic?"Rare language":"Standard language";
+      return kind+(entry.script_language?" · Script: "+entry.script_language:"");
+    }
+    if(referenceCategory==="conditions")return "Condition";
+    return referenceCategory==="spells"?"Level "+safeNumber(entry.level)+" · "+(entry.school||"Spell"):source;
+  }
   function renderReferenceLibrary(){
     const list=$("reference-results");if(!list)return;
     const entries=referenceEntries();
@@ -437,10 +458,12 @@
     list.innerHTML=entries.map((entry,i)=>{
       const source=entry._homebrew?"CAMPAIGN HOMEBREW":(entry.document?.display_name||entry.document?.name||"OPEN SRD");
       const edition=entry._homebrew?(entry.edition||"Homebrew"):sourceEdition(entry);
-      const detail=String(entry.desc||entry.description||"").replace(/<[^>]*>/g," ").slice(0,300);
-      const meta=referenceCategory==="spells"?"Level "+safeNumber(entry.level)+" · "+(entry.school||"Spell"):source;
+      const fullDetail=referenceDescription(entry);
+      const detail=fullDetail.replace(/<[^>]*>/g," ").replace(/\\s+/g," ").trim().slice(0,300);
+      const meta=referenceMeta(entry,source);
       const addLabel=referenceCategory==="creatures"?"ADD TO NPC ARCHIVE":"ADD TO CHARACTER";
-      const controls='<button onclick="Hub.openReferenceEntry('+i+')">VIEW DETAILS</button><button onclick="Hub.applyReferenceEntry('+i+')">'+addLabel+'</button>';
+      const canApply=referenceCategory!=="conditions";
+      const controls='<button onclick="Hub.openReferenceEntry('+i+')">VIEW DETAILS</button>'+(canApply?'<button onclick="Hub.applyReferenceEntry('+i+')">'+addLabel+'</button>':"");
       const own=entry._homebrew&&(isDM()||entry.ownerId===member?.id)?"<button onclick=\"Hub.editHomebrew(\'"+entry.id+"\')\">EDIT</button><button onclick=\"Hub.removeHomebrew(\'"+entry.id+"\')\">DELETE</button>":"";
       return '<article class="reference-card"><div class="reference-card-top"><span class="tag">'+escapeHTML(edition)+'</span><span class="list-meta">'+escapeHTML(meta)+'</span></div><h3>'+escapeHTML(entry.name||"Untitled")+'</h3><p>'+escapeHTML(detail||"Open the entry to view details.")+'</p><div class="list-meta">'+escapeHTML(source)+'</div><div class="card-actions">'+controls+own+'</div></article>';
     }).join("");
@@ -457,7 +480,7 @@
   function openReferenceEntry(index){
     const entry=referenceEntries()[index];if(!entry)return;
     openForm(entry.name||"Reference entry",[
-      {name:"details",label:"Description",type:"textarea",rows:8,value:entry.desc||entry.description||"No description available."},
+      {name:"details",label:"Description",type:"textarea",rows:10,value:referenceDescription(entry)||"No description available."},
       {name:"mechanics",label:"Mechanics",type:"textarea",rows:5,value:entry.mechanics||""},
       {name:"source",label:"Source",value:entry.document?.display_name||entry.source||"Open5e / campaign homebrew"},
       {name:"edition",label:"Rules version",value:entry._homebrew?entry.edition:sourceEdition(entry)}
@@ -477,10 +500,15 @@
       {name:"characterId",label:"Character",type:"select",required:true,options:owned.map(c=>({value:c.id,label:c.name}))}
     ],v=>{
       const c=state.characters.find(x=>x.id===v.characterId);if(!c||!canEditCharacter(c))return;
-      const detail=String(entry.desc||entry.description||"").replace(/<[^>]*>/g," ").trim();
+      const detail=referenceDescription(entry).replace(/<[^>]*>/g," ").trim();
       const line="• "+entry.name+(entry.level!==undefined?" (Level "+entry.level+")":"")+" — "+detail;
       mutate(()=>{
-        if(referenceCategory==="classes")c.className=entry.name;
+        if(referenceCategory==="languages"){
+          const current=String(c.languagesKnown||"").split(/[,;\\n]/).map(x=>x.trim()).filter(Boolean);
+          if(!current.some(x=>x.toLowerCase()===String(entry.name).toLowerCase()))current.push(entry.name);
+          c.languagesKnown=current.join(", ");
+        }
+        else if(referenceCategory==="classes")c.className=entry.name;
         else if(referenceCategory==="species")c.race=entry.name;
         else if(referenceCategory==="backgrounds")c.background=entry.name;
         else if(referenceCategory==="spells"){
