@@ -194,6 +194,7 @@
           </div>
           <button class="hub-button" onclick="Hub.addQuest()">+ New quest</button>
         </div>
+        <div id="quest-filters" class="quest-filters" aria-label="Filter quests"></div>
         <div id="quest-list" class="hub-list"></div>
       </section>
 
@@ -207,6 +208,7 @@
         </div>
         <button class="hub-button" onclick="Hub.addJournal()">+ New entry</button>
       </div>
+      <div class="journal-tools"><input type="search" id="journal-search" placeholder="Search entries, authors, dates or quests..." aria-label="Search campaign journal" oninput="Hub.filterJournal(this.value)"><span id="journal-list-meta" class="list-meta"></span></div>
       <div id="journal-list" class="hub-list"></div>
     </section>
 
