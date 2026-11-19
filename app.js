@@ -547,7 +547,7 @@
     const notice = state.notices[0];
     const noticeUnread=notice&&member&&!(notice.readBy||[]).includes(member.id);
     $("dashboard-notice").innerHTML = notice
-      ? `<div class="notice-feature"><div class="list-meta">${escapeHTML(notice.date)} ${noticeUnread?"· NEW":""}</div><h3>${escapeHTML(notice.title)}</h3><p>${escapeHTML(notice.body)}</p>${noticeUnread?'<button class="small-button" onclick="Hub.markNoticeRead(\\''+notice.id+'\\')">MARK AS READ</button>':""}</div>`
+      ? `<div class="notice-feature"><div class="list-meta">${escapeHTML(notice.date)} ${noticeUnread?"· NEW":""}</div><h3>${escapeHTML(notice.title)}</h3><p>${escapeHTML(notice.body)}</p>${noticeUnread?'<button class="small-button" onclick="Hub.markNoticeRead(\''+notice.id+'\')">MARK AS READ</button>':""}</div>`
       : empty("No announcements yet.");
 
     const events = [...state.events].sort((a,b)=>(a.date||"").localeCompare(b.date||"")).slice(0,3);
