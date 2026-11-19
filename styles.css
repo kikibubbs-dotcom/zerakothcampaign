@@ -827,3 +827,51 @@
 #dnd-hub .session-mode-idle>div{min-width:0;flex:1}
 #dnd-hub .session-mode-idle .small-button{margin-top:10px}
 @media(max-width:650px){#dnd-hub .session-mode-idle{align-items:stretch}#dnd-hub .session-mode-idle>.hub-button{width:100%}}
+
+
+/* Cleaner player overview */
+#dnd-hub #page-dashboard.player-dashboard .overview-search{margin-bottom:14px;padding:13px 16px}
+#dnd-hub #page-dashboard.player-dashboard .overview-search>label{display:block;margin-bottom:7px}
+#dnd-hub #page-dashboard.player-dashboard .overview-search input{width:100%;box-sizing:border-box}
+#dnd-hub #page-dashboard.player-dashboard .welcome-panel{min-height:0;padding:23px 26px;margin-bottom:14px}
+#dnd-hub #page-dashboard.player-dashboard .welcome-panel h2{font-size:25px}
+#dnd-hub #page-dashboard.player-dashboard .welcome-panel p{max-width:620px}
+#dnd-hub #page-dashboard.player-dashboard .welcome-icon{font-size:48px}
+#dnd-hub #page-dashboard.player-dashboard .dashboard-my-character{margin:0 0 15px;padding:17px;border-color:rgba(214,173,93,.48)}
+#dnd-hub #page-dashboard.player-dashboard .dashboard-my-character .panel-heading{margin-bottom:12px}
+#dnd-hub #page-dashboard.player-dashboard .my-character-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:10px}
+#dnd-hub #page-dashboard.player-dashboard .my-character-card{padding:13px 15px;background:rgba(10,12,18,.3)}
+#dnd-hub #page-dashboard.player-dashboard .my-character-card h4{font-size:18px}
+#dnd-hub #page-dashboard.player-dashboard .my-character-card>div:first-child p{margin-top:4px}
+#dnd-hub #page-dashboard.player-dashboard .my-character-progress{margin:10px 0 5px}
+#dnd-hub #page-dashboard.player-dashboard .my-character-xp{font-size:10px}
+#dnd-hub #page-dashboard.player-dashboard .my-character-card .card-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+#dnd-hub #page-dashboard.player-dashboard .my-character-card .card-actions button{flex:1 1 auto}
+#dnd-hub #page-dashboard.player-dashboard .player-overview-quests,
+#dnd-hub #page-dashboard.player-dashboard .player-overview-updates{gap:12px;margin-bottom:12px}
+#dnd-hub #page-dashboard.player-dashboard .player-overview-quests>.hub-panel,
+#dnd-hub #page-dashboard.player-dashboard .player-overview-updates>.hub-panel,
+#dnd-hub #page-dashboard.player-dashboard .player-overview-latest>.hub-panel{padding:16px;margin-bottom:0}
+#dnd-hub #page-dashboard.player-dashboard .panel-heading{gap:8px}
+#dnd-hub #page-dashboard.player-dashboard .panel-heading h3{font-size:11px;letter-spacing:.04em}
+#dnd-hub #page-dashboard.player-dashboard #dashboard-quests .list-card{padding:11px 12px;margin-bottom:8px}
+#dnd-hub #page-dashboard.player-dashboard #dashboard-quests .list-card:last-child{margin-bottom:0}
+#dnd-hub #page-dashboard.player-dashboard #dashboard-quests .list-card h3{font-size:12px;margin-bottom:5px}
+#dnd-hub #page-dashboard.player-dashboard #dashboard-quests .list-card p{font-size:11px;line-height:1.5}
+#dnd-hub #page-dashboard.player-dashboard #dashboard-notice .notice-feature{padding:0}
+#dnd-hub #page-dashboard.player-dashboard #dashboard-notice .notice-feature h3{margin:7px 0;font-size:14px}
+#dnd-hub #page-dashboard.player-dashboard #dashboard-notice .notice-feature p{font-size:11px;line-height:1.55}
+#dnd-hub #page-dashboard.player-dashboard #dashboard-events .list-card{padding:10px 11px;margin-bottom:7px}
+#dnd-hub #page-dashboard.player-dashboard #dashboard-events .list-card:last-child{margin-bottom:0}
+#dnd-hub #page-dashboard.player-dashboard #dashboard-events .list-card h3{font-size:12px;margin:4px 0 0}
+#dnd-hub #page-dashboard.player-dashboard .player-overview-latest{margin:0 0 12px}
+#dnd-hub #page-dashboard.player-dashboard #dashboard-latest-session h3{font-size:14px;margin:7px 0}
+#dnd-hub #page-dashboard.player-dashboard #dashboard-latest-session p{font-size:11px;line-height:1.6}
+#dnd-hub #page-dashboard.player-dashboard .empty-state{padding:14px 10px;font-size:11px}
+@media(max-width:760px){
+ #dnd-hub #page-dashboard.player-dashboard .welcome-panel{padding:18px}
+ #dnd-hub #page-dashboard.player-dashboard .welcome-panel h2{font-size:21px}
+ #dnd-hub #page-dashboard.player-dashboard .welcome-icon{font-size:34px}
+ #dnd-hub #page-dashboard.player-dashboard .player-overview-quests,
+ #dnd-hub #page-dashboard.player-dashboard .player-overview-updates{grid-template-columns:1fr}
+}

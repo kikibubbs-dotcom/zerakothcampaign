@@ -509,6 +509,8 @@
   function openSearchResult(page){go(page==="sessions"?"dashboard":page);}
 
   function renderDashboard() {
+    const dashboard=$("page-dashboard");
+    if(dashboard)dashboard.classList.toggle("player-dashboard",member?.role==="player");
     const welcomeKicker=$("dashboard-welcome-kicker");
     const welcomeTitle=$("dashboard-welcome-title");
     const welcomeText=$("dashboard-welcome-text");
