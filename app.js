@@ -106,7 +106,7 @@
         return;
       }
       if (error) throw error;
-      status("✓ All changes saved");
+      status("✓ All changes saved · "+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}));
     } catch (err) {
       pending = true;
       status("Save failed: " + err.message);
@@ -509,6 +509,25 @@
     $("stat-npcs").textContent = state.npcs.length;
     $("stat-journal").textContent = state.journal.length;
 
+    const myPanel=$("dashboard-my-character");
+    if(myPanel){
+      const mine=member?.role==="player"?state.characters.filter(c=>c.ownerId===member.id&&!c.isNPC):[];
+      myPanel.hidden=!member||member.role!=="player";
+      if(!myPanel.hidden){
+        if(!mine.length){
+          myPanel.innerHTML='<div class="panel-heading"><div><h3>YOUR ADVENTURER</h3><p>Your character sheet is your home base.</p></div></div><p>You have not created a character yet.</p><button class="hub-button" onclick="Hub.addCharacter()">+ CREATE YOUR CHARACTER</button>';
+        }else{
+          myPanel.innerHTML='<div class="panel-heading"><div><h3>YOUR ADVENTURER</h3><p>Your character at a glance.</p></div><span class="list-meta">'+mine.length+' character'+(mine.length===1?"":"s")+'</span></div><div class="my-character-grid">'+mine.map(c=>{
+            const required=["name","race","className","background","strength","dexterity","constitution","intelligence","wisdom","charisma"];
+            const complete=required.filter(key=>c[key]!==undefined&&c[key]!==null&&String(c[key]).trim()!=="").length,percent=Math.round(complete/required.length*100);
+            const level=Math.max(1,safeNumber(c.level,1)),threshold=XP_LEVELS[level]||0,xp=safeNumber(c.experience),remaining=level>=20?0:Math.max(0,threshold-xp),readyToLevel=level<20&&xp>=threshold&&threshold>0;
+            return '<article class="my-character-card"><div><span class="card-subtitle">'+escapeHTML(c.className||"Adventurer")+' · LEVEL '+level+'</span><h4>'+escapeHTML(c.name)+'</h4><p>'+escapeHTML(c.race||"Species not set")+' · '+safeNumber(c.hp)+'/'+safeNumber(c.maxHp)+' HP</p></div><div class="my-character-progress"><div><span>CHARACTER SHEET</span><b>'+percent+'%</b></div><div class="my-character-progress-track"><i style="width:'+percent+'%"></i></div></div><p class="my-character-xp">'+(level>=20?"Maximum level reached":readyToLevel?"Ready to level up!":xp.toLocaleString()+" / "+threshold.toLocaleString()+" XP · "+remaining.toLocaleString()+" to next level")+'</p><div class="card-actions"><button class="hub-button" onclick="Hub.openCharacterSheet(\''+c.id+'\')">OPEN CHARACTER SHEET</button>'+(readyToLevel?'<button class="small-button" onclick="Hub.levelUpCharacter(\''+c.id+'\')">LEVEL UP</button>':"")+'</div></article>';
+          }).join("")+'</div>';
+        }
+      }
+    }
+
+
     const party = state.characters.filter(c=>!c.isNPC).slice(0,5);
     $("dashboard-party").innerHTML = party.length
       ? party.map(c=>`
@@ -526,8 +545,9 @@
       : empty("No active quests.");
 
     const notice = state.notices[0];
+    const noticeUnread=notice&&member&&!(notice.readBy||[]).includes(member.id);
     $("dashboard-notice").innerHTML = notice
-      ? `<div class="notice-feature"><div class="list-meta">${escapeHTML(notice.date)}</div><h3>${escapeHTML(notice.title)}</h3><p>${escapeHTML(notice.body)}</p></div>`
+      ? `<div class="notice-feature"><div class="list-meta">${escapeHTML(notice.date)} ${noticeUnread?"· NEW":""}</div><h3>${escapeHTML(notice.title)}</h3><p>${escapeHTML(notice.body)}</p>${noticeUnread?'<button class="small-button" onclick="Hub.markNoticeRead(\\''+notice.id+'\\')">MARK AS READ</button>':""}</div>`
       : empty("No announcements yet.");
 
     const events = [...state.events].sort((a,b)=>(a.date||"").localeCompare(b.date||"")).slice(0,3);
@@ -814,7 +834,7 @@
     const itemsHtml=items.length?items.map(x=>{const type=x.equipmentType||"other",details=[x.equipped?"EQUIPPED":"Carried",x.weight?x.weight:null,x.value?x.value:null,x.damage?("Damage "+x.damage+" "+(x.damageType||"")):null,["light","medium","heavy"].includes(type)?("Armour AC "+safeNumber(x.armorBase)):type==="shield"?"Shield +2 AC":null,x.attackBonus?("Attack "+(x.attackBonus>0?"+":"")+x.attackBonus):null].filter(Boolean).join(" · ");return '<article class="beyond-list-row '+(x.equipped?"beyond-item-equipped":"")+'"><div class="beyond-row-main"><strong>'+escapeHTML(x.name)+'</strong><p>'+escapeHTML(x.category||"Equipment")+' · '+escapeHTML(x.rarity||"Common")+' · Qty '+safeNumber(x.quantity,1)+'</p><small>'+escapeHTML(details)+'</small>'+(x.notes?'<p>'+escapeHTML(x.notes)+'</p>':"")+'</div>'+(can?'<div class="beyond-row-actions">'+(["weapon","light","medium","heavy","shield"].includes(type)?'<button class="small-button" onclick="Hub.toggleEquippedItem(\''+c.id+'\',\''+x.id+'\')">'+(x.equipped?"UNEQUIP":"EQUIP")+'</button>':"")+'<button class="small-button" onclick="Hub.editCharacterItem(\''+c.id+'\',\''+x.id+'\')">EDIT</button><button class="small-button" onclick="Hub.removeCharacterItem(\''+c.id+'\',\''+x.id+'\')">REMOVE</button></div>':"")+'</article>';}).join(""):empty("No equipment recorded.");
     const slotHtml=slots.map((s,i)=>'<div class="beyond-slot"><span>LEVEL '+(i+1)+'</span><strong>'+safeNumber(s.used)+' / '+safeNumber(s.total)+'</strong><div class="beyond-slot-dots">'+Array.from({length:Math.min(10,safeNumber(s.total))},(_,n)=>'<i class="'+(n<safeNumber(s.used)?"used":"")+'"></i>').join("")+'</div>'+(can?'<div class="beyond-row-actions"><button class="small-button" onclick="Hub.slot(\''+c.id+'\','+i+',-1)">−</button><button class="small-button" onclick="Hub.slot(\''+c.id+'\','+i+',1)">+</button></div>':"")+'</div>').join("");
     host.innerHTML='<div class="beyond-sheet"><div class="beyond-topline"><button class="small-button" onclick="Hub.go(\'characters\')">← CHARACTER ARCHIVE</button><span class="beyond-edition">'+escapeHTML(c.rulesEdition||"2014")+' RULES</span></div>'+
-    '<header class="beyond-hero">'+(c.portrait?'<img class="beyond-portrait" src="'+escapeHTML(c.portrait)+'" alt="Character portrait">':'<div class="beyond-portrait placeholder">✦</div>')+'<div class="beyond-identity"><div class="hub-kicker">'+(c.isNPC?"NPC / COMPANION":"PLAYER CHARACTER")+'</div><h2>'+escapeHTML(c.name)+'</h2><p>'+escapeHTML(c.race||"Species not set")+' · '+escapeHTML(c.className||"Class not set")+' · Level '+safeNumber(c.level,1)+'</p><div class="beyond-tags"><span>'+escapeHTML(c.background||"Background not set")+'</span><span>'+escapeHTML(c.alignment||"Alignment not set")+'</span><span>'+escapeHTML(c.player||"No player assigned")+'</span></div>'+conditionHtml+'</div><div class="beyond-hero-actions">'+(can?'<button class="hub-button" onclick="Hub.editCharacter(\''+c.id+'\')">EDIT CHARACTER</button><button class="small-button" onclick="Hub.takeRest(\''+c.id+'\',\'short\')">SHORT REST</button><button class="small-button" onclick="Hub.takeRest(\''+c.id+'\',\'long\')">LONG REST</button>':'<span class="list-meta">VIEW ONLY</span>')+'</div></header>'+
+    '<header class="beyond-hero">'+(c.portrait?'<img class="beyond-portrait" src="'+escapeHTML(c.portrait)+'" alt="Character portrait">':'<div class="beyond-portrait placeholder">✦</div>')+'<div class="beyond-identity"><div class="hub-kicker">'+(c.isNPC?"NPC / COMPANION":"PLAYER CHARACTER")+'</div><h2>'+escapeHTML(c.name)+'</h2><p>'+escapeHTML(c.race||"Species not set")+' · '+escapeHTML(c.className||"Class not set")+' · Level '+safeNumber(c.level,1)+'</p><div class="beyond-tags"><span>'+escapeHTML(c.background||"Background not set")+'</span><span>'+escapeHTML(c.alignment||"Alignment not set")+'</span><span>'+escapeHTML(c.player||"No player assigned")+'</span></div>'+conditionHtml+'</div><div class="beyond-hero-actions">'+(can?'<button class="hub-button" onclick="Hub.editCharacter(\''+c.id+'\')">EDIT CHARACTER</button><button class="hub-button" onclick="Hub.levelUpCharacter(\''+c.id+'\')">LEVEL UP</button><button class="small-button" onclick="Hub.takeRest(\''+c.id+'\',\'short\')">SHORT REST</button><button class="small-button" onclick="Hub.takeRest(\''+c.id+'\',\'long\')">LONG REST</button>':'<span class="list-meta">VIEW ONLY</span>')+'</div></header>'+
     dangerHtml+'<div class="beyond-combat-strip"><div class="beyond-hp"><span>HIT POINTS</span><strong>'+hp+' <small>/ '+maxHp+'</small></strong><div class="beyond-hp-track"><i style="width:'+Math.max(0,Math.min(100,hp/maxHp*100))+'%"></i></div><small>'+safeNumber(c.tempHp)+' TEMP HP</small>'+(can?'<div class="beyond-row-actions"><button class="small-button" onclick="Hub.changeHP(\''+c.id+'\',1)">+1 HP</button><button class="small-button" onclick="Hub.changeHP(\''+c.id+'\',-1)">−1 HP</button><button class="small-button" onclick="Hub.setTempHP(\''+c.id+'\')">TEMP HP</button></div>':"")+'</div>'+
     '<div class="beyond-stat"><span>ARMOUR CLASS</span><strong>'+(calculateCharacterAC(c)??safeNumber(c.ac,10))+'</strong>'+(calculateCharacterAC(c)!==null?'<small>From equipped gear</small>':"")+'</div><div class="beyond-stat"><span>INITIATIVE</span><strong>'+mod(c.dexterity)+'</strong></div><div class="beyond-stat"><span>SPEED</span><strong>'+safeNumber(c.speed,30)+' ft</strong></div><div class="beyond-stat"><span>PROFICIENCY</span><strong>+'+proficiencyBonus+'</strong></div><div class="beyond-stat"><span>HIT DICE</span><strong>'+escapeHTML(c.hitDice||"—")+'</strong><small>'+safeNumber(c.hitDiceUsed)+' spent</small></div></div>'+
     '<nav class="beyond-tab-nav" role="tablist" aria-label="Character sheet sections"><button type="button" role="tab" data-sheet-tab="core" aria-selected="true" class="active" onclick="Hub.showCharacterSection(this.dataset.sheetTab)">Core</button><button type="button" role="tab" data-sheet-tab="saves" aria-selected="false" class="" onclick="Hub.showCharacterSection(this.dataset.sheetTab)">Saves & Skills</button><button type="button" role="tab" data-sheet-tab="combat" aria-selected="false" class="" onclick="Hub.showCharacterSection(this.dataset.sheetTab)">Combat</button><button type="button" role="tab" data-sheet-tab="spells" aria-selected="false" class="" onclick="Hub.showCharacterSection(this.dataset.sheetTab)">Spells</button><button type="button" role="tab" data-sheet-tab="inventory" aria-selected="false" class="" onclick="Hub.showCharacterSection(this.dataset.sheetTab)">Inventory</button><button type="button" role="tab" data-sheet-tab="features" aria-selected="false" class="" onclick="Hub.showCharacterSection(this.dataset.sheetTab)">Features</button><button type="button" role="tab" data-sheet-tab="notes" aria-selected="false" class="" onclick="Hub.showCharacterSection(this.dataset.sheetTab)">Notes</button></nav>'+
@@ -824,10 +844,61 @@
     section("combat","ATTACKS & COMBAT",'<div class="beyond-subheading"><div><h4>Attacks</h4><p>Roll an attack or its damage directly from the sheet.</p></div>'+(can?'<button class="hub-button" onclick="Hub.addAttack(\''+c.id+'\')">+ ADD ATTACK</button>':"")+'</div><div class="beyond-attack-list">'+attackHtml+'</div><div class="beyond-subheading"><div><h4>Hit points & damage</h4><p>Damage is applied to temporary HP before current HP.</p></div>'+(can?'<div class="beyond-row-actions"><button class="small-button" onclick="Hub.applyDamage(\''+c.id+'\')">APPLY DAMAGE</button><button class="small-button" onclick="Hub.healCharacter(\''+c.id+'\')">HEAL</button></div>':"")+'</div><div class="beyond-subheading"><div><h4>Death saving throws</h4><p>'+safeNumber(c.deathSuccesses)+'/3 successes · '+safeNumber(c.deathFailures)+'/3 failures'+(c.deathStatus?' · '+escapeHTML(c.deathStatus.toUpperCase()):"")+'</p></div></div><div class="beyond-death-saves"><div><span>SUCCESSES</span><strong>'+safeNumber(c.deathSuccesses)+' / 3</strong>'+(can?'<div class="beyond-row-actions"><button class="small-button" onclick="Hub.deathSave(\''+c.id+'\',1)">+ SUCCESS</button></div>':"")+'</div><div><span>FAILURES</span><strong>'+safeNumber(c.deathFailures)+' / 3</strong>'+(can?'<div class="beyond-row-actions"><button class="small-button" onclick="Hub.deathSave(\''+c.id+'\',-1)">+ FAILURE</button></div>':"")+'</div></div><div class="beyond-subheading"><div><h4>Active conditions</h4><p>Track effects currently affecting this character.</p></div>'+(can?'<button class="small-button" onclick="Hub.editConditions(\''+c.id+'\')">MANAGE CONDITIONS</button>':"")+'</div><div class="beyond-condition-list">'+(conditions.length?conditions.map(x=>'<span class="beyond-pill">'+escapeHTML(x)+'</span>').join(""):empty("No active conditions."))+'</div>')+
     section("spells","SPELLBOOK MANAGER",'<div class="beyond-subheading"><div><h4>Spell slots</h4><p>Track expended slots here.</p></div>'+(can?'<button class="small-button" onclick="Hub.configureSlots(\''+c.id+'\')">CONFIGURE SLOTS</button>':"")+'</div><div class="beyond-slots">'+slotHtml+'</div><div class="spellbook-embedded"><div class="reference-toolbar"><span class="list-meta">SPELLBOOK FOR '+escapeHTML(c.name)+'</span>'+(can?'<button class="hub-button" type="button" onclick="Hub.addSpellToBook()">+ ADD SPELL</button>':"")+'</div><div class="spellbook-filter-toolbar"><input id="spellbook-filter-search" type="search" placeholder="Search spells..." oninput="Hub.renderSpellbook()"><select id="spellbook-filter-level" onchange="Hub.renderSpellbook()"><option value="all">All levels</option><option value="0">Cantrips</option><option value="1">Level 1</option><option value="2">Level 2</option><option value="3">Level 3</option><option value="4">Level 4</option><option value="5">Level 5</option><option value="6">Level 6</option><option value="7">Level 7</option><option value="8">Level 8</option><option value="9">Level 9</option></select><select id="spellbook-filter-prepared" onchange="Hub.renderSpellbook()"><option value="all">Prepared & known</option><option value="prepared">Prepared only</option><option value="known">Not prepared</option></select><select id="spellbook-filter-school" onchange="Hub.renderSpellbook()"><option value="all">All schools</option></select><select id="spellbook-filter-concentration" onchange="Hub.renderSpellbook()"><option value="all">Any concentration</option><option value="yes">Concentration</option><option value="no">No concentration</option></select></div><div id="spellbook-summary" class="list-meta"></div><div id="spellbook-list" class="reference-results"></div></div>')+
     section("inventory","EQUIPMENT & INVENTORY",'<div class="beyond-subheading"><div><h4>Carried equipment</h4><p>Gold: <b>'+safeNumber(c.gold)+' GP</b> · Equipped AC: <b>'+(calculateCharacterAC(c)??safeNumber(c.ac,10))+'</b></p><small>Equip armour and shields below to calculate AC automatically. Light armour adds full DEX, medium armour caps DEX at 2, heavy armour adds none.</small></div>'+(can?'<div class="beyond-row-actions"><button class="small-button" onclick="Hub.addCharacterItem(\''+c.id+'\')">+ ADD ITEM</button><button class="small-button" onclick="Hub.editCharacterGold(\''+c.id+'\')">EDIT GOLD</button></div>':"")+'</div>'+itemsHtml)+
-    section("features","FEATURES, PROFICIENCIES & TRAITS",'<div class="beyond-two-col"><div><h4>Features & traits</h4><p class="beyond-pre">'+escapeHTML(c.features||"No features recorded.")+'</p></div><div><h4>Other proficiencies</h4><p><b>Languages:</b> '+escapeHTML(c.languagesKnown||"—")+'</p><p><b>Senses:</b> '+escapeHTML(c.senses||"—")+'</p><p><b>Other:</b> '+escapeHTML(c.proficiencies||"—")+'</p></div></div>')+
+    section("features","FEATURES, PROFICIENCIES & PROGRESSION",'<div class="beyond-two-col"><div><h4>Features & traits</h4><p class="beyond-pre">'+escapeHTML(c.features||"No features recorded.")+'</p></div><div><h4>Other proficiencies</h4><p><b>Languages:</b> '+escapeHTML(c.languagesKnown||"—")+'</p><p><b>Senses:</b> '+escapeHTML(c.senses||"—")+'</p><p><b>Other:</b> '+escapeHTML(c.proficiencies||"—")+'</p></div></div>'+(c.progressionLog?.length?'<div class="progression-history"><h4>LEVEL-UP HISTORY</h4>'+c.progressionLog.slice().reverse().map(log=>'<article><strong>LEVEL '+safeNumber(log.toLevel)+' · '+escapeHTML(log.date?new Date(log.date).toLocaleDateString():"")+'</strong><p>+'+safeNumber(log.hpGain)+' maximum HP · '+escapeHTML(log.hitDie||"Hit die")+' · '+escapeHTML(log.hitPointMethod||"")+'</p>'+(log.features?'<p>'+escapeHTML(log.features)+'</p>':"")+(log.spells?'<p><b>Spells:</b> '+escapeHTML(log.spells)+'</p>':"")+(log.abilityChanges?'<p><b>Ability increases:</b> '+escapeHTML(log.abilityChanges)+'</p>':"")+(log.feat?'<p><b>Feat:</b> '+escapeHTML(log.feat)+'</p>':"")+(log.notes?'<p>'+escapeHTML(log.notes)+'</p>':"")+'</article>').join("")+'</div>':""))+
     section("notes","BACKGROUND & CHARACTER NOTES",'<div class="beyond-two-col"><div><h4>Personality</h4><p class="beyond-pre">'+escapeHTML(c.personality||"—")+'</p><h4>Ideals</h4><p class="beyond-pre">'+escapeHTML(c.ideals||"—")+'</p><h4>Bonds</h4><p class="beyond-pre">'+escapeHTML(c.bonds||"—")+'</p><h4>Flaws</h4><p class="beyond-pre">'+escapeHTML(c.flaws||"—")+'</p></div><div><h4>Backstory</h4><p class="beyond-pre">'+escapeHTML(c.backstory||"—")+'</p><h4>Additional notes</h4><p class="beyond-pre">'+escapeHTML(c.notes||"—")+'</p></div></div>')+
     '</div><aside class="beyond-sidebar"><section class="beyond-side-card"><h3>COMBAT RESOURCES</h3><p><b>Exhaustion:</b> '+safeNumber(c.exhaustion)+'</p><p><b>Death saves:</b> '+safeNumber(c.deathSuccesses)+'/3 successes · '+safeNumber(c.deathFailures)+'/3 failures</p>'+(can?'<button class="small-button" onclick="Hub.editResources(\''+c.id+'\')">MANAGE RESOURCES</button>':"")+'</section><section class="beyond-side-card"><h3>CHARACTER DETAILS</h3><p><b>Class & Subclass</b><br>'+escapeHTML(c.className||"—")+' '+escapeHTML(c.subclass||"")+'</p><p><b>Background</b><br>'+escapeHTML(c.background||"—")+'</p><p><b>Alignment</b><br>'+escapeHTML(c.alignment||"—")+'</p><p><b>Experience</b><br>'+escapeHTML(c.experience??"—")+'</p></section><section class="beyond-side-card"><h3>CONDITIONS</h3><p>'+escapeHTML(c.conditions||"No active conditions recorded.")+'</p>'+(can?'<button class="small-button" onclick="Hub.editCharacter(\''+c.id+'\')">EDIT CHARACTER</button>':"")+'</section></aside></div></div>';
     try{const saved=localStorage.getItem("dnd-sheet-tab:"+activeCharacterSheetId);if(saved&&["core","saves","combat","spells","inventory","features","notes"].includes(saved)){host.querySelectorAll("[data-sheet-panel]").forEach(p=>p.classList.toggle("active",p.dataset.sheetPanel===saved));host.querySelectorAll(".beyond-tab-nav button").forEach(b=>{const active=b.dataset.sheetTab===saved;b.classList.toggle("active",active);b.setAttribute("aria-selected",active?"true":"false");});}}catch(e){}
+  }
+
+
+  const XP_LEVELS=[0,300,900,2700,6500,14000,23000,34000,48000,64000,85000,100000,120000,140000,165000,195000,225000,265000,305000,355000];
+  function levelUpCharacter(id){
+    const c=state.characters.find(x=>x.id===id);if(!c||!canEditCharacter(c))return;
+    const current=Math.max(1,Math.min(20,safeNumber(c.level,1))),next=current+1;
+    if(current>=20)return alert("This character has reached level 20.");
+    const className=String(c.className||"").toLowerCase();
+    const dieMatch=String(c.hitDice||"").match(/d(6|8|10|12)/i);
+    const classDie=/barbarian/.test(className)?12:/fighter|paladin|ranger/.test(className)?10:/bard|cleric|druid|monk|rogue|warlock/.test(className)?8:/sorcerer|wizard/.test(className)?6:8;
+    const die=Number(dieMatch?.[1]||classDie),nextXP=XP_LEVELS[next-1]||0;
+    openForm("Level up · "+c.name+" · Level "+next,[
+      {type:"section",label:"LEVEL ADVANCEMENT"},
+      {name:"experience",label:"New total experience points",type:"number",min:0,value:safeNumber(c.experience)},
+      {name:"hpMethod",label:"Hit point increase",type:"select",value:"average",options:[{value:"average",label:"Take the average (recommended)"},{value:"roll",label:"Roll the hit die"},{value:"manual",label:"Enter a manual result"}]},
+      {name:"hitDie",label:"Class hit die",type:"select",value:String(die),options:[6,8,10,12].map(n=>({value:String(n),label:"d"+n}))},
+      {name:"manualHp",label:"Manual hit die result (if selected)",type:"number",min:1,max:12,value:Math.floor(die/2)+1},
+      {type:"section",label:"NEW CLASS FEATURES & SPELLS"},
+      {name:"subclass",label:"Subclass / archetype (if gained)",value:c.subclass||"",placeholder:"Leave blank if unchanged"},
+      {name:"features",label:"New class features, subclass features or feats",type:"textarea",rows:3,full:true,placeholder:"Add the features gained at this level…"},
+      {name:"spells",label:"New spells or spellcasting changes",type:"textarea",rows:3,full:true,placeholder:"Record new spells, cantrips or spellcasting changes…"},
+      {type:"section",label:"ABILITY SCORE IMPROVEMENT"},
+      {name:"abilityChanges",label:"Ability score changes (optional)",value:"",placeholder:"e.g. STR +2, CON +1"},
+      {name:"feat",label:"Feat gained (if chosen instead)",value:"",placeholder:"Feat name"},
+      {type:"section",label:"LEVEL-UP NOTES"},
+      {name:"notes",label:"Other changes / choices",type:"textarea",rows:3,full:true,placeholder:"Subclass choices, new proficiencies, resource changes, or reminders…"}
+    ],v=>{
+      const dieSize=Math.max(6,Math.min(12,safeNumber(v.hitDie,die)));
+      const dieResult=v.hpMethod==="roll"?1+Math.floor(Math.random()*dieSize):v.hpMethod==="manual"?Math.max(1,Math.min(dieSize,safeNumber(v.manualHp,1))):Math.floor(dieSize/2)+1;
+      const conMod=Math.floor((safeNumber(c.constitution,10)-10)/2),hpGain=Math.max(1,dieResult+conMod);
+      const abilityKeys={STR:"strength",DEX:"dexterity",CON:"constitution",INT:"intelligence",WIS:"wisdom",CHA:"charisma"},applied=[];
+      String(v.abilityChanges||"").toUpperCase().match(/(STR|DEX|CON|INT|WIS|CHA)\s*([+-]\s*\d+)/g)?.forEach(part=>{
+        const m=part.match(/(STR|DEX|CON|INT|WIS|CHA)\s*([+-]\s*\d+)/),key=abilityKeys[m?.[1]],amount=Number(String(m?.[2]||"").replace(/\s/g,""));
+        if(key&&amount){const before=safeNumber(c[key],10);c[key]=Math.max(1,Math.min(20,before+amount));applied.push(m[1]+" "+(amount>0?"+":"")+amount);}
+      });
+      const oldLevel=current,newLevel=next,newPB=2+Math.floor((newLevel-1)/4);
+      mutate(()=>{
+        c.level=newLevel;c.experience=Math.max(0,safeNumber(v.experience,c.experience));
+        c.maxHp=Math.max(1,safeNumber(c.maxHp,1)+hpGain);c.proficiency=newPB;c.hitDice=newLevel+"d"+dieSize;
+        if(v.subclass?.trim())c.subclass=v.subclass.trim();
+        const featureParts=[v.features?.trim(),v.feat?.trim()?"Feat: "+v.feat.trim():""].filter(Boolean);
+        if(featureParts.length)c.features=[c.features||"","Level "+newLevel+": "+featureParts.join(" · ")].filter(Boolean).join("\n");
+        if(v.spells?.trim())c.spells=[c.spells||"","Level "+newLevel+": "+v.spells.trim()].filter(Boolean).join("\n");
+        if(applied.length)c.notes=[c.notes||"","Level "+newLevel+" ability increases: "+applied.join(", ")].filter(Boolean).join("\n");
+        if(v.notes?.trim())c.notes=[c.notes||"","Level "+newLevel+": "+v.notes.trim()].filter(Boolean).join("\n");
+        if(!Array.isArray(c.progressionLog))c.progressionLog=[];
+        c.progressionLog.push({id:makeId(),fromLevel:oldLevel,toLevel:newLevel,date:new Date().toISOString(),hpGain,hitDie:"d"+dieSize,hitDieResult:dieResult,constitutionModifier:conMod,hitPointMethod:v.hpMethod,subclass:v.subclass||"",features:v.features||"",spells:v.spells||"",abilityChanges:applied.join(", "),feat:v.feat||"",notes:v.notes||""});
+      });
+      alert("Level "+newLevel+" reached! Maximum HP increased by "+hpGain+". Review spell slots, class resources and other class-specific changes on the sheet.");
+    });
   }
 
   function setTempHP(id){
@@ -927,29 +998,65 @@
       {name:"category",label:"Category",type:"select",value:e.category||"Places",options:["Places","Regions","Factions","People","Deities","History","Culture","Other lore"].map(x=>({value:x,label:x}))},
       {name:"summary",label:"Short description",type:"textarea",rows:3,value:e.summary||"",full:true},
       {name:"details",label:"Full entry / lore",type:"textarea",rows:8,value:e.details||"",full:true},
-      {name:"connections",label:"Related people, places, quests or clues",type:"textarea",rows:3,value:e.connections||"",full:true}
+      {name:"connections",label:"Related people, places, quests or clues",type:"textarea",rows:3,value:e.connections||"",full:true},
+      {type:"section",label:"LINK THIS ENTRY TO CAMPAIGN RECORDS"},
+      {name:"relatedWorldEntries",label:"Other world entries (comma-separated names)",type:"textarea",rows:2,value:worldLinkNames(e,"world"),full:true,placeholder:"e.g. The Silver Coast, The Old Kingdom"},
+      {name:"relatedNpcs",label:"NPCs (comma-separated names)",type:"textarea",rows:2,value:worldLinkNames(e,"npc"),full:true,placeholder:"e.g. Captain Mira, King Aldren"},
+      {name:"relatedQuests",label:"Quests (comma-separated names)",type:"textarea",rows:2,value:worldLinkNames(e,"quest"),full:true,placeholder:"e.g. The Missing Heir"},
+      {name:"relatedCharacters",label:"Player characters & companions (comma-separated names)",type:"textarea",rows:2,value:worldLinkNames(e,"character"),full:true,placeholder:"e.g. Aria, Thorne"}
     ];
     if(isDM())fields.push({name:"secrets",label:"DM notes (campaign data is shared)",type:"textarea",rows:4,value:e.secrets||"",full:true});
     return fields;
   }
   function canEditWorldEntry(e){return isDM()||e?.ownerId===member?.id;}
+
+  function worldLinkNames(entry,type){
+    return (Array.isArray(entry?.relatedLinks)?entry.relatedLinks:[]).filter(link=>link.type===type).map(link=>link.label||"").filter(Boolean).join(", ");
+  }
+  function buildWorldLinks(values){
+    const groups=[["world","relatedWorldEntries",state.worldEntries,"title"],["npc","relatedNpcs",state.npcs,"name"],["quest","relatedQuests",state.quests,"title"],["character","relatedCharacters",state.characters,"name"]];
+    const links=[];
+    groups.forEach(([type,key,items,labelKey])=>String(values[key]||"").split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean).forEach(name=>{
+      const match=items.find(item=>String(item[labelKey]||"").trim().toLowerCase()===name.toLowerCase());
+      if(match&&!links.some(link=>link.type===type&&link.id===match.id))links.push({type,id:match.id,label:match[labelKey]});
+    }));
+    return links;
+  }
+  function openWorldConnection(type,id){
+    if(type==="character"){openCharacterSheet(id);return;}
+    if(type==="quest"){openQuestDetails(id);return;}
+    if(type==="npc"){
+      const npc=state.npcs.find(x=>x.id===id);if(!npc)return;
+      const modal=$("hub-modal");
+      modal.innerHTML='<div class="modal-card"><div class="modal-top"><h3>'+escapeHTML(npc.name)+'</h3><button class="modal-close" onclick="Hub.closeModal()">✕</button></div><div class="list-meta">'+escapeHTML(npc.role||"NPC")+' · '+escapeHTML(npc.location||"Location unknown")+'</div><p>'+escapeHTML(npc.description||"No description recorded.")+'</p><p><b>Relationship:</b> '+escapeHTML(npc.relationship||"Unknown")+'</p>'+(npc.goals?'<p><b>Goals:</b> '+escapeHTML(npc.goals)+'</p>':"")+'<div class="modal-actions"><button class="hub-button" onclick="Hub.go(\\'characters\\');Hub.closeModal()">OPEN NPC DIRECTORY</button></div></div>';
+      modal.hidden=false;modal.onclick=e=>{if(e.target===modal)closeModal();};return;
+    }
+    if(type==="world"){
+      const entry=state.worldEntries.find(x=>x.id===id);if(!entry)return;
+      go("world");const search=$("world-search");if(search)search.value=entry.title;renderWorld();
+      const card=root.querySelector('[data-world-entry="'+id+'"]');if(card){const details=card.querySelector("details");if(details)details.open=true;card.scrollIntoView({behavior:"smooth",block:"center"});}
+    }
+  }
   function renderWorld(){
     const host=$("world-list");if(!host)return;
     const q=($("world-search")?.value||"").toLowerCase(),cat=$("world-filter")?.value||"all";
-    const list=(state.worldEntries||[]).filter(e=>(cat==="all"||e.category===cat)&&[e.title,e.summary,e.details,e.connections].join(" ").toLowerCase().includes(q));
-    host.innerHTML=list.length?list.map(e=>'<article class="reference-card"><div class="reference-card-top"><span class="tag">'+escapeHTML(e.category)+'</span><span class="list-meta">'+escapeHTML(e.authorName||(e.ownerId===member?.id?member.display_name:"Campaign contributor"))+'</span></div><h3>'+escapeHTML(e.title)+'</h3><p>'+escapeHTML(e.summary||"")+'</p><details><summary>READ FULL ENTRY</summary><p>'+escapeHTML(e.details||"")+'</p>'+(e.connections?'<p><b>Connections:</b> '+escapeHTML(e.connections)+'</p>':"")+(isDM()&&e.secrets?'<p class="dm-secret"><b>DM notes:</b> '+escapeHTML(e.secrets)+'</p>':"")+'</details>'+(canEditWorldEntry(e)?'<div class="card-actions"><button onclick="Hub.editWorldEntry(\''+e.id+'\')">EDIT</button><button onclick="Hub.removeWorldEntry(\''+e.id+'\')">DELETE</button></div>':"")+'</article>').join(""):empty("No world entries match this search.");
+    const list=(state.worldEntries||[]).filter(e=>(cat==="all"||e.category===cat)&&[e.title,e.summary,e.details,e.connections,...(e.relatedLinks||[]).map(x=>x.label)].join(" ").toLowerCase().includes(q));
+    host.innerHTML=list.length?list.map(e=>{
+      const links=(e.relatedLinks||[]).map(link=>'<button type="button" class="world-link-chip" onclick="Hub.openWorldConnection(\''+link.type+'\',\''+link.id+'\')">'+escapeHTML(link.label)+'</button>').join("");
+      return '<article class="reference-card" data-world-entry="'+escapeHTML(e.id)+'"><div class="reference-card-top"><span class="tag">'+escapeHTML(e.category)+'</span><span class="list-meta">'+escapeHTML(e.authorName||(e.ownerId===member?.id?member.display_name:"Campaign contributor"))+'</span></div><h3>'+escapeHTML(e.title)+'</h3><p>'+escapeHTML(e.summary||"")+'</p><details><summary>READ FULL ENTRY</summary><p>'+escapeHTML(e.details||"")+'</p>'+(e.connections?'<p><b>Connections:</b> '+escapeHTML(e.connections)+'</p>':"")+(links?'<div class="world-related-links"><b>RELATED RECORDS</b>'+links+'</div>':"")+(isDM()&&e.secrets?'<p class="dm-secret"><b>DM notes:</b> '+escapeHTML(e.secrets)+'</p>':"")+'</details>'+(canEditWorldEntry(e)?'<div class="card-actions"><button onclick="Hub.editWorldEntry(\''+e.id+'\')">EDIT</button><button onclick="Hub.removeWorldEntry(\''+e.id+'\')">DELETE</button></div>':"")+'</article>';
+    }).join(""):empty("No world entries match this search.");
   }
   function addWorldEntry(){
     openForm("Add world encyclopedia entry",worldFields(),v=>{
       if(!v.title.trim())return;
-      const entry={id:makeId(),...v,ownerId:isDM()?null:member.id,authorName:member?.display_name||"Campaign",createdAt:new Date().toISOString()};
+      const entry={id:makeId(),...v,relatedLinks:buildWorldLinks(v),ownerId:isDM()?null:member.id,authorName:member?.display_name||"Campaign",createdAt:new Date().toISOString()};
       mutate(()=>{if(!Array.isArray(state.worldEntries))state.worldEntries=[];state.worldEntries.unshift(entry);});
       renderWorld();
     });
   }
   function editWorldEntry(id){
     const e=state.worldEntries.find(x=>x.id===id);if(!e||!canEditWorldEntry(e))return;
-    openForm("Edit "+e.title,worldFields(e),v=>{if(!v.title.trim())return;mutate(()=>Object.assign(e,v));renderWorld();});
+    openForm("Edit "+e.title,worldFields(e),v=>{if(!v.title.trim())return;mutate(()=>Object.assign(e,v,{relatedLinks:buildWorldLinks(v)}));renderWorld();});
   }
   function removeWorldEntry(id){
     const e=state.worldEntries.find(x=>x.id===id);if(!e||!canEditWorldEntry(e)||!confirm("Delete this world entry?"))return;
@@ -1587,6 +1694,10 @@
     if(tab==="world")renderWorld();
   }
   $("campaign-search-input").addEventListener("input",searchCampaign);
+  document.addEventListener("keydown",e=>{
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();const search=$("campaign-search-input");if(search){go("dashboard");search.focus();search.select();}}
+    if(e.key==="Escape"&&!$("hub-modal").hidden)closeModal();
+  });
   $("campaign-import-file").addEventListener("change",e=>{const file=e.target.files?.[0];if(file)importCampaign(file);e.target.value="";});
   $("reference-search").addEventListener("keydown",e=>{if(e.key==="Enter"){referencePage=1;loadReference();}});
   $("reference-edition").addEventListener("change",e=>{referenceEdition=e.target.value;referencePage=1;loadReference();});
@@ -1691,8 +1802,9 @@
     loadReference,
     renderSpellbook,addSpellToBook,addSpellToBookFor,editSpell,togglePreparedSpell,removeSpell,openCharacterSheet,setTempHP,
     searchBestiary,viewBestiary,saveBestiaryCreature,addBestiaryCreature,addEncounter,editEncounter,removeEncounter,
-    renderWorld,addWorldEntry,editWorldEntry,removeWorldEntry,
+    renderWorld,addWorldEntry,editWorldEntry,removeWorldEntry,openWorldConnection,
     takeRest,
+    levelUpCharacter,
     editResources,
     exportCampaign,
     importCampaign,
