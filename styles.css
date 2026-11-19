@@ -875,3 +875,14 @@
  #dnd-hub #page-dashboard.player-dashboard .player-overview-quests,
  #dnd-hub #page-dashboard.player-dashboard .player-overview-updates{grid-template-columns:1fr}
 }
+
+
+/* Quest Board filters and searchable linked campaign journal */
+#dnd-hub .quest-filters{display:flex;gap:7px;flex-wrap:wrap;margin:-5px 0 14px}
+#dnd-hub .quest-filter{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border:1px solid var(--line);border-radius:5px;background:#202432;color:var(--muted);font:10px Arial,sans-serif}
+#dnd-hub .quest-filter span{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 3px;border-radius:10px;background:rgba(255,255,255,.07);font-size:9px}
+#dnd-hub .quest-filter.selected{border-color:var(--gold);color:var(--gold);background:rgba(214,173,93,.09)}
+#dnd-hub .journal-tools{display:flex;align-items:center;gap:12px;margin:-5px 0 14px;flex-wrap:wrap}
+#dnd-hub .journal-tools input{flex:1 1 260px;min-width:0}
+#dnd-hub .journal-quest-link{display:inline-block;margin:0 0 9px;padding:5px 8px;border:1px solid var(--gold2);border-radius:4px;background:rgba(214,173,93,.07);color:var(--gold);font:10px Arial,sans-serif}
+#dnd-hub .journal-card>h3{margin-bottom:8px}
