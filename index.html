@@ -26,7 +26,7 @@
     </div>
   </header>
 
-  <div id="notice-alert" class="notice-alert" hidden onclick="Hub.go('announcements')"></div>
+  <div id="notice-alert" class="notice-alert" role="button" tabindex="0" hidden onclick="Hub.go('dashboard');Hub.jumpTo('dashboard-notice')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Hub.go('dashboard');Hub.jumpTo('dashboard-notice')}"></div>
 
   <nav class="hub-nav">
     <button class="active" data-tab="dashboard">⌂ Overview</button>
@@ -73,15 +73,6 @@
         </div>
       </div>
 
-      <div class="overview-shortcuts hub-panel">
-        <div class="panel-heading"><div><h3>QUICK NAVIGATION</h3><p>Jump straight to the tools you use most.</p></div></div>
-        <div class="overview-shortcut-grid">
-          <button onclick="Hub.go('adventure')"><span>✥</span><strong>Adventure</strong><small>Party, quests & combat</small></button>
-          <button onclick="Hub.go('characters')"><span>♙</span><strong>Characters</strong><small>Open the character archive</small></button>
-          <button onclick="Hub.go('reference')"><span>✧</span><strong>Rules Library</strong><small>Find spells & rules</small></button>
-          <button onclick="Hub.go('calendar')"><span>▦</span><strong>Calendar</strong><small>Events & campaign time</small></button>
-        </div>
-      </div>
       <section class="hub-panel dashboard-my-character" id="dashboard-my-character" hidden></section>
       <div class="hub-grid">
         <div class="hub-panel">

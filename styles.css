@@ -709,15 +709,6 @@
 
 
 /* Campaign hub navigation and archive usability polish */
-#dnd-hub .overview-shortcuts{margin:18px 0 22px}
-#dnd-hub .overview-shortcuts>.panel-heading{margin-bottom:13px}
-#dnd-hub .overview-shortcuts .panel-heading p{margin:5px 0 0;color:var(--muted,#999);font-size:12px}
-#dnd-hub .overview-shortcut-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-#dnd-hub .overview-shortcut-grid button{display:grid;grid-template-columns:32px 1fr;grid-template-rows:auto auto;align-items:center;gap:2px 10px;text-align:left;padding:13px;border:1px solid var(--line);border-radius:8px;background:#202431;color:var(--text,#eee);cursor:pointer}
-#dnd-hub .overview-shortcut-grid button:hover{border-color:var(--gold);transform:translateY(-1px)}
-#dnd-hub .overview-shortcut-grid button>span{grid-row:1/3;font-size:23px;color:var(--gold)}
-#dnd-hub .overview-shortcut-grid button strong{font-size:12px}
-#dnd-hub .overview-shortcut-grid button small{font-size:10px;color:var(--muted,#aaa)}
 #dnd-hub .adventure-jump-nav{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px;padding:12px;border:1px solid var(--line);border-radius:9px;background:rgba(20,22,30,.55)}
 #dnd-hub .adventure-jump-nav button{padding:9px 12px;border:1px solid var(--line);border-radius:6px;background:#202431;color:#e8dfcd;font-size:11px;font-weight:700;cursor:pointer}
 #dnd-hub .adventure-jump-nav button:hover{border-color:var(--gold);color:var(--gold)}
@@ -742,8 +733,8 @@
 #dnd-hub .dm-danger-panel h3{color:#e28d8d}
 #dnd-hub .dm-danger-panel .dm-control-warning{grid-column:1/-1;margin:0}
 #dnd-hub .dm-control-warning{line-height:1.55}
-@media(max-width:760px){#dnd-hub .overview-shortcut-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#dnd-hub .dm-danger-panel{grid-template-columns:1fr}#dnd-hub .dm-danger-panel .dm-control-warning{grid-column:1}}
-@media(max-width:480px){#dnd-hub .overview-shortcut-grid{grid-template-columns:1fr}#dnd-hub .reference-browse-label{align-items:flex-start;flex-direction:column;gap:4px}}
+@media(max-width:760px){#dnd-hub .dm-danger-panel{grid-template-columns:1fr}#dnd-hub .dm-danger-panel .dm-control-warning{grid-column:1}}
+@media(max-width:480px){#dnd-hub .reference-browse-label{align-items:flex-start;flex-direction:column;gap:4px}}
 
 #dnd-hub .session-prep-panel{border-color:rgba(214,173,93,.55);background:linear-gradient(145deg,rgba(214,173,93,.075),rgba(32,36,49,.97))}
 #dnd-hub .prep-heading h3{margin:4px 0 5px;font-size:16px}
@@ -810,3 +801,9 @@
 #dnd-hub .progression-history article p{margin:5px 0;font-size:11px;line-height:1.5;color:var(--muted,#aaa)}
 #dnd-hub .beyond-hero-actions{flex-wrap:wrap}
 @media(max-width:760px){#dnd-hub .hub-nav{overflow-x:auto;flex-wrap:nowrap;justify-content:flex-start}#dnd-hub .hub-nav button{flex:0 0 auto;white-space:nowrap}#dnd-hub .my-character-grid{grid-template-columns:1fr}}
+
+
+/* Compact Adventure section navigation */
+#dnd-hub .adventure-jump-nav{gap:6px;margin:0 0 14px;padding:8px;background:rgba(20,22,30,.38)}
+#dnd-hub .adventure-jump-nav button{padding:7px 10px;font-size:10px;border-radius:5px}
+#dnd-hub #page-map,#dnd-hub #page-party,#dnd-hub #adventure-quest-board,#dnd-hub #page-journal,#dnd-hub #combat-tracker,#dnd-hub #dashboard-notice{scroll-margin-top:18px}
