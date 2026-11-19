@@ -195,31 +195,69 @@
       return out+'</article>';
     }).join(""):empty("No sessions have been recorded yet.");
   }
+  function updateAdventureVisibility(){
+    const active=!!state.sessionMode?.active;
+    const nav=root.querySelector("#page-adventure .adventure-jump-nav");
+    const board=root.querySelector("#page-adventure .adventure-board-grid");
+    const dmPrep=$("session-prep-panel");
+    const playerPrep=$("session-prep-player-panel");
+    const mode=$("session-mode-panel");
+    if(nav)nav.hidden=!active;
+    if(board)board.hidden=!active;
+    if(dmPrep)dmPrep.hidden=!isDM()||active;
+    if(playerPrep)playerPrep.hidden=isDM()||active;
+    if(mode)mode.hidden=!isDM();
+  }
+
   function renderSessionPrep(){
-    const host=$("session-prep-panel");if(!host)return;
-    if(!isDM()){host.hidden=true;return;}host.hidden=false;
+    const host=$("session-prep-panel"),playerHost=$("session-prep-player-panel");
     if(!state.sessionPrep||typeof state.sessionPrep!=="object")state.sessionPrep={title:"",date:"",objectives:"",encounters:"",notes:"",checklist:""};
-    ["title","date","objectives","encounters","notes","checklist"].forEach(key=>{const el=$("prep-"+key);if(!el)return;el.value=state.sessionPrep[key]||"";el.oninput=()=>{state.sessionPrep[key]=el.value;persist();};});
+    if(isDM()){
+      if(host){
+        host.hidden=!!state.sessionMode?.active;
+        ["title","date","objectives","encounters","notes","checklist"].forEach(key=>{
+          const el=$("prep-"+key);if(!el)return;
+          el.value=state.sessionPrep[key]||"";
+          el.oninput=()=>{state.sessionPrep[key]=el.value;persist();};
+        });
+      }
+    }else if(playerHost){
+      const prep=state.sessionPrep;
+      playerHost.innerHTML=[
+        ["SESSION TITLE",prep.title],
+        ["PLANNED DATE",prep.date],
+        ["SESSION OBJECTIVES",prep.objectives]
+      ].map(([label,value])=>'<div class="player-prep-field"><span>'+label+'</span><p>'+escapeHTML(value||"—")+'</p></div>').join("");
+      playerHost.hidden=!!state.sessionMode?.active;
+    }
+    updateAdventureVisibility();
   }
 
   function renderSessionMode(){
     const host=$("session-mode-panel");if(!host)return;
-    if(!isDM()){host.hidden=true;return;}host.hidden=false;
+    if(!isDM()){host.hidden=true;updateAdventureVisibility();return;}
+    host.hidden=false;
     const mode=state.sessionMode;
     if(!mode||!mode.active){
       const prep=state.sessionPrep||{};
       const hasPrep=[prep.title,prep.date,prep.objectives,prep.encounters,prep.notes].some(v=>String(v||"").trim());
-      host.innerHTML='<div class="session-mode-idle"><div><div class="hub-kicker">READY WHEN YOU ARE</div><h3>SESSION MODE</h3><p>'+(hasPrep?'Prepared: '+escapeHTML(prep.title||"Untitled session")+(prep.date?' · '+escapeHTML(prep.date):'')+' — your preparation notes will carry into the live session.':'Start a live session when you are ready. Your notes will be saved into Session History when you finish.')+'</p><button class="small-button" onclick="Hub.jumpTo(\'session-prep-panel\')">REVIEW SESSION PREPARATION</button></div><button class="hub-button" onclick="Hub.startSessionMode()">▶ START SESSION</button></div>';
+      host.innerHTML='<div class="session-mode-idle"><div><div class="hub-kicker">READY WHEN YOU ARE</div><h3>SESSION MODE</h3><p>'+(hasPrep?'Prepared: '+escapeHTML(prep.title||"Untitled session")+(prep.date?' · '+escapeHTML(prep.date):'')+' — your preparation notes will carry into the live session.':'Start a live session when you are ready. Your notes will be saved into Session History when you finish.')+'</p></div><button class="hub-button" onclick="Hub.startSessionMode()">▶ START SESSION</button></div>';
+      updateAdventureVisibility();
       return;
     }
     const started=mode.startedAt?new Date(mode.startedAt).toLocaleString():"Just now";
     host.innerHTML='<div class="session-mode-active"><div class="session-mode-heading"><div><div class="hub-kicker">SESSION IN PROGRESS</div><h3>'+escapeHTML(mode.title||"Untitled session")+'</h3><p>Started '+escapeHTML(started)+' · Notes save automatically</p></div><span class="session-live-pill">● LIVE</span></div><div class="session-mode-tools"><div class="session-mode-stat"><b>'+state.characters.length+'</b><span>CHARACTERS</span></div><div class="session-mode-stat"><b>'+state.quests.filter(q=>(q.status||"Active").toLowerCase()==="active").length+'</b><span>ACTIVE QUESTS</span></div><div class="session-mode-stat"><b>'+getCombat().combatants.length+'</b><span>COMBATANTS</span></div><button class="small-button" onclick="Hub.jumpTo(\'page-party\')">PARTY TRACKER</button><button class="small-button" onclick="Hub.jumpTo(\'adventure-quest-board\')">QUEST BOARD</button><button class="small-button" onclick="Hub.jumpTo(\'combat-tracker\')">COMBAT TRACKER</button><button class="small-button" onclick="Hub.jumpTo(\'page-journal\')">JOURNAL</button><button class="small-button" onclick="Hub.go(\'characters\')">NPC ARCHIVE</button><button class="small-button" onclick="Hub.go(\'world\')">WORLD ENCYCLOPEDIA</button><button class="small-button" onclick="Hub.go(\'calendar\')">CALENDAR</button></div><label class="session-notes-label">LIVE SESSION NOTES<textarea id="session-mode-notes" rows="7" placeholder="Record events, player decisions, clues, improvised details…">'+escapeHTML(mode.notes||"")+'</textarea></label><div class="session-mode-footer"><span class="list-meta">Notes are stored in shared campaign data, not private DM notes.</span><div><button class="small-button" onclick="Hub.cancelSessionMode()">DISCARD</button> <button class="hub-button" onclick="Hub.finishSessionMode()">FINISH & SAVE RECAP</button></div></div></div>';
     const notes=$("session-mode-notes");if(notes)notes.addEventListener("input",()=>{if(!state.sessionMode?.active)return;state.sessionMode.notes=notes.value;persist();});
+    updateAdventureVisibility();
   }
   function startSessionMode(){
     if(!isDM()||state.sessionMode?.active)return;
     const next=Math.max(0,...(state.sessions||[]).map(s=>safeNumber(s.number)))+1;
-    openForm("Start a session",[{name:"title",label:"Session title",value:state.sessionPrep?.title||"Session "+next,required:true,full:true}],v=>{const prep=state.sessionPrep||{};const notes=[prep.objectives?"SESSION OBJECTIVES\n"+prep.objectives:"",prep.encounters?"PLANNED ENCOUNTERS & NPCS\n"+prep.encounters:"",prep.notes?"DM PREPARATION NOTES\n"+prep.notes:""].filter(Boolean).join("\n\n");mutate(()=>state.sessionMode={active:true,title:v.title.trim()||"Untitled session",startedAt:new Date().toISOString(),notes});});
+    openForm("Start a session",[{name:"title",label:"Session title",value:state.sessionPrep?.title||"Session "+next,required:true,full:true}],v=>{
+      const prep=state.sessionPrep||{};
+      const notes=[prep.objectives?"SESSION OBJECTIVES\\n"+prep.objectives:"",prep.encounters?"PLANNED ENCOUNTERS & NPCS\\n"+prep.encounters:"",prep.notes?"DM PREPARATION NOTES\\n"+prep.notes:"",prep.checklist?"PRE-SESSION CHECKLIST\\n"+prep.checklist:""].filter(Boolean).join("\\n\\n");
+      mutate(()=>state.sessionMode={active:true,title:v.title.trim()||"Untitled session",startedAt:new Date().toISOString(),notes});
+    });
   }
   function finishSessionMode(){
     if(!isDM()||!state.sessionMode?.active)return;
