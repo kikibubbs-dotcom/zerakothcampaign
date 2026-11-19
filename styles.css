@@ -785,3 +785,28 @@
 #dnd-hub .combat-toolbar button{white-space:nowrap}
 #dnd-hub .combatant-card .combatant-actions button:hover{border-color:var(--gold);color:var(--gold)}
 @media(max-width:560px){#dnd-hub .combat-toolbar{gap:7px}#dnd-hub .combat-toolbar button{flex:1 1 145px}}
+
+
+/* Progression, connected world records and player-focused overview */
+#dnd-hub .dashboard-my-character{margin:18px 0 22px;border-color:rgba(214,173,93,.48)}
+#dnd-hub .my-character-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+#dnd-hub .my-character-card{min-width:0;padding:14px;border:1px solid var(--line);border-radius:8px;background:rgba(10,12,18,.22)}
+#dnd-hub .my-character-card h4{margin:5px 0;font-size:17px;color:var(--text,#eee)}
+#dnd-hub .my-character-card p{margin:6px 0;color:var(--muted,#aaa);font-size:11px}
+#dnd-hub .my-character-progress{margin:13px 0 7px}
+#dnd-hub .my-character-progress>div:first-child{display:flex;justify-content:space-between;font-size:9px;letter-spacing:.08em;color:var(--muted)}
+#dnd-hub .my-character-progress b{color:var(--gold)}
+#dnd-hub .my-character-progress-track{height:6px;margin-top:6px;border-radius:8px;background:rgba(255,255,255,.09);overflow:hidden}
+#dnd-hub .my-character-progress-track i{display:block;height:100%;background:var(--gold);border-radius:8px}
+#dnd-hub .my-character-xp{min-height:16px}
+#dnd-hub .world-related-links{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:12px 0}
+#dnd-hub .world-related-links>b{width:100%;font-size:9px;letter-spacing:.1em;color:var(--gold)}
+#dnd-hub .world-link-chip{padding:6px 9px;border:1px solid rgba(214,173,93,.35);border-radius:20px;background:rgba(214,173,93,.08);color:var(--text,#eee);font-size:10px;cursor:pointer}
+#dnd-hub .world-link-chip:hover{border-color:var(--gold);color:var(--gold)}
+#dnd-hub .progression-history{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+#dnd-hub .progression-history h4{color:var(--gold);font-size:10px;letter-spacing:.12em}
+#dnd-hub .progression-history article{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+#dnd-hub .progression-history article strong{font-size:10px;color:var(--gold)}
+#dnd-hub .progression-history article p{margin:5px 0;font-size:11px;line-height:1.5;color:var(--muted,#aaa)}
+#dnd-hub .beyond-hero-actions{flex-wrap:wrap}
+@media(max-width:760px){#dnd-hub .hub-nav{overflow-x:auto;flex-wrap:nowrap;justify-content:flex-start}#dnd-hub .hub-nav button{flex:0 0 auto;white-space:nowrap}#dnd-hub .my-character-grid{grid-template-columns:1fr}}

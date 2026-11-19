@@ -44,7 +44,7 @@
 
     <!-- DASHBOARD -->
     <section class="hub-page active" id="page-dashboard">
-      <div class="hub-panel overview-search search-panel"><label for="campaign-search-input">⌕ SEARCH YOUR CAMPAIGN</label><input id="campaign-search-input" type="search" placeholder="Find a character, place, item, quest or clue..." autocomplete="off"><div id="campaign-search-count" class="list-meta">Search your campaign.</div><div id="campaign-search-results" class="search-results"></div></div>
+      <div class="hub-panel overview-search search-panel"><label for="campaign-search-input">⌕ SEARCH YOUR CAMPAIGN</label><input id="campaign-search-input" type="search" aria-label="Search the campaign" placeholder="Find a character, place, item, quest or clue..." autocomplete="off"><div id="campaign-search-count" class="list-meta">Search your campaign.</div><div id="campaign-search-results" class="search-results"></div></div>
       <div class="welcome-panel">
         <div>
           <div class="hub-kicker">WELCOME, ADVENTURERS</div>
@@ -82,6 +82,7 @@
           <button onclick="Hub.go('calendar')"><span>▦</span><strong>Calendar</strong><small>Events & campaign time</small></button>
         </div>
       </div>
+      <section class="hub-panel dashboard-my-character" id="dashboard-my-character" hidden></section>
       <div class="hub-grid">
         <div class="hub-panel">
           <div class="panel-heading">
