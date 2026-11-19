@@ -780,3 +780,8 @@
 #dnd-hub #dashboard-pulse b{color:var(--gold);font-size:15px;margin-right:4px}
 #dnd-hub #dashboard-pulse .pulse-alert{border-color:#a86b60;color:#e9b3a8}
 #dnd-hub #dashboard-pulse .pulse-live{border-color:#649879;color:#a7d8b5}
+
+/* Combat tracker overhaul */
+#dnd-hub .combat-toolbar button{white-space:nowrap}
+#dnd-hub .combatant-card .combatant-actions button:hover{border-color:var(--gold);color:var(--gold)}
+@media(max-width:560px){#dnd-hub .combat-toolbar{gap:7px}#dnd-hub .combat-toolbar button{flex:1 1 145px}}
