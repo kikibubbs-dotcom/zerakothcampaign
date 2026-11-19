@@ -108,9 +108,10 @@
 
     <!-- ADVENTURE: MAP, PARTY AND COMBAT -->
     <section class="hub-page" id="page-adventure">
+      <div class="adventure-section-heading dm-only"><div class="hub-kicker">DM WORKSPACE</div><h2>Prepare &amp; run your session</h2><p>Prepare first, then start Session Mode when everyone is ready to play.</p></div>
       <section class="session-prep-panel hub-panel dm-only" id="session-prep-panel"><div class="prep-heading"><div><div class="hub-kicker">BEFORE THE SESSION</div><h3>SESSION PREPARATION</h3><p>Keep plans, objectives and reminders together before opening Session Mode.</p></div></div><div class="prep-fields"><label class="prep-field"><span>SESSION TITLE</span><input id="prep-title" placeholder="e.g. The Sunken Archive"></label><label class="prep-field"><span>PLANNED DATE</span><input id="prep-date" placeholder="e.g. 22 November"></label><label class="prep-field prep-wide"><span>SESSION OBJECTIVES</span><textarea id="prep-objectives" rows="2" placeholder="What should the party discover or achieve?"></textarea></label><label class="prep-field prep-wide"><span>PLANNED ENCOUNTERS & NPCS</span><textarea id="prep-encounters" rows="3" placeholder="Encounters, NPCs, locations and possible complications…"></textarea></label><label class="prep-field prep-wide"><span>DM PREPARATION NOTES</span><textarea id="prep-notes" rows="3" placeholder="Clues, secrets, reminders and possible outcomes…"></textarea></label><label class="prep-field prep-wide"><span>PRE-SESSION CHECKLIST</span><textarea id="prep-checklist" rows="3" placeholder="One task per line…"></textarea></label></div><div class="prep-footer"><span class="list-meta">These notes are stored in shared campaign data, not private DM notes.</span><button class="hub-button" onclick="Hub.startSessionMode()">START SESSION →</button></div></section>
       <section class="session-mode-panel hub-panel dm-only" id="session-mode-panel"></section>
-      <nav class="adventure-jump-nav" aria-label="Adventure sections">
+      <nav class="adventure-jump-nav" aria-label="Adventure sections"><span class="adventure-nav-label">GO TO</span>
         <button class="dm-only" onclick="Hub.jumpTo('session-prep-panel')">✎ Session Preparation</button>
         <button class="dm-only" onclick="Hub.jumpTo('session-mode-panel')">▶ Session Mode</button>
         <button onclick="Hub.jumpTo('page-map')">🗺 World Map</button>
@@ -120,6 +121,7 @@
         <button onclick="Hub.jumpTo('combat-tracker')">⚔ Combat Tracker</button>
       </nav>
       <div class="adventure-board-grid">
+      <div class="adventure-section-heading adventure-grid-heading"><div class="hub-kicker">CAMPAIGN &amp; PARTY</div><h2>Explore and manage the party</h2><p>Use the map to follow places and the Party Tracker to check adventurers' status.</p></div>
     <section id="page-map">
       <div class="page-heading">
         <div>
@@ -134,11 +136,10 @@
       </div>
 
       <div class="map-instructions">
-        Click anywhere on the map to place a marker. Drag markers to move them.
-        Everyone viewing the map will see the changes.
+        Shared campaign map. The DM can place and move markers, draw routes and update the legend.
       </div>
 
-      <div class="map-toolbar">
+      <div class="map-toolbar dm-only">
         <select id="marker-colour">
           <option value="#E66D69">Red marker</option>
           <option value="#6D9DD5">Blue marker</option>
@@ -180,11 +181,12 @@
             <h2>Party Tracker</h2>
             <p>Health, healing and magical resources.</p>
           </div>
-          <button class="hub-button" onclick="Hub.addCharacter()">+ Add member</button>
+          <button class="hub-button player-only" onclick="Hub.addCharacter()">+ Add member</button>
         </div>
         <div id="party-list" class="character-grid"></div>
       </section>
 
+      <div class="adventure-section-heading adventure-grid-heading"><div class="hub-kicker">CAMPAIGN STORY</div><h2>Quests &amp; journal</h2><p>Track the party's objectives and record what happens along the way.</p></div>
       <section class="adventure-quest-panel hub-panel" id="adventure-quest-board">
         <div class="page-heading">
           <div>
@@ -192,7 +194,7 @@
             <h2>Quest Board</h2>
             <p>Keep track of your party's current objectives.</p>
           </div>
-          <button class="hub-button" onclick="Hub.addQuest()">+ New quest</button>
+          <button class="hub-button dm-only" onclick="Hub.addQuest()">+ New quest</button>
         </div>
         <div id="quest-filters" class="quest-filters" aria-label="Filter quests"></div>
         <div id="quest-list" class="hub-list"></div>
@@ -212,6 +214,7 @@
       <div id="journal-list" class="hub-list"></div>
     </section>
 
+      <div class="adventure-section-heading adventure-grid-heading"><div class="hub-kicker">ENCOUNTERS</div><h2>Combat</h2><p>When initiative starts, use the tracker to manage turns, hit points and conditions.</p></div>
       <section class="combat-tracker-panel hub-panel" id="combat-tracker">
         <div class="panel-heading combat-heading">
           <div>
