@@ -818,3 +818,12 @@
 #dnd-hub #dashboard-quests .list-card{cursor:pointer}
 #dnd-hub #dashboard-quests .list-card:hover{border-color:var(--gold)}
 @media(max-width:650px){#dnd-hub .overview-role-actions{width:100%}#dnd-hub .overview-role-actions .hub-button{width:100%}}
+
+/* Unified Adventure session workflow */
+#dnd-hub .adventure-jump-nav{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+#dnd-hub .adventure-jump-nav .dm-only{border-color:rgba(214,173,93,.45);color:var(--gold)}
+#dnd-hub #session-prep-panel,#dnd-hub #session-mode-panel{scroll-margin-top:24px}
+#dnd-hub .session-mode-idle{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+#dnd-hub .session-mode-idle>div{min-width:0;flex:1}
+#dnd-hub .session-mode-idle .small-button{margin-top:10px}
+@media(max-width:650px){#dnd-hub .session-mode-idle{align-items:stretch}#dnd-hub .session-mode-idle>.hub-button{width:100%}}
