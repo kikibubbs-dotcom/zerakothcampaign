@@ -504,7 +504,7 @@
       const line="• "+entry.name+(entry.level!==undefined?" (Level "+entry.level+")":"")+" — "+detail;
       mutate(()=>{
         if(referenceCategory==="languages"){
-          const current=String(c.languagesKnown||"").split(/[,;\\n]/).map(x=>x.trim()).filter(Boolean);
+          const current=String(c.languagesKnown||"").split(/[,;\n]/).map(x=>x.trim()).filter(Boolean);
           if(!current.some(x=>x.toLowerCase()===String(entry.name).toLowerCase()))current.push(entry.name);
           c.languagesKnown=current.join(", ");
         }
