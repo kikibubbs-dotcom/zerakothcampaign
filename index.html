@@ -47,14 +47,15 @@
       <div class="hub-panel overview-search search-panel"><label for="campaign-search-input">⌕ SEARCH YOUR CAMPAIGN</label><input id="campaign-search-input" type="search" aria-label="Search the campaign" placeholder="Find a character, place, item, quest or clue..." autocomplete="off"><div id="campaign-search-count" class="list-meta">Search your campaign.</div><div id="campaign-search-results" class="search-results"></div></div>
       <div class="welcome-panel">
         <div>
-          <div class="hub-kicker">WELCOME, ADVENTURERS</div>
-          <h2>Your next adventure awaits.</h2>
-          <p>Keep track of your party, explore your world and write your story.</p>
+          <div class="hub-kicker" id="dashboard-welcome-kicker">WELCOME, ADVENTURERS</div>
+          <h2 id="dashboard-welcome-title">Your next adventure awaits.</h2>
+          <p id="dashboard-welcome-text">Keep track of your party, explore your world and write your story.</p>
+          <div class="overview-role-actions dm-only"><button class="hub-button" onclick="Hub.go('adventure')">OPEN SESSION WORKSPACE →</button></div>
         </div>
         <div class="welcome-icon">✧</div>
       </div>
 
-      <div class="hub-stats">
+      <div class="hub-stats dm-only">
         <div class="stat-card">
           <span>PARTY MEMBERS</span>
           <strong id="stat-party">0</strong>
@@ -75,7 +76,7 @@
 
       <section class="hub-panel dashboard-my-character" id="dashboard-my-character" hidden></section>
       <div class="hub-grid">
-        <div class="hub-panel">
+        <div class="hub-panel dm-only">
           <div class="panel-heading">
             <h3>✦ PARTY STATUS</h3>
             <button class="small-button" onclick="Hub.go('adventure')">VIEW ALL →</button>
@@ -101,8 +102,8 @@
           <div id="dashboard-events"></div>
         </div>
       </div>
-      <div class="hub-grid overview-insights"><section class="hub-panel"><div class="panel-heading"><h3>▣ LATEST SESSION</h3></div><div id="dashboard-latest-session"></div></section><section class="hub-panel"><div class="panel-heading"><h3>✧ CAMPAIGN PULSE</h3></div><div id="dashboard-pulse"></div></section></div>
-      <section class="overview-sessions hub-panel"><div class="panel-heading"><div><h3>▣ SESSION HISTORY</h3><p>The story so far, from your latest adventure.</p></div><button class="hub-button dm-only" onclick="Hub.addSession()">+ LOG SESSION</button></div><div id="session-list" class="hub-list"></div></section>
+      <div class="hub-grid overview-insights"><section class="hub-panel"><div class="panel-heading"><h3>▣ LATEST SESSION</h3></div><div id="dashboard-latest-session"></div></section><section class="hub-panel dm-only"><div class="panel-heading"><h3>✧ CAMPAIGN PULSE</h3></div><div id="dashboard-pulse"></div></section></div>
+      <section class="overview-sessions hub-panel dm-only"><div class="panel-heading"><div><h3>▣ SESSION HISTORY</h3><p>The story so far, from your latest adventure.</p></div><button class="hub-button dm-only" onclick="Hub.addSession()">+ LOG SESSION</button></div><div id="session-list" class="hub-list"></div></section>
     </section>
 
     <!-- ADVENTURE: MAP, PARTY AND COMBAT -->
