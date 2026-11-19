@@ -33,6 +33,7 @@
     sessionMode:null,
     homebrew:[],
     encounters:[],
+    combatEncounters:[],
     worldEntries:[],
     sessionPrep:{title:"",date:"",objectives:"",encounters:"",notes:"",checklist:""}
   });
@@ -284,7 +285,7 @@
           mapUrl=upload.publicUrl;
         }
         const fresh={...blank(),...incoming,mapUrl};
-        ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions","homebrew","encounters","worldEntries"].forEach(k=>{if(!Array.isArray(fresh[k]))fresh[k]=[];});
+        ["markers","mapDrawings","characters","quests","npcs","journal","events","notices","elapsedDays","sharedInventory","sessions","homebrew","encounters","combatEncounters","worldEntries"].forEach(k=>{if(!Array.isArray(fresh[k]))fresh[k]=[];});
         mutate(()=>state=fresh);
         alert("Campaign imported. The map image and campaign content were restored; player accounts and access codes were not changed.");
       }catch(err){alert(err.message||"The campaign backup could not be imported.");}
@@ -612,6 +613,32 @@
       </article>`;
     }).join("");
   }
+  function saveCombatEncounter(){
+    if(!isDM())return;const combat=getCombat();if(!combat.combatants.length)return alert("Add combatants before saving an encounter.");
+    const name=prompt("Name this encounter template:","Encounter "+((state.combatEncounters||[]).length+1));if(!name||!name.trim())return;
+    const snapshot=JSON.parse(JSON.stringify(combat.combatants)).map(c=>({...c,id:makeId(),hp:c.maxHp,tempHp:0,conditions:""}));
+    mutate(()=>{if(!Array.isArray(state.combatEncounters))state.combatEncounters=[];state.combatEncounters.unshift({id:makeId(),name:name.trim(),combatants:snapshot,createdAt:new Date().toISOString()});});
+  }
+  function loadCombatEncounter(){
+    if(!isDM())return;const saved=Array.isArray(state.combatEncounters)?state.combatEncounters:[];
+    if(!saved.length)return alert("No saved encounter templates yet. Build an encounter and choose SAVE ENCOUNTER.");
+    openForm("Load saved encounter",[{name:"encounter",label:"Choose an encounter template",type:"select",required:true,options:saved.map(e=>({value:e.id,label:e.name+" · "+(e.combatants||[]).length+" combatants"})),full:true}],v=>{
+      const chosen=saved.find(e=>e.id===v.encounter);if(!chosen)return;
+      if(getCombat().combatants.length&&!confirm("Replace the current encounter with this saved template?"))return;
+      mutate(()=>{state.combat={active:false,round:1,activeTurnId:null,combatants:JSON.parse(JSON.stringify(chosen.combatants||[])).map(c=>({...c,id:makeId(),hp:c.maxHp,tempHp:0}))};});
+    });
+  }
+  function addTemporaryCombatant(){
+    if(!isDM())return;
+    openForm("Add temporary combatant",[
+      {name:"name",label:"Name",required:true,full:true},{name:"kind",label:"Type",type:"select",value:"ENEMY",options:["ENEMY","ALLY","NPC","HAZARD"].map(x=>({value:x,label:x}))},
+      {name:"initiative",label:"Initiative",type:"number",value:0},{name:"hp",label:"Hit points",type:"number",value:10,min:0},{name:"maxHp",label:"Maximum hit points",type:"number",value:10,min:1},{name:"tempHp",label:"Temporary hit points",type:"number",value:0,min:0},{name:"ac",label:"Armour class",type:"number",value:10,min:0},{name:"conditions",label:"Conditions (comma-separated)",full:true}
+    ],v=>{if(!v.name.trim())return;const maxHp=Math.max(1,safeNumber(v.maxHp,10));mutate(()=>ensureCombat().combatants.push({id:makeId(),name:v.name.trim(),kind:v.kind,initiative:safeNumber(v.initiative),hp:Math.min(maxHp,Math.max(0,safeNumber(v.hp))),maxHp,tempHp:Math.max(0,safeNumber(v.tempHp)),ac:safeNumber(v.ac),conditions:v.conditions||"",order:Date.now()}));});
+  }
+  function promptCombatHP(id){
+    if(!isDM())return;const c=ensureCombat().combatants.find(x=>x.id===id);if(!c)return;
+    const value=prompt("Enter a signed HP change (e.g. -12 damage or 8 healing):","-5");if(value===null||!value.trim())return;const amount=Number(value);if(!Number.isFinite(amount))return alert("Enter a valid number.");adjustCombatHP(id,amount);
+  }
   function addCombatant(){
     if(!isDM())return;
     const combat=ensureCombat(),options=[];
@@ -647,7 +674,7 @@
   function adjustCombatHP(id,amount){
     if(!isDM())return;const combatant=ensureCombat().combatants.find(x=>x.id===id);if(!combatant)return;
     mutate(()=>{
-      combatant.hp=Math.max(0,Math.min(safeNumber(combatant.maxHp,1),safeNumber(combatant.hp)+amount));
+      if(amount<0){const damage=Math.abs(amount),absorbed=Math.min(Math.max(0,safeNumber(combatant.tempHp)),damage);combatant.tempHp=Math.max(0,safeNumber(combatant.tempHp)-absorbed);combatant.hp=Math.max(0,safeNumber(combatant.hp)-(damage-absorbed));}else combatant.hp=Math.min(safeNumber(combatant.maxHp,1),safeNumber(combatant.hp)+amount);
       if(combatant.sourceId){
         const source=combatant.sourceType==="npc"?state.npcs.find(x=>x.id===combatant.sourceId):state.characters.find(x=>x.id===combatant.sourceId);
         if(source)source.hp=combatant.hp;
@@ -662,11 +689,12 @@
       {name:"hp",label:"Current HP",type:"number",value:c.hp,min:0},
       {name:"maxHp",label:"Maximum HP",type:"number",value:c.maxHp,min:1},
       {name:"ac",label:"Armour class",type:"number",value:c.ac,min:0},
+      {name:"tempHp",label:"Temporary hit points",type:"number",value:c.tempHp||0,min:0},
       {name:"conditions",label:"Conditions (comma-separated)",value:c.conditions||"",full:true}
     ],v=>{
       const maxHp=Math.max(1,safeNumber(v.maxHp,1));
       mutate(()=>{
-        Object.assign(c,{name:v.name.trim(),initiative:safeNumber(v.initiative),hp:Math.min(maxHp,Math.max(0,safeNumber(v.hp))),maxHp,ac:safeNumber(v.ac),conditions:v.conditions||""});
+        Object.assign(c,{name:v.name.trim(),initiative:safeNumber(v.initiative),hp:Math.min(maxHp,Math.max(0,safeNumber(v.hp))),maxHp,tempHp:Math.max(0,safeNumber(v.tempHp)),ac:safeNumber(v.ac),conditions:v.conditions||""});
         if(c.sourceId){
           const source=c.sourceType==="npc"?state.npcs.find(x=>x.id===c.sourceId):state.characters.find(x=>x.id===c.sourceId);
           if(source){source.hp=c.hp;source.maxHp=c.maxHp;source.ac=c.ac;}
@@ -1688,6 +1716,10 @@
     advanceCalendarDay,
     addCombatant,
     addCombatEnemy,
+    addTemporaryCombatant,
+    saveCombatEncounter,
+    loadCombatEncounter,
+    promptCombatHP,
     addCharacterItem,
     editCharacterItem,
     toggleEquippedItem,
