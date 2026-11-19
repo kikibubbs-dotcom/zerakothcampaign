@@ -1716,7 +1716,7 @@
   function removeCharacter(id) {
     const character=state.characters.find(x=>x.id===id);
     if (!character || !canEditCharacter(character)) return;
-    if (!confirm("Remove this character from the party?")) return;
+    if (!confirm("Remove "+(character.name||"this character")+" from the campaign archive? This deletes the character profile and its sheet.")) return;
     mutate(()=>state.characters=state.characters.filter(x=>x.id!==id));
   }
 
