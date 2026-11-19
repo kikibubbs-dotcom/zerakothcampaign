@@ -52,6 +52,8 @@
   let mapDrawing = false;
   let journalCanvasDirty = false;
   let activeCharacterSheetId = "";
+  let questFilter = "Active";
+  let journalSearchTerm = "";
 
   const empty = text => `<div class="empty-state">${escapeHTML(text)}</div>`;
   const isDM = () => member?.role === "dm";
@@ -1076,8 +1078,16 @@
   }
 
   function renderQuests() {
-    $("quest-list").innerHTML = state.quests.length
-      ? state.quests.map(q=>{
+    const quests=Array.isArray(state.quests)?state.quests:[];
+    const counts={Active:0,Completed:0,Failed:0};
+    quests.forEach(q=>{const s=["Active","Completed","Failed"].includes(q.status)?q.status:"Active";counts[s]++;});
+    const visible=questFilter==="All"?quests:quests.filter(q=>(q.status||"Active")===questFilter);
+    const controls=$("quest-filters");
+    if(controls){
+      controls.innerHTML=["Active","Completed","Failed","All"].map(key=>'<button type="button" class="quest-filter '+(questFilter===key?'selected':'')+'" aria-pressed="'+(questFilter===key?'true':'false')+'" onclick="Hub.filterQuests(\''+key+'\')">'+key+' <span>'+ (key==="All"?quests.length:counts[key])+'</span></button>').join("");
+    }
+    $("quest-list").innerHTML=visible.length
+      ? visible.map(q=>{
         const status=(q.status||"Active").toLowerCase();
         return `<article class="list-card quest-card ${status==="completed"?"quest-completed":status==="failed"?"quest-failed":""}" onclick="Hub.openQuestDetails('${q.id}')">
           <div class="list-meta">${escapeHTML(q.status||"Active")} · ${escapeHTML(q.reward||"No reward specified")}</div>
@@ -1091,7 +1101,11 @@
           </div>`:""}
         </article>`;
       }).join("")
-      : empty("No quests have been added.");
+      : empty(questFilter==="Active"?"No active quests.":questFilter==="Completed"?"No completed quests yet.":questFilter==="Failed"?"No failed quests.":"No quests have been added.");
+  }
+  function filterQuests(filter){
+    if(!["Active","Completed","Failed","All"].includes(filter))return;
+    questFilter=filter;renderQuests();
   }
 
   function renderNPCs() {
@@ -1123,17 +1137,29 @@
   }
 
   function renderJournal() {
-    $("journal-list").innerHTML = state.journal.length
-      ? state.journal.map(j=>`
-        <article class="list-card">
+    const entries=Array.isArray(state.journal)?state.journal:[];
+    const term=journalSearchTerm.trim().toLowerCase();
+    const visible=entries.filter(j=>{
+      const linked=state.quests.find(q=>q.id===j.questId);
+      return !term||[j.title,j.date,j.author,j.body,linked?.title].some(v=>String(v||"").toLowerCase().includes(term));
+    });
+    const meta=$("journal-list-meta");
+    if(meta)meta.textContent=entries.length?(visible.length===entries.length?entries.length+" entries":("Showing "+visible.length+" of "+entries.length+" entries")):"";
+    $("journal-list").innerHTML=visible.length
+      ? visible.map(j=>{
+        const linked=state.quests.find(q=>q.id===j.questId);
+        return `<article class="list-card journal-card">
           <div class="list-meta">${escapeHTML(j.date)} · ${escapeHTML(j.author||"Campaign")}</div>
           <h3>${escapeHTML(j.title)}</h3>
+          ${linked?`<button class="journal-quest-link" onclick="Hub.openQuestDetails('${linked.id}')">⚑ ${escapeHTML(linked.title)}</button>`:""}
           <p>${escapeHTML(j.body)}</p>
           ${j.imageData?`<img class="journal-attachment" src="${j.imageData}" alt="Journal drawing or attached image" style="max-width:100%;max-height:420px;border-radius:6px;margin-top:12px">`:""}
           ${(isDM() || j.ownerId===member?.id)?`${(isDM() || member?.role==="player")?`<div class="card-actions"><button onclick="Hub.editJournal('${j.id}')">EDIT ENTRY</button><button onclick="Hub.removeItem('journal','${j.id}')">DELETE ENTRY</button></div>`:""}`:""}
-        </article>`).join("")
-      : empty("Your campaign story starts here.");
+        </article>`;
+      }).join("")
+      : empty(term?"No journal entries match your search.":"Your campaign story starts here.");
   }
+  function filterJournal(value){journalSearchTerm=String(value||"");renderJournal();}
 
   function calendarOrdinal(date,config){
     if(!date||!config)return 0;
@@ -1358,9 +1384,10 @@
       {name:"title",label:"Entry title",value:data.title||"",required:true,full:true},
       {name:"date",label:"In-world date or session",value:data.date||""},
       {name:"author",label:"Author / character",value:data.author||""},
+      {name:"questId",label:"Related quest (optional)",type:"select",value:data.questId||"",options:[{value:"",label:"Not linked"},...state.quests.map(q=>({value:q.id,label:q.title}))],full:true},
       {name:"body",label:"Your journal entry",type:"textarea",rows:8,value:data.body||"",full:true},
       {name:"drawing",label:"Drawing or image",type:"drawing",value:data.imageData||"",full:true}
-    ],v=>{const imageData=journalCanvasDirty?$("journal-drawing-canvas")?.toDataURL("image/jpeg",0.78):(data.imageData||"");const updated={title:v.title.trim(),date:v.date,author:v.author,body:v.body,imageData};if(!updated.title)return alert("Please enter a title.");if(editing)mutate(()=>Object.assign(entry,updated));else mutate(()=>state.journal.unshift({id:makeId(),...updated,...(!isDM()?{ownerId:member.id}:{})}));});
+    ],v=>{const imageData=journalCanvasDirty?$("journal-drawing-canvas")?.toDataURL("image/jpeg",0.78):(data.imageData||"");const updated={title:v.title.trim(),date:v.date,author:v.author,questId:v.questId||"",body:v.body,imageData};if(!updated.title)return alert("Please enter a title.");if(editing)mutate(()=>Object.assign(entry,updated));else mutate(()=>state.journal.unshift({id:makeId(),...updated,...(!isDM()?{ownerId:member.id}:{})}));});
   }
 
   function archiveFields(data={},type="player"){
@@ -1826,6 +1853,8 @@
     randomizeCharacter,
     randomizeNPC,
     addQuest,
+    filterQuests,
+    filterJournal,
     editQuest,
     addJournal,
     editJournal,
