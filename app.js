@@ -513,7 +513,7 @@
       ?"Check on your party, review campaign activity and get ready for the next session."
       :"Your character, quests and the latest campaign updates — all in one place.";
     $("stat-party").textContent = state.characters.filter(c=>!c.isNPC).length;
-    $("stat-quests").textContent = state.quests.filter(q=>q.status==="Active").length;
+    $("stat-quests").textContent = state.quests.filter(q=>(q.status||"Active").toLowerCase()==="active").length;
     $("stat-npcs").textContent = state.npcs.length;
     $("stat-journal").textContent = state.journal.length;
 
