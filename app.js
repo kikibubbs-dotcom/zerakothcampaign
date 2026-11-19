@@ -1689,7 +1689,6 @@
     root.querySelectorAll(".hub-page").forEach(p=>p.classList.remove("active"));
     root.querySelectorAll(".hub-nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
     const page=$("page-"+tab);if(page)page.classList.add("active");
-    if(tab==="spellbook")renderSpellbook();
     if(tab==="character-sheet"){renderCharacterSheet();renderSpellbook();}
     if(tab==="world")renderWorld();
   }
