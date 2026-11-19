@@ -598,14 +598,14 @@
     $("combat-view-note").textContent=isDM()?"Only the DM can change combat. Everyone can follow the initiative order and live HP updates.":"Live encounter view · The DM manages initiative and combatant stats.";
     if(!ordered.length){list.innerHTML=empty(isDM()?"Add party members or enemies to prepare an encounter.":"The DM hasn't added anyone to this encounter yet.");return;}
     list.innerHTML=ordered.map((c,i)=>{
-      const hp=Math.max(0,safeNumber(c.hp)),max=Math.max(1,safeNumber(c.maxHp,1)),percent=Math.max(0,Math.min(100,hp/max*100));
+      const hp=Math.max(0,safeNumber(c.hp)),max=Math.max(1,safeNumber(c.maxHp,1)),percent=Math.max(0,Math.min(100,hp/max*100)),tempHp=Math.max(0,safeNumber(c.tempHp));
       const active=combat.active&&combat.activeTurnId===c.id;
       const conditions=String(c.conditions||"").split(",").map(x=>x.trim()).filter(Boolean);
       return `<article class="combatant-card ${active?"is-current-turn":""} ${hp===0?"is-unconscious":""}">
         <div class="combat-initiative">${safeNumber(c.initiative)}</div>
         <div class="combatant-main">
           <div class="combatant-title-row"><div><span class="combatant-type">${escapeHTML(c.kind||"COMBATANT")}</span><h3>${escapeHTML(c.name)}</h3></div>${active?'<span class="turn-indicator">CURRENT TURN</span>':""}</div>
-          <div class="combatant-stats"><span><strong>${hp}</strong> / ${max} HP</span><span>${safeNumber(c.ac)} AC</span></div>
+          <div class="combatant-stats"><span><strong>${hp}</strong> / ${max} HP${tempHp?` · +${tempHp} TEMP`:""}</span><span>${safeNumber(c.ac)} AC</span></div>
           <div class="hp-bar"><div class="hp-fill" style="width:${percent}%;background:${percent<25?"#dc6969":percent<50?"#d6ad5d":"#79bd91"}"></div></div>
           <div class="combat-conditions">${conditions.length?conditions.map(x=>'<span class="tag">'+escapeHTML(x)+'</span>').join(""):'<span class="combat-no-conditions">No conditions</span>'}</div>
           ${isDM()?'<div class="combatant-actions"><button onclick="Hub.adjustCombatHP(\''+c.id+'\',-5)">−5 HP</button><button onclick="Hub.adjustCombatHP(\''+c.id+'\',-1)">−1 HP</button><button onclick="Hub.adjustCombatHP(\''+c.id+'\',1)">+1 HP</button><button onclick="Hub.adjustCombatHP(\''+c.id+'\',5)">+5 HP</button><button onclick="Hub.editCombatant(\''+c.id+'\')">EDIT</button><button onclick="Hub.removeCombatant(\''+c.id+'\')">REMOVE</button></div>':""}
